@@ -1,3 +1,6 @@
 # MoonBit
 _build/
 .mooncakes/
+
+# clangd
+compile_flags.txt
