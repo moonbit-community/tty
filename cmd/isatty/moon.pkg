@@ -1,0 +1,11 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/stdio" @stdio,
+  "tonyfettes/tty" @tty,
+}
+
+supported_targets = "native"
+
+options(
+  "is-main": true,
+)
