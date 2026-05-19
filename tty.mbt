@@ -57,6 +57,14 @@ pub let stdout : Output = Stdio(@async/stdio.stdout)
 pub let stderr : Output = Stdio(@async/stdio.stderr)
 
 ///|
+pub fn Output::fd(self : Self) -> @async/types.Fd {
+  match self {
+    File(file) => file.fd()
+    Stdio(output) => output.fd()
+  }
+}
+
+///|
 pub fn Output::close(self : Output) -> Unit {
   match self {
     File(file) => file.close()
