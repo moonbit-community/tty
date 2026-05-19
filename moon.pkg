@@ -2,6 +2,7 @@ import {
   "moonbitlang/async/types" @async/types,
   "moonbitlang/async/fs" @async/fs,
   "moonbitlang/async/stdio" @async/stdio,
+  "moonbitlang/async/os_error",
 }
 
 import {
@@ -11,5 +12,5 @@ import {
 supported_targets = "native"
 
 options(
-  "native-stub": [ "isatty.c" ],
+  "native-stub": [ "isatty.c", "state.c" ],
 )
