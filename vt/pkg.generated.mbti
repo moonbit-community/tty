@@ -1,0 +1,20 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "tonyfettes/tty/vt"
+
+// Values
+pub fn cursor_down(Int) -> Bytes
+
+pub fn cursor_up(Int) -> Bytes
+
+pub let hide_cursor : Bytes
+
+pub let show_cursor : Bytes
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits
+
