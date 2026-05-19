@@ -81,6 +81,11 @@ pub async fn Output::write(self : Output, data : &@async/io.Data) -> Unit {
 }
 
 ///|
+pub async fn Output::write_string(self : Output, string : String) -> Unit {
+  self.write(string)
+}
+
+///|
 pub fn Output::close(self : Output) -> Unit {
   match self {
     File(file) => file.close()

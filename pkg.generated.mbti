@@ -30,12 +30,14 @@ pub async fn Input::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) 
 pub async fn Input::read_byte(Self) -> Byte
 pub async fn Input::read_some(Self) -> Bytes?
 pub fn Input::set_state(Self, State) -> State raise @os_error.OSError
+pub async fn[T] Input::with_raw_mode(Self, async () -> T) -> T
 
 type Output
 pub fn Output::close(Self) -> Unit
 pub fn Output::fd(Self) -> Int
 pub async fn Output::open() -> Self
 pub async fn Output::write(Self, &@io.Data) -> Unit
+pub async fn Output::write_string(Self, String) -> Unit
 
 type State
 pub fn State::make_raw(Self) -> Self

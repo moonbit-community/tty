@@ -12,14 +12,17 @@ pub fn cursor_horizontal_absolute(Int) -> Bytes
 
 pub fn cursor_next_line(Int) -> Bytes
 
-#alias(CUP)
 pub fn cursor_position(Int, Int) -> Bytes
 
 pub fn cursor_prev_line(Int) -> Bytes
 
 pub fn cursor_up(Int) -> Bytes
 
+pub let enter_alt_screen : Bytes
+
 pub let hide_cursor : Bytes
+
+pub let leave_alt_screen : Bytes
 
 pub let show_cursor : Bytes
 

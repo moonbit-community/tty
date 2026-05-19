@@ -55,6 +55,22 @@ pub fn Input::leave_raw_mode(
 }
 
 ///|
+pub async fn[T] Input::with_raw_mode(self : Self, f : async () -> T) -> T {
+  let state = self.enter_raw_mode()
+  try f() catch {
+    error => {
+      self.leave_raw_mode(state)
+      raise error
+    }
+  } noraise {
+    value => {
+      self.leave_raw_mode(state)
+      value
+    }
+  }
+}
+
+///|
 extern "c" fn get_sizeof_state() -> Int = "moonbit_tty_get_sizeof_state"
 
 ///|
