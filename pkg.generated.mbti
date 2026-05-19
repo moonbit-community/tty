@@ -1,16 +1,44 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "tonyfettes/tty"
 
+import {
+  "moonbitlang/async/io",
+  "moonbitlang/async/os_error",
+}
+
 // Values
 pub fn isatty(Int) -> Bool raise TtyError
+
+pub let stderr : Output
+
+pub let stdin : Input
+
+pub let stdout : Output
 
 // Errors
 type TtyError
 
 // Types and methods
-type Tty
-pub fn Tty::close(Self) -> Unit
-pub async fn Tty::open() -> Self
+type Input
+pub fn Input::close(Self) -> Unit
+pub fn Input::enter_raw_mode(Self) -> State raise @os_error.OSError
+pub fn Input::fd(Self) -> Int
+pub fn Input::get_state(Self) -> State raise @os_error.OSError
+pub fn Input::leave_raw_mode(Self, State) -> Unit raise @os_error.OSError
+pub async fn Input::open() -> Self
+pub async fn Input::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
+pub async fn Input::read_byte(Self) -> Byte
+pub async fn Input::read_some(Self) -> Bytes?
+pub fn Input::set_state(Self, State) -> State raise @os_error.OSError
+
+type Output
+pub fn Output::close(Self) -> Unit
+pub fn Output::fd(Self) -> Int
+pub async fn Output::open() -> Self
+pub async fn Output::write(Self, &@io.Data) -> Unit
+
+type State
+pub fn State::make_raw(Self) -> Self
 
 // Type aliases
 

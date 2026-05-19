@@ -45,6 +45,14 @@ pub async fn Input::read_some(self : Input) -> Bytes? {
 }
 
 ///|
+pub async fn Input::read_byte(self : Input) -> Byte {
+  match self {
+    File(file) => file.read_exactly(1)[0]
+    Stdio(stdin) => stdin.read_exactly(1)[0]
+  }
+}
+
+///|
 enum Output {
   File(@async/fs.File)
   Stdio(@async/stdio.Output)
@@ -57,10 +65,18 @@ pub let stdout : Output = Stdio(@async/stdio.stdout)
 pub let stderr : Output = Stdio(@async/stdio.stderr)
 
 ///|
-pub fn Output::fd(self : Self) -> @async/types.Fd {
+pub fn Output::fd(self : Output) -> @async/types.Fd {
   match self {
     File(file) => file.fd()
     Stdio(output) => output.fd()
+  }
+}
+
+///|
+pub async fn Output::write(self : Output, data : &@async/io.Data) -> Unit {
+  match self {
+    File(file) => file.write(data)
+    Stdio(stdio) => stdio.write(data)
   }
 }
 

@@ -3,6 +3,7 @@ import {
   "moonbitlang/async/fs" @async/fs,
   "moonbitlang/async/stdio" @async/stdio,
   "moonbitlang/async/os_error",
+  "moonbitlang/async/io" @async/io,
 }
 
 import {
