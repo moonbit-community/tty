@@ -76,6 +76,11 @@ fn EventReader::unread_byte(self : EventReader) -> Unit {
 }
 
 ///|
+fn EventReader::rollback(self : EventReader) -> Unit {
+  self.read = self.head
+}
+
+///|
 fn EventReader::view(self : EventReader) -> ArrayView[Byte] {
   self.data[self.head:self.read]
 }
@@ -114,6 +119,47 @@ fn EventReader::commit(self : EventReader) -> Unit {
     self.head = 0
     self.read = 0
     self.tail = remaining
+  }
+}
+
+///|
+pub async fn EventReader::read_cursor_position_response(
+  self : EventReader,
+  timeout_ms? : Int = 50,
+) -> (Int, Int)? {
+  guard self.read_byte(timeout=timeout_ms) is Some(Esc) else {
+    self.rollback()
+    return None
+  }
+  guard self.read_byte(timeout=timeout_ms) is Some(b'[') else {
+    self.rollback()
+    return None
+  }
+  for ;; {
+    guard self.read_byte(timeout=timeout_ms) is Some(byte) else {
+      self.rollback()
+      return None
+    }
+    match byte {
+      0x30..<0x40 => ()
+      0x40..<0x7f => {
+        let response = parse_cursor_position_response(self.view())
+        match response {
+          Some(_) => {
+            self.commit()
+            return response
+          }
+          None => {
+            self.rollback()
+            return None
+          }
+        }
+      }
+      _ => {
+        self.rollback()
+        return None
+      }
+    }
   }
 }
 
@@ -226,12 +272,33 @@ fn parse_csi(csi : ArrayView[Byte]) -> Event {
         b'F' => parse_csi_key(csi, params, End)
         b'P' => parse_csi_key(csi, params, F1)
         b'Q' => parse_csi_key(csi, params, F2)
+        b'R' if parse_cursor_position_params(params) is Some(_) =>
+          Unknown(Bytes::from_array(csi))
         b'R' => parse_csi_key(csi, params, F3)
         b'S' => parse_csi_key(csi, params, F4)
         _ => Unknown(Bytes::from_array(csi))
       }
     }
     _ => Unknown(Bytes::from_array(csi))
+  }
+}
+
+///|
+fn parse_cursor_position_response(csi : ArrayView[Byte]) -> (Int, Int)? {
+  match csi {
+    [Esc, b'[', .. params, b'R'] => {
+      guard parse_csi_params(params) is Some(params) else { return None }
+      parse_cursor_position_params(params)
+    }
+    _ => None
+  }
+}
+
+///|
+fn parse_cursor_position_params(params : Array[Int?]) -> (Int, Int)? {
+  match params {
+    [Some(row), Some(col)] if row >= 1 && col >= 1 => Some((row, col))
+    _ => None
   }
 }
 

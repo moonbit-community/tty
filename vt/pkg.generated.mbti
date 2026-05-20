@@ -30,6 +30,8 @@ pub let hide_cursor : Bytes
 
 pub let leave_alt_screen : Bytes
 
+pub let request_cursor_position : Bytes
+
 pub let reset_top_bottom_margins : Bytes
 
 pub let reverse_index : Bytes

@@ -77,6 +77,22 @@ test "input cursor offset accounts for prompt and display width" {
 }
 
 ///|
+test "viewport top derives from probed cursor row" {
+  inspect(viewport_top_from_cursor(4, Editor::new()), content="3")
+  inspect(viewport_top_from_cursor(5, Editor::from_text("a\nb")), content="3")
+  inspect(viewport_top_from_cursor(1, Editor::new()), content="1")
+}
+
+///|
+test "viewport top clamps to visible terminal rows" {
+  let size : AgentSize = { rows: 8, cols: 80 }
+  inspect(max_viewport_top(size), content="5")
+  inspect(clamp_viewport_top(1, size), content="1")
+  inspect(clamp_viewport_top(9, size), content="5")
+  inspect(viewport_bottom(5), content="8")
+}
+
+///|
 test "fit line respects display width and graphemes" {
   inspect(fit_line("abcdef", 3), content="abc")
   inspect(fit_line("你好世界", 4), content="你好")
@@ -125,4 +141,10 @@ test "ctrl j is newline key" {
     ),
   )
   assert_false(is_newline_key(@tty/input.KeyEvent::new(@tty/input.Enter)))
+}
+
+///|
+test "exit newline count leaves below composer" {
+  inspect(exit_newline_count(Editor::new()), content="3")
+  inspect(exit_newline_count(Editor::from_text("a\nb")), content="2")
 }

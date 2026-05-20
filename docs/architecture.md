@@ -28,8 +28,11 @@ operations:
 
 - stdio handles: `stdin`, `stdout`, `stderr`
 - `/dev/tty` style open operations where supported
+- `Tty`, a narrow handle that coordinates one terminal input stream and output
+  stream for request/response protocols
 - `isatty`
 - output-side terminal window size queries
+- coordinated cursor position report queries
 - output-side command helpers for common screen, cursor, and style operations
 - input state operations such as `Input::get_state`, `Input::set_state`, and raw
   mode helpers
@@ -122,7 +125,9 @@ module:
   scrolling margins
 - `examples/color` validates SGR color output visually
 - `examples/agent` validates primary-screen transcript output with a trailing input
-  region that starts at the current cursor location
+  region that starts at the current cursor location, probes cursor position when
+  available, and uses scrolling margins to keep finalized transcript insertion
+  above the composer
 
 These commands can carry small UI experiments, but public API decisions should
 be recorded in `docs/architecture.md` or an active task plan before being moved
@@ -152,6 +157,10 @@ Windows console-event ownership.
 
 Raw mode is input-side terminal state. It can be exposed through `Input` because
 the operation applies to the terminal device behind that input handle.
+
+`Tty` can also expose raw-mode scoped helpers by delegating to its `Input`. The
+state still belongs to the input side; `Tty` exists so callers that also need
+terminal responses can share one `EventReader` buffer with normal input decoding.
 
 State snapshots should be explicit:
 
@@ -190,6 +199,11 @@ waiting. `EventReader` is the current boundary for that behavior.
 Unsupported complete sequences should produce `Unknown(Bytes)`. Incomplete ESC
 or CSI sequences can become `Unknown` after timeout. This keeps the public API
 usable before the decoder knows every terminal sequence.
+
+Terminal request/response reports such as Cursor Position Report (`CSI row ;
+col R`) are not user input events. They should be consumed through dedicated
+`EventReader` side-channel methods used by root `Tty` operations. If such a
+report reaches `read_event`, it should not be misreported as a key press.
 
 ## Public API Rule
 

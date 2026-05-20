@@ -18,6 +18,7 @@ test "cursor movement sequences" {
   @debug.assert_eq(@vt.cursor_position(0, 0), b"\x1b[H")
   @debug.assert_eq(@vt.cursor_position(0, 4), b"\x1b[1;4H")
   @debug.assert_eq(@vt.cursor_position(3, 0), b"\x1b[3;1H")
+  @debug.assert_eq(@vt.request_cursor_position, b"\x1b[6n")
 }
 
 ///|

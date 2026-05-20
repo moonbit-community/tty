@@ -5,16 +5,32 @@ let esc_timeout_ms : Int = 50
 let input_text_rows : Int = 2
 
 ///|
+let composer_rows : Int = input_text_rows + 2
+
+///|
 priv struct AgentSize {
+  rows : Int
   cols : Int
 }
 
 ///|
-fn terminal_size() -> AgentSize {
-  try @tty.stdout.window_size() catch {
-    _ => { cols: 80 }
+fn terminal_size(tty : @tty.Tty) -> AgentSize {
+  try tty.window_size() catch {
+    _ => { rows: 24, cols: 80 }
   } noraise {
-    size => { cols: if size.cols < 1 { 80 } else { size.cols } }
+    size =>
+      {
+        rows: if size.rows < 1 {
+          24
+        } else {
+          size.rows
+        },
+        cols: if size.cols < 1 {
+          80
+        } else {
+          size.cols
+        },
+      }
   }
 }
 
@@ -356,143 +372,267 @@ fn input_cursor_offset(editor : Editor, cols : Int) -> Int {
 }
 
 ///|
+fn viewport_top_from_cursor(row : Int, editor : Editor) -> Int {
+  let top = row - editor_cursor_row(editor) - 1
+  if top < 1 {
+    1
+  } else {
+    top
+  }
+}
+
+///|
+fn max_viewport_top(size : AgentSize) -> Int {
+  let top = size.rows - composer_rows + 1
+  if top < 1 {
+    1
+  } else {
+    top
+  }
+}
+
+///|
+fn clamp_viewport_top(top : Int, size : AgentSize) -> Int {
+  clamp_int(top, 1, max_viewport_top(size))
+}
+
+///|
+fn viewport_bottom(top : Int) -> Int {
+  top + composer_rows - 1
+}
+
+///|
+fn min_int(a : Int, b : Int) -> Int {
+  if a < b {
+    a
+  } else {
+    b
+  }
+}
+
+///|
 fn fake_response(input : String) -> String {
   let display = input.replace_all(old="\n", new=" / ")
   "received: \{display}"
 }
 
 ///|
-async fn write(text : String) -> Unit {
-  @tty.stdout.write(text)
+async fn write(tty : @tty.Tty, text : String) -> Unit {
+  tty.write(text)
 }
 
 ///|
-async fn write_bytes(bytes : Bytes) -> Unit {
-  @tty.stdout.write(bytes)
+async fn write_bytes(tty : @tty.Tty, bytes : Bytes) -> Unit {
+  tty.write(bytes)
 }
 
 ///|
-async fn move_up(rows : Int) -> Unit {
+async fn move_up(tty : @tty.Tty, rows : Int) -> Unit {
   if rows > 0 {
-    write_bytes(@tty/vt.cursor_up(rows))
+    write_bytes(tty, @tty/vt.cursor_up(rows))
   }
 }
 
 ///|
-async fn move_forward(cols : Int) -> Unit {
+async fn move_forward(tty : @tty.Tty, cols : Int) -> Unit {
   if cols > 0 {
-    write_bytes(@tty/vt.cursor_forward(cols))
+    write_bytes(tty, @tty/vt.cursor_forward(cols))
   }
 }
 
 ///|
-async fn write_colored_text(color : @color.BasicColor, text : String) -> Unit {
-  @tty.stdout.set_foreground(@color.Basic(color))
-  write(text)
-  @tty.stdout.reset_foreground()
+async fn write_colored_text(
+  tty : @tty.Tty,
+  color : @color.BasicColor,
+  text : String,
+) -> Unit {
+  tty.set_foreground(@color.Basic(color))
+  write(tty, text)
+  tty.reset_foreground()
 }
 
 ///|
-async fn erase_current_line() -> Unit {
-  write("\r")
-  write_bytes(@tty/vt.erase_line_all)
+async fn erase_current_line(tty : @tty.Tty) -> Unit {
+  write(tty, "\r")
+  write_bytes(tty, @tty/vt.erase_line_all)
 }
 
 ///|
-async fn render_separator_current(cols : Int) -> Unit {
-  erase_current_line()
-  @tty.stdout.set_foreground(@color.Basic(@color.BrightBlack))
-  write(String::make(cols, '-'))
-  @tty.stdout.reset_foreground()
+async fn render_separator_current(tty : @tty.Tty, cols : Int) -> Unit {
+  erase_current_line(tty)
+  tty.set_foreground(@color.Basic(@color.BrightBlack))
+  write(tty, String::make(cols, '-'))
+  tty.reset_foreground()
 }
 
 ///|
 async fn render_prompt_current(
+  tty : @tty.Tty,
   prefix : String,
   line : String,
   cols : Int,
 ) -> Unit {
-  erase_current_line()
-  write_colored_text(@color.BrightGreen, prefix)
-  write(fit_line(line, cols - display_width(prefix)))
+  erase_current_line(tty)
+  write_colored_text(tty, @color.BrightGreen, prefix)
+  write(tty, fit_line(line, cols - display_width(prefix)))
 }
 
 ///|
-async fn render_status_current(status : String, cols : Int) -> Unit {
-  erase_current_line()
-  @tty.stdout.set_foreground(@color.Basic(@color.BrightBlack))
+async fn render_status_current(
+  tty : @tty.Tty,
+  status : String,
+  cols : Int,
+) -> Unit {
+  erase_current_line(tty)
+  tty.set_foreground(@color.Basic(@color.BrightBlack))
   let text = if status.length() == 0 {
     "Enter send  Ctrl-J newline  Arrows move  Backspace edit  Ctrl-C quit"
   } else {
     status
   }
-  write(fit_line(text, cols))
-  @tty.stdout.reset_foreground()
+  write(tty, fit_line(text, cols))
+  tty.reset_foreground()
 }
 
 ///|
 async fn render_input_at_cursor(
+  tty : @tty.Tty,
   editor : Editor,
   status : String,
   size : AgentSize,
 ) -> Unit {
   let lines = split_input_lines(editor.text)
   let start = editor.view_start
-  render_separator_current(size.cols)
-  write("\r\n")
+  render_separator_current(tty, size.cols)
+  write(tty, "\r\n")
   for row in 0..<input_text_rows {
     let absolute = start + row
     render_prompt_current(
+      tty,
       input_prefix(row, start),
       line_at(lines, absolute),
       size.cols,
     )
-    write("\r\n")
+    write(tty, "\r\n")
   }
-  render_status_current(status, size.cols)
+  render_status_current(tty, status, size.cols)
 }
 
 ///|
-async fn move_from_input_cursor_to_top(editor : Editor) -> Unit {
-  move_up(1 + editor_cursor_row(editor))
-  write("\r")
+async fn move_from_input_cursor_to_top(tty : @tty.Tty, editor : Editor) -> Unit {
+  move_up(tty, 1 + editor_cursor_row(editor))
+  write(tty, "\r")
 }
 
 ///|
-async fn place_input_cursor(editor : Editor, size : AgentSize) -> Unit {
+async fn place_input_cursor(
+  tty : @tty.Tty,
+  editor : Editor,
+  size : AgentSize,
+) -> Unit {
   let row = editor_cursor_row(editor)
-  move_up(input_text_rows - row)
-  write("\r")
-  move_forward(input_cursor_offset(editor, size.cols))
+  move_up(tty, input_text_rows - row)
+  write(tty, "\r")
+  move_forward(tty, input_cursor_offset(editor, size.cols))
 }
 
 ///|
 async fn redraw_input_from(
+  tty : @tty.Tty,
   old_editor : Editor,
   new_editor : Editor,
   status : String,
   size : AgentSize,
 ) -> Unit {
-  move_from_input_cursor_to_top(old_editor)
-  render_input_at_cursor(new_editor, status, size)
-  place_input_cursor(new_editor, size)
+  move_from_input_cursor_to_top(tty, old_editor)
+  render_input_at_cursor(tty, new_editor, status, size)
+  place_input_cursor(tty, new_editor, size)
 }
 
 ///|
-async fn render_transcript_row(
+async fn move_to(tty : @tty.Tty, row : Int, col : Int) -> Unit {
+  write_bytes(tty, @tty/vt.cursor_position(row, col))
+}
+
+///|
+async fn render_input_at_top(
+  tty : @tty.Tty,
+  top : Int,
+  editor : Editor,
+  status : String,
+  size : AgentSize,
+) -> Unit {
+  let lines = split_input_lines(editor.text)
+  let start = editor.view_start
+  move_to(tty, top, 1)
+  render_separator_current(tty, size.cols)
+  for row in 0..<input_text_rows {
+    move_to(tty, top + 1 + row, 1)
+    render_prompt_current(
+      tty,
+      input_prefix(row, start),
+      line_at(lines, start + row),
+      size.cols,
+    )
+  }
+  move_to(tty, top + input_text_rows + 1, 1)
+  render_status_current(tty, status, size.cols)
+}
+
+///|
+async fn place_input_cursor_at_top(
+  tty : @tty.Tty,
+  top : Int,
+  editor : Editor,
+  size : AgentSize,
+) -> Unit {
+  move_to(
+    tty,
+    top + 1 + editor_cursor_row(editor),
+    1 + input_cursor_offset(editor, size.cols),
+  )
+}
+
+///|
+async fn redraw_input_at_top(
+  tty : @tty.Tty,
+  top : Int,
+  editor : Editor,
+  status : String,
+  size : AgentSize,
+) -> Unit {
+  render_input_at_top(tty, top, editor, status, size)
+  place_input_cursor_at_top(tty, top, editor, size)
+}
+
+///|
+async fn render_transcript_row_current(
+  tty : @tty.Tty,
   prefix : String,
   color : @color.BasicColor,
   text : String,
   size : AgentSize,
 ) -> Unit {
-  erase_current_line()
-  write_colored_text(color, prefix)
-  write(fit_line(text, size.cols - display_width(prefix)))
-  write("\r\n")
+  erase_current_line(tty)
+  write_colored_text(tty, color, prefix)
+  write(tty, fit_line(text, size.cols - display_width(prefix)))
+}
+
+///|
+async fn render_transcript_row(
+  tty : @tty.Tty,
+  prefix : String,
+  color : @color.BasicColor,
+  text : String,
+  size : AgentSize,
+) -> Unit {
+  render_transcript_row_current(tty, prefix, color, text, size)
+  write(tty, "\r\n")
 }
 
 ///|
 async fn render_transcript_at_cursor(
+  tty : @tty.Tty,
   role : String,
   color : @color.BasicColor,
   text : String,
@@ -503,12 +643,13 @@ async fn render_transcript_at_cursor(
   let lines = split_input_lines(text)
   for i in 0..<lines.length() {
     let row_prefix = if i == 0 { prefix } else { continuation }
-    render_transcript_row(row_prefix, color, line_at(lines, i), size)
+    render_transcript_row(tty, row_prefix, color, line_at(lines, i), size)
   }
 }
 
 ///|
 async fn append_transcript(
+  tty : @tty.Tty,
   cursor_editor : Editor,
   role : String,
   color : @color.BasicColor,
@@ -517,14 +658,15 @@ async fn append_transcript(
   status : String,
   size : AgentSize,
 ) -> Unit {
-  move_from_input_cursor_to_top(cursor_editor)
-  render_transcript_at_cursor(role, color, text, size)
-  render_input_at_cursor(editor, status, size)
-  place_input_cursor(editor, size)
+  move_from_input_cursor_to_top(tty, cursor_editor)
+  render_transcript_at_cursor(tty, role, color, text, size)
+  render_input_at_cursor(tty, editor, status, size)
+  place_input_cursor(tty, editor, size)
 }
 
 ///|
 async fn append_user(
+  tty : @tty.Tty,
   cursor_editor : Editor,
   text : String,
   editor : Editor,
@@ -532,6 +674,7 @@ async fn append_user(
   size : AgentSize,
 ) -> Unit {
   append_transcript(
+    tty,
     cursor_editor,
     "user",
     @color.BrightCyan,
@@ -544,6 +687,7 @@ async fn append_user(
 
 ///|
 async fn append_agent(
+  tty : @tty.Tty,
   cursor_editor : Editor,
   text : String,
   editor : Editor,
@@ -551,6 +695,7 @@ async fn append_agent(
   size : AgentSize,
 ) -> Unit {
   append_transcript(
+    tty,
     cursor_editor,
     "agent",
     @color.BrightMagenta,
@@ -562,16 +707,150 @@ async fn append_agent(
 }
 
 ///|
-async fn restore_terminal() -> Unit {
-  write_bytes(@tty/vt.reset_top_bottom_margins)
-  @tty.stdout.reset_style()
-  write_bytes(@tty/vt.show_cursor)
+async fn shift_viewport_down_for_insert(
+  tty : @tty.Tty,
+  top : Int,
+  lines : Int,
+  size : AgentSize,
+) -> Int {
+  let space = size.rows - viewport_bottom(top)
+  let shift = min_int(lines, if space < 0 { 0 } else { space })
+  if shift <= 0 {
+    top
+  } else {
+    write_bytes(tty, @tty/vt.set_top_bottom_margins(top, size.rows))
+    move_to(tty, top, 1)
+    for _ in 0..<shift {
+      write_bytes(tty, @tty/vt.reverse_index)
+    }
+    write_bytes(tty, @tty/vt.reset_top_bottom_margins)
+    top + shift
+  }
 }
 
 ///|
-async fn leave_agent() -> Unit {
-  restore_terminal()
-  write("\r\n")
+async fn insert_transcript_row_above_viewport(
+  tty : @tty.Tty,
+  top : Int,
+  prefix : String,
+  color : @color.BasicColor,
+  text : String,
+  size : AgentSize,
+) -> Unit {
+  let history_bottom = top - 1
+  if history_bottom < 1 {
+    render_transcript_row(tty, prefix, color, text, size)
+  } else {
+    write_bytes(tty, @tty/vt.set_top_bottom_margins(1, history_bottom))
+    move_to(tty, history_bottom, 1)
+    write(tty, "\r\n")
+    render_transcript_row_current(tty, prefix, color, text, size)
+    write_bytes(tty, @tty/vt.reset_top_bottom_margins)
+  }
+}
+
+///|
+async fn append_transcript_above_viewport(
+  tty : @tty.Tty,
+  top : Int,
+  role : String,
+  color : @color.BasicColor,
+  text : String,
+  editor : Editor,
+  status : String,
+  size : AgentSize,
+) -> Int {
+  let prefix = "\{role}: "
+  let continuation = String::make(display_width(prefix), ' ')
+  let lines = split_input_lines(text)
+  let top = clamp_viewport_top(top, size)
+  let top = shift_viewport_down_for_insert(tty, top, lines.length(), size)
+  for i in 0..<lines.length() {
+    let row_prefix = if i == 0 { prefix } else { continuation }
+    insert_transcript_row_above_viewport(
+      tty,
+      top,
+      row_prefix,
+      color,
+      line_at(lines, i),
+      size,
+    )
+  }
+  redraw_input_at_top(tty, top, editor, status, size)
+  top
+}
+
+///|
+async fn append_user_above_viewport(
+  tty : @tty.Tty,
+  top : Int,
+  text : String,
+  editor : Editor,
+  status : String,
+  size : AgentSize,
+) -> Int {
+  append_transcript_above_viewport(
+    tty,
+    top,
+    "user",
+    @color.BrightCyan,
+    text,
+    editor,
+    status,
+    size,
+  )
+}
+
+///|
+async fn append_agent_above_viewport(
+  tty : @tty.Tty,
+  top : Int,
+  text : String,
+  editor : Editor,
+  status : String,
+  size : AgentSize,
+) -> Int {
+  append_transcript_above_viewport(
+    tty,
+    top,
+    "agent",
+    @color.BrightMagenta,
+    text,
+    editor,
+    status,
+    size,
+  )
+}
+
+///|
+async fn restore_terminal(tty : @tty.Tty) -> Unit {
+  write_bytes(tty, @tty/vt.reset_top_bottom_margins)
+  tty.reset_style()
+  tty.show_cursor()
+}
+
+///|
+fn exit_newline_count(editor : Editor) -> Int {
+  input_text_rows - editor_cursor_row(editor) + 1
+}
+
+///|
+async fn leave_agent(
+  tty : @tty.Tty,
+  editor : Editor,
+  viewport_top : Int?,
+) -> Unit {
+  restore_terminal(tty)
+  match viewport_top {
+    Some(top) => {
+      move_to(tty, viewport_bottom(top), 1)
+      write(tty, "\r\n")
+    }
+    None =>
+      for _ in 0..<exit_newline_count(editor) {
+        write(tty, "\r\n")
+      }
+  }
 }
 
 ///|
@@ -596,41 +875,113 @@ fn is_newline_key(key : @tty/input.KeyEvent) -> Bool {
 }
 
 ///|
-async fn submit(editor : Editor) -> Unit {
-  let empty = Editor::new()
-  let mut size = terminal_size()
-  redraw_input_from(editor, empty, "sending...", size)
-  append_user(empty, editor.text, empty, "sending...", size)
-  size = terminal_size()
-  append_agent(empty, fake_response(editor.text), empty, "ready", size)
+async fn redraw_input(
+  tty : @tty.Tty,
+  viewport_top : Int?,
+  old_editor : Editor,
+  editor : Editor,
+  status : String,
+  size : AgentSize,
+) -> Int? {
+  match viewport_top {
+    Some(top) => {
+      let top = clamp_viewport_top(top, size)
+      redraw_input_at_top(tty, top, editor, status, size)
+      Some(top)
+    }
+    None => {
+      redraw_input_from(tty, old_editor, editor, status, size)
+      None
+    }
+  }
 }
 
 ///|
-async fn run_agent() -> Unit {
-  let events = @tty.stdin.event_reader()
+async fn detect_viewport_top(
+  tty : @tty.Tty,
+  editor : Editor,
+  size : AgentSize,
+) -> Int? {
+  try tty.query_cursor_position(timeout_ms=esc_timeout_ms) catch {
+    _ => None
+  } noraise {
+    Some(position) =>
+      Some(
+        clamp_viewport_top(viewport_top_from_cursor(position.row, editor), size),
+      )
+    None => None
+  }
+}
+
+///|
+async fn submit(tty : @tty.Tty, editor : Editor, viewport_top : Int?) -> Int? {
+  let empty = Editor::new()
+  let mut size = terminal_size(tty)
+  match viewport_top {
+    Some(top) => {
+      let top = clamp_viewport_top(top, size)
+      redraw_input_at_top(tty, top, empty, "sending...", size)
+      let top = append_user_above_viewport(
+        tty,
+        top,
+        editor.text,
+        empty,
+        "sending...",
+        size,
+      )
+      size = terminal_size(tty)
+      let top = append_agent_above_viewport(
+        tty,
+        top,
+        fake_response(editor.text),
+        empty,
+        "ready",
+        size,
+      )
+      Some(top)
+    }
+    None => {
+      redraw_input_from(tty, editor, empty, "sending...", size)
+      append_user(tty, empty, editor.text, empty, "sending...", size)
+      size = terminal_size(tty)
+      append_agent(tty, empty, fake_response(editor.text), empty, "ready", size)
+      None
+    }
+  }
+}
+
+///|
+async fn run_agent(tty : @tty.Tty) -> Unit {
   let mut editor = Editor::new()
-  let mut size = terminal_size()
-  write_bytes(@tty/vt.show_cursor)
+  let mut size = terminal_size(tty)
+  tty.show_cursor()
   render_transcript_at_cursor(
+    tty,
     "system",
     @color.BrightBlack,
     "primary-screen agent demo",
     size,
   )
   render_transcript_at_cursor(
+    tty,
     "system",
     @color.BrightBlack,
     "type a message and press Enter",
     size,
   )
-  render_input_at_cursor(editor, "", size)
-  place_input_cursor(editor, size)
+  render_input_at_cursor(tty, editor, "", size)
+  place_input_cursor(tty, editor, size)
+  let mut viewport_top = detect_viewport_top(tty, editor, size)
+  match viewport_top {
+    Some(top) => redraw_input_at_top(tty, top, editor, "", size)
+    None => ()
+  }
   while true {
-    let event = events.read_event(esc_timeout=esc_timeout_ms) catch {
+    let event = tty.read_event(esc_timeout=esc_timeout_ms) catch {
       @async/io.ReaderClosed => break
       error => raise error
     }
-    size = terminal_size()
+    size = terminal_size(tty)
     match event {
       @tty/input.Key(key) =>
         match key.code {
@@ -639,68 +990,95 @@ async fn run_agent() -> Unit {
             editor.text.length() == 0 => break
           @tty/input.Enter =>
             if editor.text.length() > 0 {
-              submit(editor)
+              viewport_top = submit(tty, editor, viewport_top)
               editor = Editor::new()
             } else {
-              redraw_input_from(editor, editor, "empty input", size)
+              viewport_top = redraw_input(
+                tty, viewport_top, editor, editor, "empty input", size,
+              )
             }
           @tty/input.Up => {
             let old_editor = editor
             editor = editor.move_vertical(-1)
-            redraw_input_from(old_editor, editor, "", size)
+            viewport_top = redraw_input(
+              tty, viewport_top, old_editor, editor, "", size,
+            )
           }
           @tty/input.Down => {
             let old_editor = editor
             editor = editor.move_vertical(1)
-            redraw_input_from(old_editor, editor, "", size)
+            viewport_top = redraw_input(
+              tty, viewport_top, old_editor, editor, "", size,
+            )
           }
           @tty/input.Left => {
             let old_editor = editor
             editor = editor.move_left()
-            redraw_input_from(old_editor, editor, "", size)
+            viewport_top = redraw_input(
+              tty, viewport_top, old_editor, editor, "", size,
+            )
           }
           @tty/input.Right => {
             let old_editor = editor
             editor = editor.move_right()
-            redraw_input_from(old_editor, editor, "", size)
+            viewport_top = redraw_input(
+              tty, viewport_top, old_editor, editor, "", size,
+            )
           }
           @tty/input.Home => {
             let old_editor = editor
             editor = editor.move_home()
-            redraw_input_from(old_editor, editor, "", size)
+            viewport_top = redraw_input(
+              tty, viewport_top, old_editor, editor, "", size,
+            )
           }
           @tty/input.End => {
             let old_editor = editor
             editor = editor.move_end()
-            redraw_input_from(old_editor, editor, "", size)
+            viewport_top = redraw_input(
+              tty, viewport_top, old_editor, editor, "", size,
+            )
           }
           _ if is_newline_key(key) => {
             let old_editor = editor
             editor = editor.insert("\n")
-            redraw_input_from(old_editor, editor, "", size)
+            viewport_top = redraw_input(
+              tty, viewport_top, old_editor, editor, "", size,
+            )
           }
           @tty/input.Backspace => {
             let old_editor = editor
             editor = editor.delete_before()
-            redraw_input_from(old_editor, editor, "", size)
+            viewport_top = redraw_input(
+              tty, viewport_top, old_editor, editor, "", size,
+            )
           }
           @tty/input.Delete => {
             let old_editor = editor
             editor = editor.delete_after()
-            redraw_input_from(old_editor, editor, "", size)
+            viewport_top = redraw_input(
+              tty, viewport_top, old_editor, editor, "", size,
+            )
           }
           _ =>
             match text_from_key(key) {
               Some(text) => {
                 let old_editor = editor
                 editor = editor.insert(text)
-                redraw_input_from(old_editor, editor, "", size)
+                viewport_top = redraw_input(
+                  tty, viewport_top, old_editor, editor, "", size,
+                )
               }
-              None => redraw_input_from(editor, editor, "ignored key", size)
+              None =>
+                viewport_top = redraw_input(
+                  tty, viewport_top, editor, editor, "ignored key", size,
+                )
             }
         }
       @tty/input.Unknown(bytes) =>
-        redraw_input_from(
+        viewport_top = redraw_input(
+          tty,
+          viewport_top,
           editor,
           editor,
           "unknown input: \{bytes.length()} bytes",
@@ -708,17 +1086,22 @@ async fn run_agent() -> Unit {
         )
     }
   }
-  leave_agent()
+  leave_agent(tty, editor, viewport_top)
 }
 
 ///|
 async fn main {
-  try @tty.stdin.with_raw_mode(run_agent) catch {
+  let tty = @tty.Tty::open()
+  try tty.with_raw_mode(() => run_agent(tty)) catch {
     error => {
-      restore_terminal()
+      restore_terminal(tty)
+      tty.close()
       raise error
     }
   } noraise {
-    _ => ()
+    _ => {
+      tty.close()
+      ()
+    }
   }
 }

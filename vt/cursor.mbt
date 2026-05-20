@@ -89,3 +89,10 @@ pub fn cursor_position(row : Int, col : Int) -> Bytes {
     csi2(row, col, b'H')
   }
 }
+
+///|
+/// Device Status Report (DSR) request for cursor position, ECMA-48.
+///
+/// Terminals that support this request respond with a Cursor Position Report
+/// (CPR): `CSI row ; col R`.
+pub let request_cursor_position : Bytes = b"\x1b[6n"

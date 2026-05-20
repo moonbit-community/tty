@@ -21,6 +21,11 @@ pub let stdout : Output
 type TtyError
 
 // Types and methods
+pub struct CursorPosition {
+  row : Int
+  col : Int
+} derive(Eq)
+
 type Input
 pub fn Input::close(Self) -> Unit
 pub fn Input::enter_raw_mode(Self) -> State raise @os_error.OSError
@@ -55,6 +60,24 @@ pub async fn Output::write_string(Self, String) -> Unit
 
 type State
 pub fn State::make_raw(Self) -> Self
+
+type Tty
+pub fn Tty::close(Self) -> Unit
+pub async fn Tty::hide_cursor(Self) -> Unit
+pub async fn Tty::open() -> Self
+pub async fn Tty::query_cursor_position(Self, timeout_ms? : Int) -> CursorPosition?
+pub async fn Tty::read_event(Self, esc_timeout? : Int) -> @input.Event
+pub async fn Tty::reset_background(Self) -> Unit
+pub async fn Tty::reset_foreground(Self) -> Unit
+pub async fn Tty::reset_style(Self) -> Unit
+pub async fn Tty::set_background(Self, @color.Color) -> Unit
+pub async fn Tty::set_foreground(Self, @color.Color) -> Unit
+pub async fn Tty::show_cursor(Self) -> Unit
+pub fn Tty::stdio() -> Self
+pub fn Tty::window_size(Self) -> WindowSize raise @os_error.OSError
+pub async fn[T] Tty::with_raw_mode(Self, async () -> T) -> T
+pub async fn Tty::write(Self, &@io.Data) -> Unit
+pub async fn Tty::write_string(Self, String) -> Unit
 
 pub struct WindowSize {
   rows : Int

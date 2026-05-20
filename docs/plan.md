@@ -32,6 +32,7 @@ This board tracks implementation direction for `tonyfettes/tty`. Use
 | WORKSPACE-1 | done | examples workspace split | `docs/plans/2026-05-20-examples-workspace.md`, `moon.work`, `moon.mod`, `examples/` | demos live in an `examples` module and root `moon check` covers both workspace members | `moon fmt`, `moon check`, `moon test`, `moon info`, targeted `moon check examples/*` |
 | CMD-1 | done | primary-screen pager demo | `docs/plans/2026-05-20-cmd-pager.md`, `examples/pager` | demo pages a required file path with raw input, terminal size query, scroll margins, and RI | `moon fmt`, `moon test examples/pager`, `moon check examples/pager`, `moon test`, `moon check`, `moon info`, manual PTY smoke |
 | MVP-1 | done | primary-screen agent demo | `docs/plans/2026-05-20-cmd-agent.md`, `examples/agent` | transcript enters primary-screen scrollback and a trailing input region redraws reliably without startup blank fill | `moon fmt`, `moon test examples/agent`, `moon check examples/agent`, `moon test`, `moon check`, `moon info`, manual PTY smoke |
+| TTY-4 | done | coordinated tty handle and cursor probe | `docs/plans/2026-05-20-tty-cursor-position.md`, root package, `input/`, `vt/`, `examples/agent` | `Tty` coordinates input/output for CPR while `Event` remains user-input only; agent can use CPR plus scroll margins for Codex-like inline viewport insertion | `moon fmt`, `moon test vt`, `moon test input`, `moon test .`, `moon test examples/agent`, `moon check examples/agent`, `moon test`, `moon check`, `moon info` |
 
 ## Current Rules
 

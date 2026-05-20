@@ -51,6 +51,40 @@ test "key modifier accessors" {
 }
 
 ///|
+async test "read cursor position response" {
+  with_input(b"\x1b[12;34R", events => {
+    match events.read_cursor_position_response() {
+      Some((row, col)) => {
+        @debug.assert_eq(row, 12)
+        @debug.assert_eq(col, 34)
+      }
+      None => abort("expected cursor position response")
+    }
+  })
+}
+
+///|
+async test "cursor position response is not a key event" {
+  with_input(b"\x1b[12;34R", events => {
+    @debug.assert_eq(events.read_event(), @input.Unknown(b"\x1b[12;34R"))
+  })
+}
+
+///|
+async test "cursor position response reader preserves non response input" {
+  with_input(b"a", events => {
+    match events.read_cursor_position_response(timeout_ms=1) {
+      Some(_) => abort("expected no cursor position response")
+      None => ()
+    }
+    @debug.assert_eq(
+      events.read_event(),
+      @input.Key(@input.KeyEvent::new(@input.Char('a'), text="a")),
+    )
+  })
+}
+
+///|
 async test "decode printable ascii" {
   with_input(b"aA", events => {
     @debug.assert_eq(

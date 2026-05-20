@@ -18,6 +18,7 @@ pub(all) enum Event {
 
 type EventReader
 pub fn EventReader::new(&@io.Reader) -> Self
+pub async fn EventReader::read_cursor_position_response(Self, timeout_ms? : Int) -> (Int, Int)?
 pub async fn EventReader::read_event(Self, esc_timeout? : Int) -> Event
 
 pub(all) enum KeyCode {

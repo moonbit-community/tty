@@ -128,6 +128,35 @@ async test "file output terminal commands write sequences" {
 }
 
 ///|
+async test "tty query cursor position coordinates input and output" {
+  let input_path = "_build/tty_query_cursor_position_input_test"
+  let output_path = "_build/tty_query_cursor_position_output_test"
+  @async/fs.write_file(input_path, b"\x1b[7;9Ra", create_mode=CreateOrTruncate)
+  {
+    let input = Input::File(@async/fs.open(input_path, mode=ReadOnly))
+    let output = Output::File(
+      @async/fs.open(output_path, mode=WriteOnly, create_mode=CreateOrTruncate),
+    )
+    let tty = Tty::new(input, output)
+    defer tty.close()
+    match tty.query_cursor_position() {
+      Some(pos) => {
+        @debug.assert_eq(pos.row, 7)
+        @debug.assert_eq(pos.col, 9)
+      }
+      None => fail("expected cursor position")
+    }
+    @debug.assert_eq(
+      tty.read_event(),
+      @input.Key(@input.KeyEvent::new(@input.Char('a'), text="a")),
+    )
+  }
+  inspect(@async/fs.read_file(output_path).text(), content="\u{1B}[6n")
+  @async/fs.remove(input_path)
+  @async/fs.remove(output_path)
+}
+
+///|
 async test "file output with alt screen restores on success" {
   let path = "_build/tty_file_output_with_alt_screen_test"
   {
