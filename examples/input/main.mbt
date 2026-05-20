@@ -123,8 +123,7 @@ fn describe_key(key : @tty/input.KeyEvent) -> String {
 }
 
 ///|
-async fn run_input_buffer() -> Unit {
-  let events = @tty.stdin.event_reader()
+async fn run_input_buffer(tty : @tty.Tty) -> Unit {
   let mut buffer = ""
   writeln("input buffer demo")
   writeln(
@@ -132,7 +131,7 @@ async fn run_input_buffer() -> Unit {
   )
   redraw_input(buffer, "")
   while true {
-    let event = events.read_event(esc_timeout=esc_timeout_ms) catch {
+    let event = tty.read_event(esc_timeout=esc_timeout_ms) catch {
       @async/io.ReaderClosed => break
       error => raise error
     }
@@ -182,5 +181,6 @@ async fn run_input_buffer() -> Unit {
 
 ///|
 async fn main {
-  @tty.stdin.with_raw_mode(run_input_buffer)
+  let tty = @tty.Tty::stdio()
+  tty.with_raw_mode(() => run_input_buffer(tty))
 }

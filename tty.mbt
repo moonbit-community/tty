@@ -53,7 +53,7 @@ pub async fn Input::read_byte(self : Input) -> Byte {
 }
 
 ///|
-pub fn Input::event_reader(self : Input) -> @input.EventReader {
+fn Input::event_reader(self : Input) -> @input.EventReader {
   match self {
     File(file) => @input.EventReader::new(file)
     Stdio(stdin) => @input.EventReader::new(stdin)

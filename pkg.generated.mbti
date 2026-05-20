@@ -29,7 +29,6 @@ pub struct CursorPosition {
 type Input
 pub fn Input::close(Self) -> Unit
 pub fn Input::enter_raw_mode(Self) -> State raise @os_error.OSError
-pub fn Input::event_reader(Self) -> @input.EventReader
 pub fn Input::fd(Self) -> Int
 pub fn Input::get_state(Self) -> State raise @os_error.OSError
 pub fn Input::leave_raw_mode(Self, State) -> Unit raise @os_error.OSError

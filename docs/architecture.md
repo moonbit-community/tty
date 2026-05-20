@@ -90,6 +90,12 @@ It should not:
 Root `Output` methods map color values onto SGR byte sequences when writing to
 an output stream. Raw byte callers should use low-level `vt` helpers directly.
 
+Root callers that want decoded terminal input events should use
+`Tty::read_event` so terminal request/response side channels and normal input
+decoding share one buffered reader. Root `Input` does not expose `EventReader`;
+direct construction belongs to the low-level `input` package for callers
+decoding an arbitrary `@io.Reader`.
+
 Color capability detection belongs in a future higher-level package or plan
 because it combines tty state, environment policy, and terminal conventions.
 
@@ -194,7 +200,9 @@ Input decoding has three boundaries:
 
 The timeout boundary belongs close to byte acquisition because a standalone ESC
 cannot be distinguished from the start of a longer escape sequence without
-waiting. `EventReader` is the current boundary for that behavior.
+waiting. `EventReader` is the current boundary for that behavior inside the
+low-level `input` package. Root terminal callers should go through
+`Tty::read_event`.
 
 Unsupported complete sequences should produce `Unknown(Bytes)`. Incomplete ESC
 or CSI sequences can become `Unknown` after timeout. This keeps the public API
