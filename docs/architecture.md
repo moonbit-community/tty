@@ -110,24 +110,25 @@ redraw belong in a caller or a future higher-level package.
 clusters, display columns, or cursor movement. Callers that edit visible text
 must segment and measure that text at their own layer.
 
-### `cmd`
+### `examples`
 
-`cmd/*` packages are manual validation tools:
+`examples/*` packages are manual validation tools in a separate workspace
+module:
 
-- `cmd/raw-mode` validates raw mode behavior on a real tty
-- `cmd/cursor` validates VT cursor/screen sequences visually
-- `cmd/input` validates input decoding and line-buffer experiments
-- `cmd/pager` validates primary-screen paging with a fixed status row and
+- `examples/raw` validates raw mode behavior on a real tty
+- `examples/cursor` validates VT cursor/screen sequences visually
+- `examples/input` validates input decoding and line-buffer experiments
+- `examples/pager` validates primary-screen paging with a fixed status row and
   scrolling margins
-- `cmd/color` validates SGR color output visually
-- `cmd/agent` validates primary-screen transcript output with a trailing input
+- `examples/color` validates SGR color output visually
+- `examples/agent` validates primary-screen transcript output with a trailing input
   region that starts at the current cursor location
 
 These commands can carry small UI experiments, but public API decisions should
 be recorded in `docs/architecture.md` or an active task plan before being moved
 into library packages.
 
-`cmd/input` currently owns a demo-only grapheme-aware input buffer. It uses
+`examples/input` currently owns a demo-only grapheme-aware input buffer. It uses
 `kawaz/grapheme` for UAX #29 grapheme clusters and `rami3l/unicodewidth` for
 terminal display width. This validates Unicode editing behavior in a real
 terminal while keeping `tonyfettes/tty/input` below line-editor scope.

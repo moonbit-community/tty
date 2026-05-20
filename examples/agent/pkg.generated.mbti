@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "tonyfettes/tty/cmd/isatty"
+package "tonyfettes/tty/examples/agent"
 
 // Values
 

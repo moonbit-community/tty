@@ -32,7 +32,7 @@ fn pager_command() -> @argparse.Command {
 fn pager_args_from_matches(matches : @argparse.Matches) -> PagerArgs {
   let path = match matches.values {
     { "file": [path], .. } => path
-    _ => abort("cmd/pager: argparse did not provide required file")
+    _ => abort("examples/pager: argparse did not provide required file")
   }
   { path, }
 }

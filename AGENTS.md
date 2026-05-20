@@ -45,7 +45,7 @@
   stream and does not maintain screen state.
 - `tonyfettes/tty/input` decodes host input bytes from an `@io.Reader` into
   input events. It is not a text editor and should not own a line buffer.
-- `cmd/*` packages are demos and manual validation tools. They can exercise
+- `examples/*` packages are demos and manual validation tools. They can exercise
   APIs, but they are not themselves public library API.
 
 ## Code Readability
@@ -73,7 +73,7 @@
   - `moon info`
 - Review any generated `.mbti` diff after `moon info`. Treat `.mbti` changes as
   public API changes, not formatting churn.
-- For demo-only changes under `cmd/*`, run `moon check <cmd-path>` when that
+- For demo-only changes under `examples/*`, run `moon check <examples-path>` when that
   command is available and record manual terminal validation if behavior depends
   on a real tty.
 
