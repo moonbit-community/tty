@@ -98,19 +98,19 @@ fn background_sequence(color : @color.Color) -> Bytes {
 
 ///|
 /// Enter the alternate screen buffer.
-async fn Output::enter_alt_screen(self : Self) -> Unit {
+pub async fn Tty::enter_alt_screen(self : Self) -> Unit {
   self.write(@vt.enter_alt_screen)
 }
 
 ///|
 /// Leave the alternate screen buffer.
-async fn Output::leave_alt_screen(self : Self) -> Unit {
+pub async fn Tty::leave_alt_screen(self : Self) -> Unit {
   self.write(@vt.leave_alt_screen)
 }
 
 ///|
 /// Run `f` with the output in the alternate screen buffer.
-async fn[T] Output::with_alt_screen(self : Self, f : async () -> T) -> T {
+pub async fn[T] Tty::with_alt_screen(self : Self, f : async () -> T) -> T {
   self.enter_alt_screen()
   try f() catch {
     error => {
@@ -127,42 +127,42 @@ async fn[T] Output::with_alt_screen(self : Self, f : async () -> T) -> T {
 
 ///|
 /// Hide the terminal cursor.
-async fn Output::hide_cursor(self : Self) -> Unit {
+pub async fn Tty::hide_cursor(self : Self) -> Unit {
   self.write(@vt.hide_cursor)
 }
 
 ///|
 /// Show the terminal cursor.
-async fn Output::show_cursor(self : Self) -> Unit {
+pub async fn Tty::show_cursor(self : Self) -> Unit {
   self.write(@vt.show_cursor)
 }
 
 ///|
 /// Set the foreground color.
-async fn Output::set_foreground(self : Self, color : @color.Color) -> Unit {
+pub async fn Tty::set_foreground(self : Self, color : @color.Color) -> Unit {
   self.write(foreground_sequence(color))
 }
 
 ///|
 /// Set the background color.
-async fn Output::set_background(self : Self, color : @color.Color) -> Unit {
+pub async fn Tty::set_background(self : Self, color : @color.Color) -> Unit {
   self.write(background_sequence(color))
 }
 
 ///|
 /// Reset the foreground color to the terminal default.
-async fn Output::reset_foreground(self : Self) -> Unit {
+pub async fn Tty::reset_foreground(self : Self) -> Unit {
   self.write(reset_foreground_sequence)
 }
 
 ///|
 /// Reset the background color to the terminal default.
-async fn Output::reset_background(self : Self) -> Unit {
+pub async fn Tty::reset_background(self : Self) -> Unit {
   self.write(reset_background_sequence)
 }
 
 ///|
 /// Reset all SGR style attributes.
-async fn Output::reset_style(self : Self) -> Unit {
+pub async fn Tty::reset_style(self : Self) -> Unit {
   self.write(reset_style_sequence)
 }

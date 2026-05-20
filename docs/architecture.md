@@ -30,17 +30,26 @@ operations:
 - `/dev/tty` style open operations where supported
 - `Tty`, a narrow handle that coordinates one terminal input stream and output
   stream for terminal capabilities and request/response protocols
+- `Reader` and `Writer`, terminal-handle traits that extend async I/O with
+  descriptor and close operations for `Tty::new`
 - `isatty`
 - terminal window size queries through `Tty`
 - coordinated cursor position report queries through `Tty`
 - command helpers for common screen, cursor, and style operations through `Tty`
 - terminal state operations such as `Tty::get_state`, `Tty::set_state`, and raw
   mode helpers through `Tty`
-- async read/write through the package's `Input` and `Output` wrappers
+- async read/write through low-level `Input` and `Output` wrappers
 
 Platform FFI belongs here because raw mode, terminal dimensions, and handle
 lifetime are properties of the underlying terminal device, not of VT byte
 generation.
+
+`Tty` is intentionally opaque and non-generic. `Tty::new` accepts concrete
+handles through root `Reader`/`Writer` trait bounds and stores trait objects
+internally so public `Tty` methods do not carry concrete input/output types.
+`Tty::stdio` and `Tty::open` are convenience constructors over those traits.
+Root `Input` and `Output` remain low-level wrappers for now, but terminal
+capability APIs should continue to live on `Tty`.
 
 ### `vt`
 
@@ -150,9 +159,9 @@ Unix platforms generally use file descriptors and termios state. Windows may
 need separate console handles and API calls for operations that are VT sequences
 on Unix-like terminals.
 
-The public API should describe terminal capabilities in terms of input, output,
-state, and events. The implementation can choose fd-based or handle-based
-storage per target.
+The public API should describe terminal capabilities in terms of coordinated
+terminal handles, state, and events. The implementation can choose fd-based or
+handle-based storage per target.
 
 Window size is exposed through `Tty` because callers usually need the visible
 screen buffer size while coordinating terminal input and output. The current

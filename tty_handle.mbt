@@ -13,26 +13,27 @@ pub struct CursorPosition {
 /// `Tty` is for terminal protocols that need to write a request and read the
 /// response from the same terminal input stream. It does not model a screen.
 struct Tty {
-  input : Input
-  output : Output
+  input : &Reader
+  output : &Writer
   reader : @input.EventReader
 }
 
 ///|
-fn Tty::new(input : Input, output : Output) -> Tty {
-  Tty::{ input, output, reader: input.event_reader() }
+/// Create a coordinated terminal handle from input and output handles.
+pub fn[I : Reader, O : Writer] Tty::new(input : I, output : O) -> Tty {
+  let input = input as &Reader
+  let output = output as &Writer
+  Tty::{
+    input,
+    output,
+    reader: @input.EventReader::new(input as &@async/io.Reader),
+  }
 }
 
 ///|
 /// Wrap process stdio as one coordinated terminal handle.
 pub fn Tty::stdio() -> Tty {
-  Tty::new(stdin, stdout)
-}
-
-///|
-/// Open the controlling terminal as one coordinated terminal handle.
-pub async fn Tty::open() -> Tty {
-  Tty::new(Input::open(), Output::open())
+  Tty::new(@async/stdio.stdin, @async/stdio.stdout)
 }
 
 ///|
@@ -50,64 +51,13 @@ pub async fn Tty::read_event(
 }
 
 ///|
-pub fn Tty::get_state(self : Self) -> State raise @os_error.OSError {
-  self.input.get_state()
-}
-
-///|
-pub fn Tty::set_state(
-  self : Self,
-  state : State,
-) -> State raise @os_error.OSError {
-  self.input.set_state(state)
-}
-
-///|
-pub fn Tty::enter_raw_mode(self : Self) -> State raise @os_error.OSError {
-  self.input.enter_raw_mode()
-}
-
-///|
-pub fn Tty::leave_raw_mode(
-  self : Self,
-  state : State,
-) -> Unit raise @os_error.OSError {
-  self.input.leave_raw_mode(state)
-}
-
-///|
-pub async fn[T] Tty::with_raw_mode(self : Self, f : async () -> T) -> T {
-  self.input.with_raw_mode(f)
-}
-
-///|
 pub async fn Tty::write(self : Self, data : &@async/io.Data) -> Unit {
   self.output.write(data)
 }
 
 ///|
 pub async fn Tty::write_string(self : Self, string : String) -> Unit {
-  self.output.write_string(string)
-}
-
-///|
-pub fn Tty::window_size(self : Self) -> WindowSize raise @os_error.OSError {
-  self.output.window_size()
-}
-
-///|
-pub async fn Tty::enter_alt_screen(self : Self) -> Unit {
-  self.output.enter_alt_screen()
-}
-
-///|
-pub async fn Tty::leave_alt_screen(self : Self) -> Unit {
-  self.output.leave_alt_screen()
-}
-
-///|
-pub async fn[T] Tty::with_alt_screen(self : Self, f : async () -> T) -> T {
-  self.output.with_alt_screen(f)
+  self.output.write(string)
 }
 
 ///|
@@ -123,36 +73,3 @@ pub async fn Tty::query_cursor_position(
 }
 
 ///|
-pub async fn Tty::show_cursor(self : Self) -> Unit {
-  self.output.show_cursor()
-}
-
-///|
-pub async fn Tty::hide_cursor(self : Self) -> Unit {
-  self.output.hide_cursor()
-}
-
-///|
-pub async fn Tty::set_foreground(self : Self, color : @color.Color) -> Unit {
-  self.output.set_foreground(color)
-}
-
-///|
-pub async fn Tty::set_background(self : Self, color : @color.Color) -> Unit {
-  self.output.set_background(color)
-}
-
-///|
-pub async fn Tty::reset_foreground(self : Self) -> Unit {
-  self.output.reset_foreground()
-}
-
-///|
-pub async fn Tty::reset_background(self : Self) -> Unit {
-  self.output.reset_background()
-}
-
-///|
-pub async fn Tty::reset_style(self : Self) -> Unit {
-  self.output.reset_style()
-}

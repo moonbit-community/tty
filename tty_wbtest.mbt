@@ -24,15 +24,6 @@ async test "file input wrapper delegates reads" {
     defer input.close()
     assert_true(input.read_byte() == b'a')
   }
-  {
-    let input = Input::File(@async/fs.open(path, mode=ReadOnly))
-    defer input.close()
-    let events = input.event_reader()
-    assert_true(
-      events.read_event() ==
-      @input.Key(@input.KeyEvent::new(@input.Char('a'), text="a")),
-    )
-  }
   @async/fs.remove(path)
 }
 
@@ -108,9 +99,11 @@ async test "file tty terminal commands write sequences" {
   let output_path = "_build/tty_file_output_commands_test"
   @async/fs.write_file(input_path, b"", create_mode=CreateOrTruncate)
   {
-    let input = Input::File(@async/fs.open(input_path, mode=ReadOnly))
-    let output = Output::File(
-      @async/fs.open(output_path, mode=WriteOnly, create_mode=CreateOrTruncate),
+    let input = @async/fs.open(input_path, mode=ReadOnly)
+    let output = @async/fs.open(
+      output_path,
+      mode=WriteOnly,
+      create_mode=CreateOrTruncate,
     )
     let tty = Tty::new(input, output)
     defer tty.close()
@@ -138,9 +131,11 @@ async test "tty query cursor position coordinates input and output" {
   let output_path = "_build/tty_query_cursor_position_output_test"
   @async/fs.write_file(input_path, b"\x1b[7;9Ra", create_mode=CreateOrTruncate)
   {
-    let input = Input::File(@async/fs.open(input_path, mode=ReadOnly))
-    let output = Output::File(
-      @async/fs.open(output_path, mode=WriteOnly, create_mode=CreateOrTruncate),
+    let input = @async/fs.open(input_path, mode=ReadOnly)
+    let output = @async/fs.open(
+      output_path,
+      mode=WriteOnly,
+      create_mode=CreateOrTruncate,
     )
     let tty = Tty::new(input, output)
     defer tty.close()
@@ -167,9 +162,11 @@ async test "file tty with alt screen restores on success" {
   let output_path = "_build/tty_file_output_with_alt_screen_test"
   @async/fs.write_file(input_path, b"", create_mode=CreateOrTruncate)
   {
-    let input = Input::File(@async/fs.open(input_path, mode=ReadOnly))
-    let output = Output::File(
-      @async/fs.open(output_path, mode=WriteOnly, create_mode=CreateOrTruncate),
+    let input = @async/fs.open(input_path, mode=ReadOnly)
+    let output = @async/fs.open(
+      output_path,
+      mode=WriteOnly,
+      create_mode=CreateOrTruncate,
     )
     let tty = Tty::new(input, output)
     defer tty.close()
@@ -189,9 +186,11 @@ async test "tty window size rejects non tty output" {
   let output_path = "_build/tty_window_size_non_tty_test"
   @async/fs.write_file(input_path, b"", create_mode=CreateOrTruncate)
   {
-    let input = Input::File(@async/fs.open(input_path, mode=ReadOnly))
-    let output = Output::File(
-      @async/fs.open(output_path, mode=WriteOnly, create_mode=CreateOrTruncate),
+    let input = @async/fs.open(input_path, mode=ReadOnly)
+    let output = @async/fs.open(
+      output_path,
+      mode=WriteOnly,
+      create_mode=CreateOrTruncate,
     )
     let tty = Tty::new(input, output)
     defer tty.close()
@@ -241,9 +240,11 @@ async test "tty state operations reject non tty file" {
   let output_path = "_build/tty_state_non_tty_output_test"
   @async/fs.write_file(input_path, b"x", create_mode=CreateOrTruncate)
   {
-    let input = Input::File(@async/fs.open(input_path, mode=ReadOnly))
-    let output = Output::File(
-      @async/fs.open(output_path, mode=WriteOnly, create_mode=CreateOrTruncate),
+    let input = @async/fs.open(input_path, mode=ReadOnly)
+    let output = @async/fs.open(
+      output_path,
+      mode=WriteOnly,
+      create_mode=CreateOrTruncate,
     )
     let tty = Tty::new(input, output)
     defer tty.close()

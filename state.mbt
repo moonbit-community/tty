@@ -3,24 +3,24 @@
 struct State(Bytes)
 
 ///|
-fn Input::get_state(self : Self) -> State raise @os_error.OSError {
+pub fn Tty::get_state(self : Self) -> State raise @os_error.OSError {
   let state = State::new()
-  let rc = tty_get_state(self.fd(), state)
+  let rc = tty_get_state(self.input.fd(), state)
   if rc < 0 {
-    @os_error.check_errno("Input::get_state")
+    @os_error.check_errno("Tty::get_state")
   }
   state
 }
 
 ///|
-fn Input::set_state(
+pub fn Tty::set_state(
   self : Self,
   state : State,
 ) -> State raise @os_error.OSError {
   let old_state = self.get_state()
-  let rc = tty_set_state(self.fd(), state)
+  let rc = tty_set_state(self.input.fd(), state)
   if rc < 0 {
-    @os_error.check_errno("Input::set_state")
+    @os_error.check_errno("Tty::set_state")
   }
   old_state
 }
@@ -33,29 +33,29 @@ pub fn State::make_raw(self : Self) -> State {
 }
 
 ///|
-fn Input::enter_raw_mode(self : Self) -> State raise @os_error.OSError {
+pub fn Tty::enter_raw_mode(self : Self) -> State raise @os_error.OSError {
   let old_state = self.get_state()
   let raw_state = old_state.make_raw()
-  let rc = tty_set_state(self.fd(), raw_state)
+  let rc = tty_set_state(self.input.fd(), raw_state)
   if rc < 0 {
-    @os_error.check_errno("Input::enter_raw_mode")
+    @os_error.check_errno("Tty::enter_raw_mode")
   }
   old_state
 }
 
 ///|
-fn Input::leave_raw_mode(
+pub fn Tty::leave_raw_mode(
   self : Self,
   state : State,
 ) -> Unit raise @os_error.OSError {
-  let rc = tty_set_state(self.fd(), state)
+  let rc = tty_set_state(self.input.fd(), state)
   if rc < 0 {
-    @os_error.check_errno("Input::leave_raw_mode")
+    @os_error.check_errno("Tty::leave_raw_mode")
   }
 }
 
 ///|
-async fn[T] Input::with_raw_mode(self : Self, f : async () -> T) -> T {
+pub async fn[T] Tty::with_raw_mode(self : Self, f : async () -> T) -> T {
   let state = self.enter_raw_mode()
   try f() catch {
     error => {

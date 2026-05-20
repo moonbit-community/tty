@@ -2,8 +2,10 @@
 package "tonyfettes/tty"
 
 import {
+  "moonbitlang/async/fs",
   "moonbitlang/async/io",
   "moonbitlang/async/os_error",
+  "moonbitlang/async/stdio",
   "tonyfettes/tty/color",
   "tonyfettes/tty/input",
 }
@@ -52,6 +54,7 @@ pub fn Tty::get_state(Self) -> State raise @os_error.OSError
 pub async fn Tty::hide_cursor(Self) -> Unit
 pub async fn Tty::leave_alt_screen(Self) -> Unit
 pub fn Tty::leave_raw_mode(Self, State) -> Unit raise @os_error.OSError
+pub fn[I : Reader, O : Writer] Tty::new(I, O) -> Self
 pub async fn Tty::open() -> Self
 pub async fn Tty::query_cursor_position(Self, timeout_ms? : Int) -> CursorPosition?
 pub async fn Tty::read_event(Self, esc_timeout? : Int) -> @input.Event
@@ -77,4 +80,17 @@ pub struct WindowSize {
 // Type aliases
 
 // Traits
+pub(open) trait Reader : @io.Reader {
+  fn fd(Self) -> Int
+  fn close(Self) -> Unit
+}
+pub impl Reader for @fs.File
+pub impl Reader for @stdio.Input
+
+pub(open) trait Writer : @io.Writer {
+  fn fd(Self) -> Int
+  fn close(Self) -> Unit
+}
+pub impl Writer for @fs.File
+pub impl Writer for @stdio.Output
 
