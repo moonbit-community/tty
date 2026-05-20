@@ -11,46 +11,41 @@ async fn writeln(line : String) -> Unit {
 }
 
 ///|
-async fn redraw_input(buffer : Array[Byte], status : String) -> Unit {
+async fn redraw_input(buffer : String, status : String) -> Unit {
   @tty.stdout.write("\r")
   @tty.stdout.write(@tty/vt.erase_line_all)
   @tty.stdout.write(prompt)
-  @tty.stdout.write(Bytes::from_array(buffer))
+  @tty.stdout.write(buffer)
   if status.length() > 0 {
     let suffix = "  \{status}"
     @tty.stdout.write(suffix)
-    @tty.stdout.write(@tty/vt.cursor_back(suffix.length()))
+    @tty.stdout.write(@tty/vt.cursor_back(display_width(suffix)))
   }
 }
 
 ///|
-fn ascii_bytes_to_string(buffer : Array[Byte]) -> String {
-  let builder = StringBuilder(size_hint=buffer.length())
-  for byte in buffer {
-    builder.write_char(byte.to_char())
-  }
-  builder.to_string()
+fn display_width(text : String) -> Int {
+  @unicodewidth.str_width(text)
 }
 
 ///|
-async fn submit(buffer : Array[Byte]) -> Unit {
-  let line = ascii_bytes_to_string(buffer)
+fn delete_last_grapheme(text : String) -> String {
+  let graphemes = @grapheme.graphemes(text)
+  let length = graphemes.length()
+  if length == 0 {
+    ""
+  } else {
+    graphemes[:length - 1].to_string()
+  }
+}
+
+///|
+async fn submit(line : String) -> Unit {
   @tty.stdout.write("\r")
   @tty.stdout.write(@tty/vt.erase_line_all)
   writeln("\{prompt}\{line}")
   writeln("submitted: \{line}")
-  buffer.clear()
-  redraw_input(buffer, "submitted")
-}
-
-///|
-fn printable_ascii_byte(ch : Char) -> Byte? {
-  let code = ch.to_int()
-  if code >= 0x20 && code < 0x7f {
-    Some(code.to_byte())
-  } else {
-    None
-  }
+  redraw_input("", "submitted")
 }
 
 ///|
@@ -71,13 +66,6 @@ fn describe_bytes(bytes : Bytes) -> String {
     builder.write_string(byte_to_hex(bytes[i]))
   }
   builder.to_string()
-}
-
-///|
-fn push_printable_ascii_text(buffer : Array[Byte], text : String) -> Unit {
-  text
-  .iter()
-  .each(ch => if printable_ascii_byte(ch) is Some(byte) { buffer.push(byte) })
 }
 
 ///|
@@ -137,10 +125,10 @@ fn describe_key(key : @tty/input.KeyEvent) -> String {
 ///|
 async fn run_input_buffer() -> Unit {
   let events = @tty.stdin.event_reader()
-  let buffer : Array[Byte] = []
+  let mut buffer = ""
   writeln("input buffer demo")
   writeln(
-    "Type printable ASCII. Enter submits. Backspace deletes. Esc uses a \{esc_timeout_ms}ms timeout. Ctrl-C exits.",
+    "Type text. Enter submits. Backspace deletes one grapheme. Esc uses a \{esc_timeout_ms}ms timeout. Ctrl-C exits.",
   )
   redraw_input(buffer, "")
   while true {
@@ -157,19 +145,28 @@ async fn run_input_buffer() -> Unit {
             writeln("exiting")
             break
           }
-          Enter => submit(buffer)
+          Enter => {
+            submit(buffer)
+            buffer = ""
+          }
           Backspace => {
-            ignore(buffer.pop())
+            buffer = delete_last_grapheme(buffer)
             redraw_input(buffer, "event: Backspace")
           }
-          Char(ch) if !key.modifiers.ctrl() && !key.modifiers.alt() => {
+          Text =>
             match key.text {
-              Some(text) => push_printable_ascii_text(buffer, text)
-              None =>
-                if printable_ascii_byte(ch) is Some(byte) {
-                  buffer.push(byte)
-                }
+              Some(text) => {
+                buffer = buffer + text
+                redraw_input(buffer, describe_key(key))
+              }
+              None => redraw_input(buffer, describe_key(key))
             }
+          Char(ch) if !key.modifiers.ctrl() && !key.modifiers.alt() => {
+            let text = match key.text {
+              Some(text) => text
+              None => [ch]
+            }
+            buffer = buffer + text
             redraw_input(buffer, describe_key(key))
           }
           _ => redraw_input(buffer, describe_key(key))

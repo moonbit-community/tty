@@ -1,14 +1,17 @@
 ///|
-test "ascii bytes to string" {
-  inspect(ascii_bytes_to_string([b'a', b'b', b'c']), content="abc")
+test "display width counts wide and emoji graphemes" {
+  inspect(display_width("abc"), content="3")
+  inspect(display_width("你好"), content="4")
+  inspect(display_width("👨‍👩‍👧‍👦"), content="2")
 }
 
 ///|
-test "printable ascii byte" {
-  assert_true(printable_ascii_byte(' ') == Some(b' '))
-  assert_true(printable_ascii_byte('~') == Some(b'~'))
-  assert_true(printable_ascii_byte('\n') == None)
-  assert_true(printable_ascii_byte('你') == None)
+test "delete last grapheme" {
+  inspect(delete_last_grapheme(""), content="")
+  inspect(delete_last_grapheme("ab"), content="a")
+  inspect(delete_last_grapheme("a你"), content="a")
+  inspect(delete_last_grapheme("e\u{0301}"), content="")
+  inspect(delete_last_grapheme("x👨‍👩‍👧‍👦"), content="x")
 }
 
 ///|
@@ -16,13 +19,6 @@ test "describe bytes" {
   inspect(byte_to_hex(b'\x00'), content="0x00")
   inspect(byte_to_hex(b'\xab'), content="0xab")
   inspect(describe_bytes(b"\x00\x7f\xff"), content="0x00 0x7f 0xff")
-}
-
-///|
-test "push printable ascii text filters non ascii" {
-  let buffer : Array[Byte] = []
-  push_printable_ascii_text(buffer, "A你~\n")
-  assert_true(buffer == [b'A', b'~'])
 }
 
 ///|
