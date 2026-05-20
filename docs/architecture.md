@@ -61,9 +61,9 @@ It should not:
 
 Callers decide when and where to write the returned `Bytes`.
 
-`tonyfettes/tty/vt/internal/seq` owns shared byte builders for CSI and SGR
-sequences used by `vt`. It is an implementation helper, not a user-facing
-terminal abstraction.
+Small CSI and SGR byte builders live inside `vt` as implementation helpers.
+Only intentionally supported protocol helpers such as `sgr1`, `sgr3`, and
+`sgr5` should appear in the public interface.
 
 ### `color`
 
@@ -82,9 +82,6 @@ It should not:
 - detect terminal color capability
 - decide whether colors should be enabled
 - mutate terminal palettes or query terminal color state
-
-`tonyfettes/tty/vt/color` is kept as a compatibility re-export for older code.
-New code should import `tonyfettes/tty/color`.
 
 Color capability detection belongs in a future higher-level package or plan
 because it combines tty state, environment policy, and terminal conventions.

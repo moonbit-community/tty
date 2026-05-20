@@ -4,7 +4,7 @@ pub fn cursor_up(n : Int) -> Bytes {
   if n <= 1 {
     b"\x1b[A"
   } else {
-    @seq.csi1(n, b'A')
+    csi1(n, b'A')
   }
 }
 
@@ -22,7 +22,7 @@ pub fn cursor_down(n : Int) -> Bytes {
   if n <= 1 {
     b"\x1b[B"
   } else {
-    @seq.csi1(n, b'B')
+    csi1(n, b'B')
   }
 }
 
@@ -32,7 +32,7 @@ pub fn cursor_forward(n : Int) -> Bytes {
   if n <= 1 {
     b"\x1b[C"
   } else {
-    @seq.csi1(n, b'C')
+    csi1(n, b'C')
   }
 }
 
@@ -42,7 +42,7 @@ pub fn cursor_back(n : Int) -> Bytes {
   if n <= 1 {
     b"\x1b[D"
   } else {
-    @seq.csi1(n, b'D')
+    csi1(n, b'D')
   }
 }
 
@@ -52,7 +52,7 @@ pub fn cursor_next_line(n : Int) -> Bytes {
   if n <= 1 {
     b"\x1b[E"
   } else {
-    @seq.csi1(n, b'E')
+    csi1(n, b'E')
   }
 }
 
@@ -62,7 +62,7 @@ pub fn cursor_prev_line(n : Int) -> Bytes {
   if n <= 1 {
     b"\x1b[F"
   } else {
-    @seq.csi1(n, b'F')
+    csi1(n, b'F')
   }
 }
 
@@ -72,7 +72,7 @@ pub fn cursor_horizontal_absolute(n : Int) -> Bytes {
   if n <= 1 {
     b"\x1b[G"
   } else {
-    @seq.csi1(n, b'G')
+    csi1(n, b'G')
   }
 }
 
@@ -86,6 +86,6 @@ pub fn cursor_position(row : Int, col : Int) -> Bytes {
   if row == 1 && col == 1 {
     b"\x1b[H"
   } else {
-    @seq.csi2(row, col, b'H')
+    csi2(row, col, b'H')
   }
 }

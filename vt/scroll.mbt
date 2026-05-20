@@ -6,7 +6,7 @@
 pub fn set_top_bottom_margins(top : Int, bottom : Int) -> Bytes {
   let top = if top <= 1 { 1 } else { top }
   let bottom = if bottom < top { top } else { bottom }
-  @seq.csi2(top, bottom, b'r')
+  csi2(top, bottom, b'r')
 }
 
 ///|

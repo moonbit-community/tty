@@ -1,7 +1,0 @@
-import {
-  "tonyfettes/tty/color" @tty_color,
-}
-
-import {
-  "moonbitlang/core/debug",
-} for "test"
