@@ -67,21 +67,25 @@ Only intentionally supported protocol helpers such as `sgr1`, `sgr3`, and
 
 ### `color`
 
-`tonyfettes/tty/color` is a semantic color byte-sequence package.
+`tonyfettes/tty/color` is a semantic color value package.
 
 It should:
 
-- construct foreground, background, and color reset sequences
-- support ANSI basic/bright colors, indexed 256 colors, and truecolor RGB
+- define color values for terminal foreground/background commands
+- represent ANSI basic/bright colors, indexed 256 colors, and truecolor RGB
 - stay independent from output streams, environment variables, terminfo, and
   platform FFI
-- map user color values onto low-level `vt` SGR byte sequences
 
 It should not:
 
+- construct SGR byte sequences
+- expose foreground/background/reset command functions
 - detect terminal color capability
 - decide whether colors should be enabled
 - mutate terminal palettes or query terminal color state
+
+Root `Output` methods map color values onto SGR byte sequences when writing to
+an output stream. Raw byte callers should use low-level `vt` helpers directly.
 
 Color capability detection belongs in a future higher-level package or plan
 because it combines tty state, environment policy, and terminal conventions.

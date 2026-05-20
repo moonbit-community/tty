@@ -6,15 +6,6 @@ import {
 }
 
 // Values
-pub fn background(Color) -> Bytes
-
-pub fn foreground(Color) -> Bytes
-
-pub let reset_background : Bytes
-
-pub let reset_foreground : Bytes
-
-pub let reset_style : Bytes
 
 // Errors
 

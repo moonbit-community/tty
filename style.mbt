@@ -1,4 +1,102 @@
 ///|
+let reset_style_sequence : Bytes = @vt.sgr1(0)
+
+///|
+let reset_foreground_sequence : Bytes = @vt.sgr1(39)
+
+///|
+let reset_background_sequence : Bytes = @vt.sgr1(49)
+
+///|
+fn clamp_byte_value(value : Int) -> Int {
+  if value < 0 {
+    0
+  } else if value > 255 {
+    255
+  } else {
+    value
+  }
+}
+
+///|
+fn basic_foreground_code(color : @color.BasicColor) -> Int {
+  match color {
+    @color.Black => 30
+    @color.Red => 31
+    @color.Green => 32
+    @color.Yellow => 33
+    @color.Blue => 34
+    @color.Magenta => 35
+    @color.Cyan => 36
+    @color.White => 37
+    @color.BrightBlack => 90
+    @color.BrightRed => 91
+    @color.BrightGreen => 92
+    @color.BrightYellow => 93
+    @color.BrightBlue => 94
+    @color.BrightMagenta => 95
+    @color.BrightCyan => 96
+    @color.BrightWhite => 97
+  }
+}
+
+///|
+fn basic_background_code(color : @color.BasicColor) -> Int {
+  match color {
+    @color.Black => 40
+    @color.Red => 41
+    @color.Green => 42
+    @color.Yellow => 43
+    @color.Blue => 44
+    @color.Magenta => 45
+    @color.Cyan => 46
+    @color.White => 47
+    @color.BrightBlack => 100
+    @color.BrightRed => 101
+    @color.BrightGreen => 102
+    @color.BrightYellow => 103
+    @color.BrightBlue => 104
+    @color.BrightMagenta => 105
+    @color.BrightCyan => 106
+    @color.BrightWhite => 107
+  }
+}
+
+///|
+fn foreground_sequence(color : @color.Color) -> Bytes {
+  match color {
+    @color.Default => reset_foreground_sequence
+    @color.Basic(color) => @vt.sgr1(basic_foreground_code(color))
+    @color.Indexed(index) => @vt.sgr3(38, 5, clamp_byte_value(index))
+    @color.Rgb(r, g, b) =>
+      @vt.sgr5(
+        38,
+        2,
+        clamp_byte_value(r),
+        clamp_byte_value(g),
+        clamp_byte_value(b),
+      )
+  }
+}
+
+///|
+fn background_sequence(color : @color.Color) -> Bytes {
+  match color {
+    @color.Default => reset_background_sequence
+    @color.Basic(color) => @vt.sgr1(basic_background_code(color))
+    @color.Indexed(index) => @vt.sgr3(48, 5, clamp_byte_value(index))
+    @color.Rgb(r, g, b) =>
+      @vt.sgr5(
+        48,
+        2,
+        clamp_byte_value(r),
+        clamp_byte_value(g),
+        clamp_byte_value(b),
+      )
+  }
+}
+
+///|
 /// Enter the alternate screen buffer.
 pub async fn Output::enter_alt_screen(self : Self) -> Unit {
   self.write(@vt.enter_alt_screen)
@@ -42,29 +140,29 @@ pub async fn Output::show_cursor(self : Self) -> Unit {
 ///|
 /// Set the foreground color.
 pub async fn Output::set_foreground(self : Self, color : @color.Color) -> Unit {
-  self.write(@color.foreground(color))
+  self.write(foreground_sequence(color))
 }
 
 ///|
 /// Set the background color.
 pub async fn Output::set_background(self : Self, color : @color.Color) -> Unit {
-  self.write(@color.background(color))
+  self.write(background_sequence(color))
 }
 
 ///|
 /// Reset the foreground color to the terminal default.
 pub async fn Output::reset_foreground(self : Self) -> Unit {
-  self.write(@color.reset_foreground)
+  self.write(reset_foreground_sequence)
 }
 
 ///|
 /// Reset the background color to the terminal default.
 pub async fn Output::reset_background(self : Self) -> Unit {
-  self.write(@color.reset_background)
+  self.write(reset_background_sequence)
 }
 
 ///|
 /// Reset all SGR style attributes.
 pub async fn Output::reset_style(self : Self) -> Unit {
-  self.write(@color.reset_style)
+  self.write(reset_style_sequence)
 }

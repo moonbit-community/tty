@@ -37,6 +37,56 @@ async test "file input wrapper delegates reads" {
 }
 
 ///|
+test "style color sequences encode semantic colors" {
+  @debug.assert_eq(foreground_sequence(@color.Default), b"\x1b[39m")
+  @debug.assert_eq(foreground_sequence(@color.Basic(@color.Black)), b"\x1b[30m")
+  @debug.assert_eq(foreground_sequence(@color.Basic(@color.Red)), b"\x1b[31m")
+  @debug.assert_eq(foreground_sequence(@color.Basic(@color.White)), b"\x1b[37m")
+  @debug.assert_eq(
+    foreground_sequence(@color.Basic(@color.BrightBlack)),
+    b"\x1b[90m",
+  )
+  @debug.assert_eq(
+    foreground_sequence(@color.Basic(@color.BrightRed)),
+    b"\x1b[91m",
+  )
+  @debug.assert_eq(
+    foreground_sequence(@color.Basic(@color.BrightWhite)),
+    b"\x1b[97m",
+  )
+  @debug.assert_eq(background_sequence(@color.Default), b"\x1b[49m")
+  @debug.assert_eq(background_sequence(@color.Basic(@color.Black)), b"\x1b[40m")
+  @debug.assert_eq(background_sequence(@color.Basic(@color.Red)), b"\x1b[41m")
+  @debug.assert_eq(background_sequence(@color.Basic(@color.White)), b"\x1b[47m")
+  @debug.assert_eq(
+    background_sequence(@color.Basic(@color.BrightBlack)),
+    b"\x1b[100m",
+  )
+  @debug.assert_eq(
+    background_sequence(@color.Basic(@color.BrightRed)),
+    b"\x1b[101m",
+  )
+  @debug.assert_eq(
+    background_sequence(@color.Basic(@color.BrightWhite)),
+    b"\x1b[107m",
+  )
+  @debug.assert_eq(foreground_sequence(@color.Indexed(-1)), b"\x1b[38;5;0m")
+  @debug.assert_eq(foreground_sequence(@color.Indexed(42)), b"\x1b[38;5;42m")
+  @debug.assert_eq(foreground_sequence(@color.Indexed(999)), b"\x1b[38;5;255m")
+  @debug.assert_eq(background_sequence(@color.Indexed(-1)), b"\x1b[48;5;0m")
+  @debug.assert_eq(background_sequence(@color.Indexed(42)), b"\x1b[48;5;42m")
+  @debug.assert_eq(background_sequence(@color.Indexed(999)), b"\x1b[48;5;255m")
+  @debug.assert_eq(
+    foreground_sequence(@color.Rgb(-1, 127, 999)),
+    b"\x1b[38;2;0;127;255m",
+  )
+  @debug.assert_eq(
+    background_sequence(@color.Rgb(-1, 127, 999)),
+    b"\x1b[48;2;0;127;255m",
+  )
+}
+
+///|
 async test "file output wrapper delegates writes" {
   let path = "_build/tty_file_output_wrapper_test"
   {

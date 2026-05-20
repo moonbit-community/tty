@@ -1,7 +1,3 @@
 import {
-  "tonyfettes/tty/vt",
-}
-
-import {
   "moonbitlang/core/debug",
 } for "test"

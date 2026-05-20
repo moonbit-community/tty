@@ -387,9 +387,9 @@ async fn move_forward(cols : Int) -> Unit {
 
 ///|
 async fn write_colored_text(color : @color.BasicColor, text : String) -> Unit {
-  write_bytes(@color.foreground(@color.Basic(color)))
+  @tty.stdout.set_foreground(@color.Basic(color))
   write(text)
-  write_bytes(@color.reset_foreground)
+  @tty.stdout.reset_foreground()
 }
 
 ///|
@@ -401,9 +401,9 @@ async fn erase_current_line() -> Unit {
 ///|
 async fn render_separator_current(cols : Int) -> Unit {
   erase_current_line()
-  write_bytes(@color.foreground(@color.Basic(@color.BrightBlack)))
+  @tty.stdout.set_foreground(@color.Basic(@color.BrightBlack))
   write(String::make(cols, '-'))
-  write_bytes(@color.reset_foreground)
+  @tty.stdout.reset_foreground()
 }
 
 ///|
@@ -420,14 +420,14 @@ async fn render_prompt_current(
 ///|
 async fn render_status_current(status : String, cols : Int) -> Unit {
   erase_current_line()
-  write_bytes(@color.foreground(@color.Basic(@color.BrightBlack)))
+  @tty.stdout.set_foreground(@color.Basic(@color.BrightBlack))
   let text = if status.length() == 0 {
     "Enter send  Ctrl-J newline  Arrows move  Backspace edit  Ctrl-C quit"
   } else {
     status
   }
   write(fit_line(text, cols))
-  write_bytes(@color.reset_foreground)
+  @tty.stdout.reset_foreground()
 }
 
 ///|
@@ -564,7 +564,7 @@ async fn append_agent(
 ///|
 async fn restore_terminal() -> Unit {
   write_bytes(@tty/vt.reset_top_bottom_margins)
-  write_bytes(@color.reset_style)
+  @tty.stdout.reset_style()
   write_bytes(@tty/vt.show_cursor)
 }
 

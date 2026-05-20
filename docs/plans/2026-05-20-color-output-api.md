@@ -11,8 +11,9 @@ cursor, and SGR operations.
 Done.
 
 Follow-up: `tonyfettes/tty/vt/color` was later removed by
-`docs/plans/2026-05-20-vt-package-cleanup.md`. The current semantic color API
-lives in `tonyfettes/tty/color`, and low-level SGR builders live directly in
+`docs/plans/2026-05-20-vt-package-cleanup.md`. `tonyfettes/tty/color` was then
+narrowed by `docs/plans/2026-05-20-color-output-only-api.md` to expose only
+semantic color values. Low-level SGR builders live directly in
 `tonyfettes/tty/vt`.
 
 ## Context And Decisions

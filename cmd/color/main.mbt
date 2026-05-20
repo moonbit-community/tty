@@ -4,11 +4,6 @@ async fn write(text : String) -> Unit {
 }
 
 ///|
-async fn write_bytes(bytes : Bytes) -> Unit {
-  @tty.stdout.write(bytes)
-}
-
-///|
 async fn writeln(text : String) -> Unit {
   write(text)
   write("\r\n")
@@ -82,9 +77,9 @@ fn light_basic_background(index : Int) -> Bool {
 async fn write_basic_foregrounds() -> Unit {
   writeln("ANSI 16 foreground")
   for i in 0..<16 {
-    write_bytes(@tty_color.foreground(@tty_color.Basic(basic_color(i))))
+    @tty.stdout.set_foreground(@tty_color.Basic(basic_color(i)))
     write(pad_right(basic_name(i), 15))
-    write_bytes(@tty_color.reset_foreground)
+    @tty.stdout.reset_foreground()
     if i == 7 || i == 15 {
       writeln("")
     } else {
@@ -102,10 +97,10 @@ async fn write_basic_backgrounds() -> Unit {
     } else {
       @tty_color.Basic(@tty_color.White)
     }
-    write_bytes(@tty_color.background(@tty_color.Basic(basic_color(i))))
-    write_bytes(@tty_color.foreground(foreground))
+    @tty.stdout.set_background(@tty_color.Basic(basic_color(i)))
+    @tty.stdout.set_foreground(foreground)
     write(" " + pad_right(basic_name(i), 14))
-    write_bytes(@tty_color.reset_style)
+    @tty.stdout.reset_style()
     if i == 7 || i == 15 {
       writeln("")
     } else {
@@ -116,9 +111,9 @@ async fn write_basic_backgrounds() -> Unit {
 
 ///|
 async fn write_index_swatch(index : Int) -> Unit {
-  write_bytes(@tty_color.background(@tty_color.Indexed(index)))
+  @tty.stdout.set_background(@tty_color.Indexed(index))
   write("  ")
-  write_bytes(@tty_color.reset_style)
+  @tty.stdout.reset_style()
 }
 
 ///|
@@ -156,10 +151,10 @@ async fn write_truecolor_gradient() -> Unit {
         1 => @tty_color.Rgb(255 - value, value, 64)
         _ => @tty_color.Rgb(64, 255 - value, value)
       }
-      write_bytes(@tty_color.background(color))
+      @tty.stdout.set_background(color)
       write(" ")
     }
-    write_bytes(@tty_color.reset_style)
+    @tty.stdout.reset_style()
     writeln("")
   }
 }
@@ -175,5 +170,5 @@ async fn main {
   write_256_colors()
   writeln("")
   write_truecolor_gradient()
-  write_bytes(@tty_color.reset_style)
+  @tty.stdout.reset_style()
 }
