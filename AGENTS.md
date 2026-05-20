@@ -29,6 +29,11 @@
 - If implementation requires a new concept, helper, module, public item, or
   behavior not described in the active plan, update the plan or discuss the
   deviation before continuing.
+- Treat private helpers and internal struct fields as design API too. Before
+  adding, removing, renaming, or reshaping package-private helpers, parser
+  state, buffers, or transition functions, discuss the intended shape and get
+  agreement unless the change is a small mechanical fix already covered by the
+  active plan.
 - When a planned task is completed, update the corresponding plan with
   validation results and public API audit notes before committing that task.
 
