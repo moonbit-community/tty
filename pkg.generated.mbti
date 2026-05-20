@@ -29,7 +29,7 @@ pub fn Input::leave_raw_mode(Self, State) -> Unit raise @os_error.OSError
 pub async fn Input::open() -> Self
 pub async fn Input::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
 pub async fn Input::read_byte(Self) -> Byte
-pub async fn Input::read_event(Self, @input.Decoder, esc_timeout? : Int) -> @input.Event
+pub async fn Input::read_event(Self, esc_timeout? : Int) -> @input.Event
 pub async fn Input::read_some(Self) -> Bytes?
 pub fn Input::set_state(Self, State) -> State raise @os_error.OSError
 pub async fn[T] Input::with_raw_mode(Self, async () -> T) -> T

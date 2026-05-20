@@ -55,28 +55,11 @@ pub async fn Input::read_byte(self : Input) -> Byte {
 ///|
 pub async fn Input::read_event(
   self : Input,
-  decoder : @input.Decoder,
   esc_timeout? : Int = 50,
 ) -> @input.Event {
-  while true {
-    match decoder.next() {
-      Some(event) => return event
-      None => ()
-    }
-    if decoder.has_pending() {
-      match @async.with_timeout_opt(esc_timeout, () => self.read_byte()) {
-        Some(byte) => decoder.push(Bytes::from_array([byte]))
-        None =>
-          match decoder.flush() {
-            Some(event) => return event
-            None => ()
-          }
-      }
-    } else {
-      decoder.push(Bytes::from_array([self.read_byte()]))
-    }
-  } nobreak {
-    abort("unreachable")
+  match self {
+    File(file) => @input.read_event(file, esc_timeout~)
+    Stdio(stdin) => @input.read_event(stdin, esc_timeout~)
   }
 }
 

@@ -24,8 +24,17 @@ async fn redraw_input(buffer : Array[Byte], status : String) -> Unit {
 }
 
 ///|
+fn ascii_bytes_to_string(buffer : Array[Byte]) -> String {
+  let builder = StringBuilder(size_hint=buffer.length())
+  for byte in buffer {
+    builder.write_char(byte.to_char())
+  }
+  builder.to_string()
+}
+
+///|
 async fn submit(buffer : Array[Byte]) -> Unit {
-  let line = Bytes::from_array(buffer).to_unchecked_string()
+  let line = ascii_bytes_to_string(buffer)
   @tty.stdout.write("\r")
   @tty.stdout.write(@tty/vt.erase_line_all)
   writeln("\{prompt}\{line}")
@@ -80,7 +89,6 @@ fn describe_key(key : @tty_input.KeyEvent) -> String {
 
 ///|
 async fn run_input_buffer() -> Unit {
-  let decoder = @tty_input.Decoder::new()
   let buffer : Array[Byte] = []
   writeln("input buffer demo")
   writeln(
@@ -88,7 +96,7 @@ async fn run_input_buffer() -> Unit {
   )
   redraw_input(buffer, "")
   while true {
-    let event = @tty.stdin.read_event(decoder, esc_timeout=esc_timeout_ms) catch {
+    let event = @tty.stdin.read_event(esc_timeout=esc_timeout_ms) catch {
       @async/io.ReaderClosed => break
       error => raise error
     }

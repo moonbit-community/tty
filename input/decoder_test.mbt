@@ -1,106 +1,122 @@
 ///|
-test "decode printable ascii" {
-  let decoder = @input.Decoder::new()
-  decoder.push(b"a")
-  @debug.assert_eq(
-    decoder.next(),
-    Some(@input.Key(@input.KeyEvent::new(@input.Char('a'), text="a"))),
-  )
-  @debug.assert_eq(decoder.next(), None)
+async fn with_input(bytes : Bytes, f : async (@io.PipeRead) -> Unit) -> Unit {
+  @async.with_task_group() <| group => {
+    let (reader, writer) = @io.pipe()
+    group.spawn_bg() <| () => {
+      defer writer.close()
+      writer.write(bytes)
+    }
+    f(reader)
+    reader.close()
+  }
 }
 
 ///|
-test "flush escape key" {
-  let decoder = @input.Decoder::new()
-  decoder.push(b"\x1b")
-  @debug.assert_eq(decoder.next(), None)
-  @debug.assert_eq(
-    decoder.flush(),
-    Some(@input.Key(@input.KeyEvent::new(@input.Escape))),
-  )
-  @debug.assert_eq(decoder.next(), None)
+async fn with_delayed_input(
+  first : Bytes,
+  second : Bytes,
+  delay : Int,
+  f : async (@io.PipeRead) -> Unit,
+) -> Unit {
+  @async.with_task_group() <| group => {
+    let (reader, writer) = @io.pipe()
+    group.spawn_bg() <| () => {
+      defer writer.close()
+      writer.write(first)
+      @async.sleep(delay)
+      writer.write(second)
+    }
+    f(reader)
+    reader.close()
+  }
 }
 
 ///|
-test "decode split csi arrow" {
-  let decoder = @input.Decoder::new()
-  decoder.push(b"\x1b[")
-  @debug.assert_eq(decoder.next(), None)
-  decoder.push(b"A")
-  @debug.assert_eq(
-    decoder.next(),
-    Some(@input.Key(@input.KeyEvent::new(@input.Up))),
-  )
+async test "decode printable ascii" {
+  with_input(b"a", reader => {
+    @debug.assert_eq(
+      @input.read_event(reader),
+      @input.Key(@input.KeyEvent::new(@input.Char('a'), text="a")),
+    )
+  })
 }
 
 ///|
-test "decode csi tilde key" {
-  let decoder = @input.Decoder::new()
-  decoder.push(b"\x1b[3~")
-  @debug.assert_eq(
-    decoder.next(),
-    Some(@input.Key(@input.KeyEvent::new(@input.Delete))),
-  )
+async test "flush escape key" {
+  with_delayed_input(b"\x1b", b"", 50, reader => {
+    @debug.assert_eq(
+      @input.read_event(reader, esc_timeout=10),
+      @input.Key(@input.KeyEvent::new(@input.Escape)),
+    )
+  })
 }
 
 ///|
-test "decode alt key" {
-  let decoder = @input.Decoder::new()
-  decoder.push(b"\x1bx")
-  @debug.assert_eq(
-    decoder.next(),
-    Some(
+async test "decode split csi arrow" {
+  with_delayed_input(b"\x1b[", b"A", 5, reader => {
+    @debug.assert_eq(
+      @input.read_event(reader, esc_timeout=50),
+      @input.Key(@input.KeyEvent::new(@input.Up)),
+    )
+  })
+}
+
+///|
+async test "decode csi tilde key" {
+  with_input(b"\x1b[3~", reader => {
+    @debug.assert_eq(
+      @input.read_event(reader),
+      @input.Key(@input.KeyEvent::new(@input.Delete)),
+    )
+  })
+}
+
+///|
+async test "decode alt key" {
+  with_input(b"\x1bx", reader => {
+    @debug.assert_eq(
+      @input.read_event(reader),
       @input.Key(
         @input.KeyEvent::new(
           @input.Char('x'),
           modifiers=@input.KeyModifiers::new(alt=true),
         ),
       ),
-    ),
-  )
+    )
+  })
 }
 
 ///|
-test "flush incomplete csi as unknown" {
-  let decoder = @input.Decoder::new()
-  decoder.push(b"\x1b[12;")
-  @debug.assert_eq(decoder.next(), None)
-  @debug.assert_eq(decoder.flush(), Some(@input.Unknown(b"\x1b[12;")))
+async test "flush incomplete csi as unknown" {
+  with_delayed_input(b"\x1b[12;", b"", 50, reader => {
+    @debug.assert_eq(
+      @input.read_event(reader, esc_timeout=10),
+      @input.Unknown(b"\x1b[12;"),
+    )
+  })
 }
 
 ///|
-test "parse_to drains complete events" {
-  let decoder = @input.Decoder::new()
-  let events : Array[@input.Event] = Array::new()
-  decoder.parse_to(b"a\r", events)
-  @debug.assert_eq(events.length(), 2)
-  @debug.assert_eq(
-    events[0],
-    @input.Key(@input.KeyEvent::new(@input.Char('a'), text="a")),
-  )
-  @debug.assert_eq(events[1], @input.Key(@input.KeyEvent::new(@input.Enter)))
+async test "decode multiple events with repeated calls" {
+  with_input(b"a\r", reader => {
+    @debug.assert_eq(
+      @input.read_event(reader),
+      @input.Key(@input.KeyEvent::new(@input.Char('a'), text="a")),
+    )
+    @debug.assert_eq(
+      @input.read_event(reader),
+      @input.Key(@input.KeyEvent::new(@input.Enter)),
+    )
+  })
 }
 
 ///|
-test "parse_to keeps escape pending until flush_to" {
-  let decoder = @input.Decoder::new()
-  let events : Array[@input.Event] = Array::new()
-  decoder.parse_to(b"\x1b", events)
-  @debug.assert_eq(events.length(), 0)
-  decoder.flush_to(events)
-  @debug.assert_eq(events.length(), 1)
-  @debug.assert_eq(events[0], @input.Key(@input.KeyEvent::new(@input.Escape)))
-}
-
-///|
-test "parse_to emits unsupported csi as unknown and continues" {
-  let decoder = @input.Decoder::new()
-  let events : Array[@input.Event] = Array::new()
-  decoder.parse_to(b"\x1b[999~a", events)
-  @debug.assert_eq(events.length(), 2)
-  @debug.assert_eq(events[0], @input.Unknown(b"\x1b[999~"))
-  @debug.assert_eq(
-    events[1],
-    @input.Key(@input.KeyEvent::new(@input.Char('a'), text="a")),
-  )
+async test "decode unsupported csi as unknown and leaves following bytes buffered" {
+  with_input(b"\x1b[999~a", reader => {
+    @debug.assert_eq(@input.read_event(reader), @input.Unknown(b"\x1b[999~"))
+    @debug.assert_eq(
+      @input.read_event(reader),
+      @input.Key(@input.KeyEvent::new(@input.Char('a'), text="a")),
+    )
+  })
 }

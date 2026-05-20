@@ -2,26 +2,16 @@
 package "tonyfettes/tty/input"
 
 import {
+  "moonbitlang/async/io",
   "moonbitlang/core/debug",
 }
 
 // Values
+pub async fn[R : @io.Reader] read_event(R, esc_timeout? : Int) -> Event
 
 // Errors
 
 // Types and methods
-type Decoder
-pub fn Decoder::capacity(Self) -> Int
-pub fn Decoder::clear(Self) -> Unit
-pub fn Decoder::flush(Self) -> Event?
-pub fn Decoder::flush_to(Self, Array[Event]) -> Unit
-pub fn Decoder::has_pending(Self) -> Bool
-pub fn Decoder::length(Self) -> Int
-pub fn Decoder::new() -> Self
-pub fn Decoder::next(Self) -> Event?
-pub fn Decoder::parse_to(Self, BytesView, Array[Event]) -> Unit
-pub fn Decoder::push(Self, BytesView) -> Unit
-
 pub(all) enum Event {
   Key(KeyEvent)
   Unknown(Bytes)
