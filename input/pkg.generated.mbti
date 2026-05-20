@@ -1,0 +1,74 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "tonyfettes/tty/input"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+type Decoder
+pub fn Decoder::capacity(Self) -> Int
+pub fn Decoder::clear(Self) -> Unit
+pub fn Decoder::flush(Self) -> Event?
+pub fn Decoder::flush_to(Self, Array[Event]) -> Unit
+pub fn Decoder::has_pending(Self) -> Bool
+pub fn Decoder::length(Self) -> Int
+pub fn Decoder::new() -> Self
+pub fn Decoder::next(Self) -> Event?
+pub fn Decoder::parse_to(Self, BytesView, Array[Event]) -> Unit
+pub fn Decoder::push(Self, BytesView) -> Unit
+
+pub(all) enum Event {
+  Key(KeyEvent)
+  Unknown(Bytes)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum KeyCode {
+  Char(Char)
+  Text
+  Enter
+  Tab
+  Backspace
+  Delete
+  Escape
+  Up
+  Down
+  Left
+  Right
+  Home
+  End
+  PageUp
+  PageDown
+  Insert
+  F(Int)
+} derive(Eq, @debug.Debug)
+
+pub struct KeyEvent {
+  code : KeyCode
+  modifiers : KeyModifiers
+  text : String?
+} derive(Eq, @debug.Debug)
+pub fn KeyEvent::new(KeyCode, modifiers? : KeyModifiers, text? : String) -> Self
+
+pub(all) enum KeyModifier {
+  Shift
+  Alt
+  Ctrl
+  Meta
+} derive(Eq, @debug.Debug)
+
+type KeyModifiers derive(Eq, @debug.Debug)
+pub fn KeyModifiers::alt(Self) -> Bool
+pub fn KeyModifiers::ctrl(Self) -> Bool
+pub fn KeyModifiers::meta(Self) -> Bool
+pub fn KeyModifiers::new(shift? : Bool, alt? : Bool, ctrl? : Bool, meta? : Bool) -> Self
+pub fn KeyModifiers::shift(Self) -> Bool
+
+// Type aliases
+
+// Traits
+

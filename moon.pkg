@@ -1,14 +1,12 @@
 import {
+  "moonbitlang/async",
   "moonbitlang/async/types" @async/types,
   "moonbitlang/async/fs" @async/fs,
   "moonbitlang/async/stdio" @async/stdio,
   "moonbitlang/async/os_error",
   "moonbitlang/async/io" @async/io,
+  "tonyfettes/tty/input",
 }
-
-import {
-  "moonbitlang/async",
-} for "test"
 
 supported_targets = "native"
 
