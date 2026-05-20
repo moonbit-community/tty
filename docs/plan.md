@@ -25,7 +25,7 @@ This board tracks implementation direction for `tonyfettes/tty`. Use
 | TTY-3 | done | terminal window size query | `docs/plans/2026-05-20-window-size.md`, `size.mbt`, `size.c` | output handles can query visible terminal rows and columns; non-tty outputs report `OSError` | `moon fmt`, `moon test .`, PTY `moon test .`, `moon test`, `moon check`, `moon info` |
 | IN-4 | todo | bracketed paste boundary | `input/`, `vt/`, `cmd/input` | paste mode can be enabled, decoded, and bounded without unbounded memory surprises | task plan required |
 | VT-3 | done | scroll region and reverse index sequences | `docs/plans/2026-05-20-vt-scroll-region.md`, `vt/` | demos can set/reset terminal scrolling margins and emit RI without `vt` owning output or screen state | `moon fmt`, `moon test vt`, `moon test`, `moon check`, `moon info` |
-| CMD-1 | done | primary-screen pager demo | `docs/plans/2026-05-20-cmd-pager.md`, `cmd/pager` | demo pages file/sample text with raw input, terminal size query, scroll margins, and RI | `moon fmt`, `moon test cmd/pager`, `moon check cmd/pager`, `moon test`, `moon check`, `moon info`, manual PTY smoke |
+| CMD-1 | done | primary-screen pager demo | `docs/plans/2026-05-20-cmd-pager.md`, `cmd/pager` | demo pages a required file path with raw input, terminal size query, scroll margins, and RI | `moon fmt`, `moon test cmd/pager`, `moon check cmd/pager`, `moon test`, `moon check`, `moon info`, manual PTY smoke |
 | MVP-1 | todo | Codex-like primary-screen demo | `cmd/` | scrollback stays in terminal primary screen and an input buffer redraws reliably | task plan required |
 
 ## Current Rules

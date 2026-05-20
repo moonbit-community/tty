@@ -9,7 +9,7 @@ priv struct PagerSize {
 
 ///|
 priv struct PagerArgs {
-  path : String?
+  path : String
 }
 
 ///|
@@ -17,20 +17,11 @@ fn pager_command() -> @argparse.Command {
   @argparse.Command(
     "pager",
     about="Page a text file in the terminal primary screen.",
-    options=[
-      @argparse.OptionArg(
-        "path",
-        short='f',
-        long="file",
-        about="Read text from a file.",
-        allow_hyphen_values=true,
-      ),
-    ],
     positionals=[
       @argparse.PositionArg(
         "file",
         about="File to page.",
-        num_args=@argparse.ValueRange(lower=0, upper=1),
+        num_args=@argparse.ValueRange::single(),
         allow_hyphen_values=true,
       ),
     ],
@@ -40,9 +31,8 @@ fn pager_command() -> @argparse.Command {
 ///|
 fn pager_args_from_matches(matches : @argparse.Matches) -> PagerArgs {
   let path = match matches.values {
-    { "path": [path], .. } => Some(path)
-    { "file": [path], .. } => Some(path)
-    _ => None
+    { "file": [path], .. } => path
+    _ => abort("cmd/pager: argparse did not provide required file")
   }
   { path, }
 }
@@ -153,28 +143,8 @@ fn split_lines(text : String) -> Array[String] {
 }
 
 ///|
-fn sample_lines() -> Array[String] {
-  let lines = [
-    "tty pager demo", "", "Keys:", "  q / Ctrl-C       quit", "  j / Down         scroll down",
-    "  k / Up           scroll up", "  Space / PageDown page down", "  b / PageUp       page up",
-    "  g / Home         top", "  G / End          bottom", "", "This demo uses the primary screen, not the alternate screen.",
-    "The bottom row is repainted as status.", "The content area above it is bounded with DECSTBM top/bottom margins.",
-    "Single-line upward scrolling uses Reverse Index at the top margin.", "", "Run with a file path to page real content:",
-    "  moon run cmd/pager -- README.md", "  moon run cmd/pager -- --file README.md",
-    "",
-  ]
-  for i in 1..<=120 {
-    lines.push("Sample line \{i}: enough content to make j/k visibly scroll.")
-  }
-  lines
-}
-
-///|
 async fn load_content(args : PagerArgs) -> (String, Array[String]) {
-  match args.path {
-    Some(path) => (path, split_lines(@async/fs.read_file(path).text()))
-    None => ("sample", sample_lines())
-  }
+  (args.path, split_lines(@async/fs.read_file(args.path).text()))
 }
 
 ///|

@@ -4,13 +4,17 @@ test "split lines normalizes line endings" {
 }
 
 ///|
-test "parse file args" {
-  assert_true(parse_args_from([]).path == None)
-  assert_true(parse_args_from(["README.md"]).path == Some("README.md"))
-  assert_true(
-    parse_args_from(["--file", "README.md"]).path == Some("README.md"),
-  )
-  assert_true(parse_args_from(["-f", "README.md"]).path == Some("README.md"))
+test "parse requires file arg" {
+  try parse_args_from([]) catch {
+    _ => ()
+  } noraise {
+    _ => fail("expected missing file error")
+  }
+}
+
+///|
+test "parse file arg" {
+  assert_true(parse_args_from(["README.md"]).path == "README.md")
 }
 
 ///|
@@ -41,6 +45,3 @@ test "fit line respects display width and graphemes" {
 }
 
 ///|
-test "sample content is scrollable on tall terminals" {
-  assert_true(sample_lines().length() > 100)
-}
