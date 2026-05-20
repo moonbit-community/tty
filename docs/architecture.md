@@ -29,12 +29,14 @@ operations:
 - stdio handles: `stdin`, `stdout`, `stderr`
 - `/dev/tty` style open operations where supported
 - `isatty`
+- output-side terminal window size queries
 - input state operations such as `Input::get_state`, `Input::set_state`, and raw
   mode helpers
 - async read/write through the package's `Input` and `Output` wrappers
 
-Platform FFI belongs here because raw mode and handle lifetime are properties of
-the underlying terminal device, not of VT byte generation.
+Platform FFI belongs here because raw mode, terminal dimensions, and handle
+lifetime are properties of the underlying terminal device, not of VT byte
+generation.
 
 ### `vt`
 
@@ -102,6 +104,11 @@ on Unix-like terminals.
 The public API should describe terminal capabilities in terms of input, output,
 state, and events. The implementation can choose fd-based or handle-based
 storage per target.
+
+Window size is exposed as an output-side query because it describes the visible
+screen buffer used for painting. Resize notification is deliberately separate
+from size querying and should not be added without a plan for Unix signal and
+Windows console-event ownership.
 
 ## Raw Mode
 

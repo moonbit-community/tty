@@ -38,11 +38,17 @@ type Output
 pub fn Output::close(Self) -> Unit
 pub fn Output::fd(Self) -> Int
 pub async fn Output::open() -> Self
+pub fn Output::window_size(Self) -> WindowSize raise @os_error.OSError
 pub async fn Output::write(Self, &@io.Data) -> Unit
 pub async fn Output::write_string(Self, String) -> Unit
 
 type State
 pub fn State::make_raw(Self) -> Self
+
+pub struct WindowSize {
+  rows : Int
+  cols : Int
+}
 
 // Type aliases
 

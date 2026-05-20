@@ -53,6 +53,19 @@ async test "file output wrapper delegates writes" {
 }
 
 ///|
+async test "window size rejects non tty output" {
+  let path = "_build/tty_window_size_non_tty_test"
+  {
+    let output = Output::File(
+      @async/fs.open(path, mode=WriteOnly, create_mode=CreateOrTruncate),
+    )
+    defer output.close()
+    assert_true((try? output.window_size()) is Err(_))
+  }
+  @async/fs.remove(path)
+}
+
+///|
 test "stdio wrappers expose descriptors and no op close" {
   assert_true(stdin.fd() >= 0)
   stdin.close()
@@ -70,19 +83,20 @@ async test "stdio output wrapper delegates empty writes" {
 
 ///|
 test "isatty rejects invalid fd" {
-  guard (try? isatty(-1)) is Err(InvalidFd(fd)) else {
-    fail("expected invalid fd error")
+  try isatty(-1) catch {
+    InvalidFd(fd) => @debug.assert_eq(fd, -1)
+  } noraise {
+    _ => fail("expected invalid fd error")
   }
-  inspect(fd, content="-1")
 }
 
 ///|
 test "state buffer can be made raw" {
   assert_true(sizeof_state > 0)
   let state = State::new()
-  inspect(state.0.length(), content="\{sizeof_state}")
+  @debug.assert_eq(state.0.length(), sizeof_state)
   let raw = state.make_raw()
-  inspect(raw.0.length(), content="\{sizeof_state}")
+  @debug.assert_eq(raw.0.length(), sizeof_state)
 }
 
 ///|

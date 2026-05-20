@@ -13,10 +13,11 @@ import {
 
 import {
   "moonbitlang/async",
+  "moonbitlang/core/debug",
 } for "wbtest"
 
 supported_targets = "native"
 
 options(
-  "native-stub": [ "isatty.c", "state.c" ],
+  "native-stub": [ "isatty.c", "state.c", "size.c" ],
 )
