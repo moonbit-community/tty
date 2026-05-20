@@ -3,4 +3,5 @@ import {
   "moonbitlang/async/io",
   "moonbitlang/core/debug",
   "moonbitlang/core/buffer",
+  "moonbitlang/core/encoding/utf8",
 }

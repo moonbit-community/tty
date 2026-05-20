@@ -19,7 +19,7 @@ This board tracks implementation direction for `tonyfettes/tty`. Use
 | VT-1 | done | cursor movement and visibility sequences | `vt/cursor.mbt`, `vt/cursor_test.mbt`, `cmd/cursor` | cursor helpers emit expected bytes and demo can draw a bounded region | `moon test vt`, `cmd/cursor` manual run |
 | VT-2 | done | line erase and alternate screen helpers | `vt/erase.mbt`, `vt/screen.mbt`, `cmd/input`, `cmd/cursor` | demos can redraw one-line input and restore screen state | `moon test vt`, demo manual run |
 | IN-1 | done | input event reader and common key sequences | `docs/plans/2026-05-20-input-event-reader.md` | `EventReader` decodes common keys while preserving unknown sequences | `moon fmt`, `moon check`, `moon test input`, `moon check cmd/input`, `moon info`, manual `cmd/input` run |
-| IN-2 | todo | UTF-8 text decoding policy | `input/`, `cmd/input` | non-ASCII text produces a documented event shape without corrupting bytes | task plan required |
+| IN-2 | done | UTF-8 text decoding via core utf8 | `docs/plans/2026-05-20-utf8-input-decoding.md`, `input/` | non-ASCII text is decoded with `moonbitlang/core/encoding/utf8` without a local utf8 package | `moon fmt`, `moon check`, `moon test input`, `moon info` |
 | IN-3 | todo | grapheme-aware demo input buffer | `cmd/input` or future higher-level package | demo can edit CJK and emoji text without byte-level corruption | task plan required |
 | IN-4 | todo | bracketed paste boundary | `input/`, `vt/`, `cmd/input` | paste mode can be enabled, decoded, and bounded without unbounded memory surprises | task plan required |
 | VT-3 | todo | additional ECMA-48 sequences needed by demos | `vt/` | helpers are grouped by behavior and documented with standard references | task plan required |

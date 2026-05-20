@@ -33,7 +33,7 @@ pub async fn EventReader::read_event(
     buffer.write_byte(Esc)
     read_escape(self, buffer, esc_timeout)
   } else {
-    byte_event(byte)
+    read_byte_event(self, byte, esc_timeout)
   }
 }
 
@@ -311,7 +311,11 @@ fn modifiers_from_param(param : Int) -> KeyModifiers {
 }
 
 ///|
-fn byte_event(byte : Byte) -> Event {
+async fn read_byte_event(
+  reader : EventReader,
+  byte : Byte,
+  esc_timeout : Int,
+) -> Event {
   match byte {
     b'\r' => Key(KeyEvent::new(Enter))
     b'\n' =>
@@ -338,6 +342,67 @@ fn byte_event(byte : Byte) -> Event {
       let char = byte.to_char()
       Key(KeyEvent::new(Char(char), text=[char]))
     }
-    _ => Unknown([byte])
+    _ => read_utf8_text(reader, byte, esc_timeout~)
   }
+}
+
+///|
+async fn read_utf8_text(
+  reader : EventReader,
+  first : Byte,
+  esc_timeout~ : Int,
+) -> Event {
+  guard utf8_sequence_length(first) is Some(len) else {
+    return Unknown([first])
+  }
+  let buffer = @buffer.new(size_hint=len)
+  buffer.write_byte(first)
+  for _ in 1..<len {
+    guard reader.read_byte(timeout=esc_timeout) is Some(byte) else {
+      return Unknown(buffer.to_bytes())
+    }
+    if !is_utf8_continuation(byte) {
+      reader.unread_byte(byte)
+      return Unknown(buffer.to_bytes())
+    }
+    buffer.write_byte(byte)
+  }
+  let bytes = buffer.to_bytes()
+  try @utf8.decode(bytes) catch {
+    _ => Unknown(bytes)
+  } noraise {
+    text => text_event(text)
+  }
+}
+
+///|
+fn text_event(text : String) -> Event {
+  let mut count = 0
+  let mut first = '\u{0}'
+  for ch in text {
+    if count == 0 {
+      first = ch
+    }
+    count += 1
+  }
+  if count == 1 {
+    Key(KeyEvent::new(Char(first), text~))
+  } else {
+    Key(KeyEvent::new(Text, text~))
+  }
+}
+
+///|
+fn utf8_sequence_length(first : Byte) -> Int? {
+  match first {
+    0xc2..=0xdf => Some(2)
+    0xe0..=0xef => Some(3)
+    0xf0..=0xf4 => Some(4)
+    _ => None
+  }
+}
+
+///|
+fn is_utf8_continuation(byte : Byte) -> Bool {
+  byte >= b'\x80' && byte <= b'\xbf'
 }

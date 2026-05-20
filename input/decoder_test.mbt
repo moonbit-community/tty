@@ -46,6 +46,52 @@ async test "decode printable ascii" {
 }
 
 ///|
+async test "decode utf8 text" {
+  with_input(b"\xc3\xa9\xe4\xbd\xa0\xf0\x9f\x98\x80", events => {
+    @debug.assert_eq(
+      events.read_event(),
+      @input.Key(@input.KeyEvent::new(@input.Char('é'), text="é")),
+    )
+    @debug.assert_eq(
+      events.read_event(),
+      @input.Key(@input.KeyEvent::new(@input.Char('你'), text="你")),
+    )
+    @debug.assert_eq(
+      events.read_event(),
+      @input.Key(@input.KeyEvent::new(@input.Char('😀'), text="😀")),
+    )
+  })
+}
+
+///|
+async test "decode split utf8 text" {
+  with_delayed_input(b"\xe4", b"\xbd\xa0", 5, events => {
+    @debug.assert_eq(
+      events.read_event(esc_timeout=50),
+      @input.Key(@input.KeyEvent::new(@input.Char('你'), text="你")),
+    )
+  })
+}
+
+///|
+async test "decode invalid utf8 as unknown and leaves ascii buffered" {
+  with_input(b"\xe4a", events => {
+    @debug.assert_eq(events.read_event(), @input.Unknown(b"\xe4"))
+    @debug.assert_eq(
+      events.read_event(),
+      @input.Key(@input.KeyEvent::new(@input.Char('a'), text="a")),
+    )
+  })
+}
+
+///|
+async test "flush incomplete utf8 as unknown" {
+  with_delayed_input(b"\xe4", b"", 50, events => {
+    @debug.assert_eq(events.read_event(esc_timeout=10), @input.Unknown(b"\xe4"))
+  })
+}
+
+///|
 async test "flush escape key" {
   with_delayed_input(b"\x1b", b"", 50, events => {
     @debug.assert_eq(
