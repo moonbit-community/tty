@@ -156,7 +156,7 @@ async fn read_csi(
       0x30..<0x40 if seen_intermediate => break Unknown(buffer.to_bytes())
       0x30..<0x40 => ()
       0x20..<0x30 => seen_intermediate = true
-      0x40..<0x7f => break csi_event(buffer.to_bytes())
+      0x40..<0x7f => break parse_csi(buffer.to_bytes())
       _ => break Unknown(buffer.to_bytes())
     }
   }
@@ -180,59 +180,56 @@ fn ss3_event(ss3 : Bytes) -> Event {
 }
 
 ///|
-fn csi_event(csi : Bytes) -> Event {
+fn parse_csi(csi : Bytes) -> Event {
   match csi {
-    [Esc, b'[', b'A'] => Key(KeyEvent::new(Up))
-    [Esc, b'[', b'B'] => Key(KeyEvent::new(Down))
-    [Esc, b'[', b'C'] => Key(KeyEvent::new(Right))
-    [Esc, b'[', b'D'] => Key(KeyEvent::new(Left))
-    [Esc, b'[', b'H'] => Key(KeyEvent::new(Home))
-    [Esc, b'[', b'F'] => Key(KeyEvent::new(End))
     [Esc, b'[', b'Z'] =>
       Key(KeyEvent::new(Tab, modifiers=KeyModifiers::new(shift=true)))
-    [Esc, b'[', b'2', b'~'] => Key(KeyEvent::new(Insert))
-    [Esc, b'[', b'3', b'~'] => Key(KeyEvent::new(Delete))
-    [Esc, b'[', b'5', b'~'] => Key(KeyEvent::new(PageUp))
-    [Esc, b'[', b'6', b'~'] => Key(KeyEvent::new(PageDown))
-    _ => csi_param_event(csi).unwrap_or(Unknown(csi))
+    [Esc, b'[', .. params, b'~'] => {
+      guard parse_csi_params(params) is Some(params) else {
+        return Unknown(csi)
+      }
+      parse_csi_tilde_key(csi, params)
+    }
+    [Esc, b'[', .. params, final_byte] => {
+      guard parse_csi_params(params) is Some(params) else {
+        return Unknown(csi)
+      }
+      match final_byte {
+        b'A' => parse_csi_key(csi, params, Up)
+        b'B' => parse_csi_key(csi, params, Down)
+        b'C' => parse_csi_key(csi, params, Right)
+        b'D' => parse_csi_key(csi, params, Left)
+        b'H' => parse_csi_key(csi, params, Home)
+        b'F' => parse_csi_key(csi, params, End)
+        b'P' => parse_csi_key(csi, params, F1)
+        b'Q' => parse_csi_key(csi, params, F2)
+        b'R' => parse_csi_key(csi, params, F3)
+        b'S' => parse_csi_key(csi, params, F4)
+        _ => Unknown(csi)
+      }
+    }
+    _ => Unknown(csi)
   }
 }
 
 ///|
-fn csi_param_event(csi : Bytes) -> Event? {
-  guard csi.length() >= 3 && csi[0] == Esc && csi[1] == b'[' else {
-    return None
+fn parse_csi_key(csi : Bytes, params : Array[Int?], code : KeyCode) -> Event {
+  guard parse_csi_key_modifiers(params) is Some(modifiers) else {
+    return Unknown(csi)
   }
-  let final_byte = csi[csi.length() - 1]
-  guard parse_csi_params(csi, start=2, end=csi.length() - 1) is Some(params) else {
-    return None
-  }
-  match final_byte {
-    b'A' => csi_initial_event(params, Up)
-    b'B' => csi_initial_event(params, Down)
-    b'C' => csi_initial_event(params, Right)
-    b'D' => csi_initial_event(params, Left)
-    b'H' => csi_initial_event(params, Home)
-    b'F' => csi_initial_event(params, End)
-    b'P' => csi_initial_event(params, F1)
-    b'Q' => csi_initial_event(params, F2)
-    b'R' => csi_initial_event(params, F3)
-    b'S' => csi_initial_event(params, F4)
-    b'~' => csi_tilde_event(params)
-    _ => None
-  }
+  Key(KeyEvent::new(code, modifiers~))
 }
 
 ///|
-fn parse_csi_params(csi : Bytes, start~ : Int, end~ : Int) -> Array[Int?]? {
+fn parse_csi_params(params_bytes : BytesView) -> Array[Int?]? {
   let params : Array[Int?] = []
-  if start == end {
+  if params_bytes.length() == 0 {
     return Some(params)
   }
   let mut value = 0
   let mut seen = false
-  for i = start; i < end; {
-    let byte = csi[i]
+  for i = 0; i < params_bytes.length(); {
+    let byte = params_bytes[i]
     match byte {
       b'0'..=b'9' => {
         seen = true
@@ -253,51 +250,24 @@ fn parse_csi_params(csi : Bytes, start~ : Int, end~ : Int) -> Array[Int?]? {
 }
 
 ///|
-fn csi_initial_event(params : Array[Int?], code : KeyCode) -> Event? {
-  match csi_initial_modifiers(params) {
-    Some(modifiers) => Some(Key(KeyEvent::new(code, modifiers~)))
-    None => None
-  }
-}
-
-///|
-fn csi_initial_modifiers(params : Array[Int?]) -> KeyModifiers? {
-  match params.length() {
-    0 => Some(KeyModifiers::new())
-    1 =>
-      match params[0] {
-        None | Some(1) => Some(KeyModifiers::new())
-        _ => None
-      }
-    2 =>
-      match params[0] {
-        None | Some(1) =>
-          match params[1] {
-            Some(modifier) => Some(modifiers_from_param(modifier))
-            None => Some(KeyModifiers::new())
-          }
-        _ => None
-      }
+fn parse_csi_key_modifiers(params : Array[Int?]) -> KeyModifiers? {
+  match params {
+    [] | [None | Some(1)] | [None | Some(1), None] => Some(KeyModifiers::new())
+    [None | Some(1), Some(modifier)] => Some(modifiers_from_param(modifier))
     _ => None
   }
 }
 
 ///|
-fn csi_tilde_event(params : Array[Int?]) -> Event? {
-  guard params.length() == 1 || params.length() == 2 else { return None }
-  guard params[0] is Some(code) else { return None }
-  let modifiers = if params.length() == 2 {
-    match params[1] {
-      Some(modifier) => modifiers_from_param(modifier)
-      None => KeyModifiers::new()
-    }
-  } else {
-    KeyModifiers::new()
+fn parse_csi_tilde_key(csi : Bytes, params : Array[Int?]) -> Event {
+  let (code, modifiers) = match params {
+    [Some(code)] => (code, KeyModifiers::new())
+    [Some(code), None] => (code, KeyModifiers::new())
+    [Some(code), Some(modifier)] => (code, modifiers_from_param(modifier))
+    _ => return Unknown(csi)
   }
-  match tilde_key_code(code) {
-    Some(key_code) => Some(Key(KeyEvent::new(key_code, modifiers~)))
-    None => None
-  }
+  guard tilde_key_code(code) is Some(key_code) else { return Unknown(csi) }
+  Key(KeyEvent::new(key_code, modifiers~))
 }
 
 ///|

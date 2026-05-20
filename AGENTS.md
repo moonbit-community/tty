@@ -43,6 +43,21 @@
 - `cmd/*` packages are demos and manual validation tools. They can exercise
   APIs, but they are not themselves public library API.
 
+## Code Readability
+
+- Parser and state-machine code must be written for human review first. Prefer
+  direct pattern matching over nested `length()` checks and indexed access when
+  the shape being matched is semantic.
+- For byte protocols, use rest patterns to express prefix/body/final-byte
+  shapes when possible, such as CSI framing with `ESC [` + params + final,
+  instead of manually slicing off the last byte.
+- Helper names should describe the terminal concept they implement. Avoid
+  vague names that only describe implementation details such as "param event"
+  when the helper is really parsing a key sequence or applying modifiers.
+- Keep defensive checks at clear boundaries. Once a function receives a narrowed
+  shape such as a CSI body, do not repeat outer framing checks inside deeper
+  helpers.
+
 ## Validation
 
 - For MoonBit source changes, run the smallest relevant checks first, then the
