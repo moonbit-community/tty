@@ -36,6 +36,12 @@ pub let reverse_index : Bytes
 
 pub fn set_top_bottom_margins(Int, Int) -> Bytes
 
+pub fn sgr1(Int) -> Bytes
+
+pub fn sgr3(Int, Int, Int) -> Bytes
+
+pub fn sgr5(Int, Int, Int, Int, Int) -> Bytes
+
 pub let show_cursor : Bytes
 
 // Errors

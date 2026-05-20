@@ -53,6 +53,48 @@ async test "file output wrapper delegates writes" {
 }
 
 ///|
+async test "file output terminal commands write sequences" {
+  let path = "_build/tty_file_output_commands_test"
+  {
+    let output = Output::File(
+      @async/fs.open(path, mode=WriteOnly, create_mode=CreateOrTruncate),
+    )
+    defer output.close()
+    output.enter_alt_screen()
+    output.hide_cursor()
+    output.set_foreground(@color.Basic(@color.Red))
+    output.reset_foreground()
+    output.set_background(@color.Indexed(42))
+    output.reset_background()
+    output.reset_style()
+    output.show_cursor()
+    output.leave_alt_screen()
+  }
+  inspect(
+    @async/fs.read_file(path).text(),
+    content="\u{1B}[?1049h\u{1B}[?25l\u{1B}[31m\u{1B}[39m\u{1B}[48;5;42m\u{1B}[49m\u{1B}[0m\u{1B}[?25h\u{1B}[?1049l",
+  )
+  @async/fs.remove(path)
+}
+
+///|
+async test "file output with alt screen restores on success" {
+  let path = "_build/tty_file_output_with_alt_screen_test"
+  {
+    let output = Output::File(
+      @async/fs.open(path, mode=WriteOnly, create_mode=CreateOrTruncate),
+    )
+    defer output.close()
+    output.with_alt_screen(() => output.write("body"))
+  }
+  inspect(
+    @async/fs.read_file(path).text(),
+    content="\u{1B}[?1049hbody\u{1B}[?1049l",
+  )
+  @async/fs.remove(path)
+}
+
+///|
 async test "window size rejects non tty output" {
   let path = "_build/tty_window_size_non_tty_test"
   {

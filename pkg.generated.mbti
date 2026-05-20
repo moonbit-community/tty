@@ -4,6 +4,7 @@ package "tonyfettes/tty"
 import {
   "moonbitlang/async/io",
   "moonbitlang/async/os_error",
+  "tonyfettes/tty/color",
   "tonyfettes/tty/input",
 }
 
@@ -36,9 +37,19 @@ pub async fn[T] Input::with_raw_mode(Self, async () -> T) -> T
 
 type Output
 pub fn Output::close(Self) -> Unit
+pub async fn Output::enter_alt_screen(Self) -> Unit
 pub fn Output::fd(Self) -> Int
+pub async fn Output::hide_cursor(Self) -> Unit
+pub async fn Output::leave_alt_screen(Self) -> Unit
 pub async fn Output::open() -> Self
+pub async fn Output::reset_background(Self) -> Unit
+pub async fn Output::reset_foreground(Self) -> Unit
+pub async fn Output::reset_style(Self) -> Unit
+pub async fn Output::set_background(Self, @color.Color) -> Unit
+pub async fn Output::set_foreground(Self, @color.Color) -> Unit
+pub async fn Output::show_cursor(Self) -> Unit
 pub fn Output::window_size(Self) -> WindowSize raise @os_error.OSError
+pub async fn[T] Output::with_alt_screen(Self, async () -> T) -> T
 pub async fn Output::write(Self, &@io.Data) -> Unit
 pub async fn Output::write_string(Self, String) -> Unit
 

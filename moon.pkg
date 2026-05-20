@@ -4,7 +4,9 @@ import {
   "moonbitlang/async/stdio" @async/stdio,
   "moonbitlang/async/os_error",
   "moonbitlang/async/io" @async/io,
+  "tonyfettes/tty/color",
   "tonyfettes/tty/input",
+  "tonyfettes/tty/vt",
 }
 
 import {

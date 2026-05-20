@@ -30,6 +30,7 @@ operations:
 - `/dev/tty` style open operations where supported
 - `isatty`
 - output-side terminal window size queries
+- output-side command helpers for common screen, cursor, and style operations
 - input state operations such as `Input::get_state`, `Input::set_state`, and raw
   mode helpers
 - async read/write through the package's `Input` and `Output` wrappers
@@ -48,6 +49,7 @@ It should:
 - construct erase sequences
 - construct screen mode sequences such as alternate-screen enter/leave
 - construct scrolling-margin and reverse-index sequences
+- construct low-level SGR sequences
 - document the standard or terminal family each sequence comes from
 
 It should not:
@@ -60,12 +62,12 @@ It should not:
 Callers decide when and where to write the returned `Bytes`.
 
 `tonyfettes/tty/vt/internal/seq` owns shared byte builders for CSI and SGR
-sequences used by `vt` and its descendant packages. It is an implementation
-helper, not a user-facing terminal abstraction.
+sequences used by `vt`. It is an implementation helper, not a user-facing
+terminal abstraction.
 
-### `vt/color`
+### `color`
 
-`tonyfettes/tty/vt/color` is a pure SGR color byte-sequence package.
+`tonyfettes/tty/color` is a semantic color byte-sequence package.
 
 It should:
 
@@ -73,12 +75,16 @@ It should:
 - support ANSI basic/bright colors, indexed 256 colors, and truecolor RGB
 - stay independent from output streams, environment variables, terminfo, and
   platform FFI
+- map user color values onto low-level `vt` SGR byte sequences
 
 It should not:
 
 - detect terminal color capability
 - decide whether colors should be enabled
 - mutate terminal palettes or query terminal color state
+
+`tonyfettes/tty/vt/color` is kept as a compatibility re-export for older code.
+New code should import `tonyfettes/tty/color`.
 
 Color capability detection belongs in a future higher-level package or plan
 because it combines tty state, environment policy, and terminal conventions.

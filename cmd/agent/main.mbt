@@ -386,13 +386,10 @@ async fn move_forward(cols : Int) -> Unit {
 }
 
 ///|
-async fn write_colored_text(
-  color : @vt_color.BasicColor,
-  text : String,
-) -> Unit {
-  write_bytes(@vt_color.foreground(@vt_color.Basic(color)))
+async fn write_colored_text(color : @color.BasicColor, text : String) -> Unit {
+  write_bytes(@color.foreground(@color.Basic(color)))
   write(text)
-  write_bytes(@vt_color.reset_foreground)
+  write_bytes(@color.reset_foreground)
 }
 
 ///|
@@ -404,9 +401,9 @@ async fn erase_current_line() -> Unit {
 ///|
 async fn render_separator_current(cols : Int) -> Unit {
   erase_current_line()
-  write_bytes(@vt_color.foreground(@vt_color.Basic(@vt_color.BrightBlack)))
+  write_bytes(@color.foreground(@color.Basic(@color.BrightBlack)))
   write(String::make(cols, '-'))
-  write_bytes(@vt_color.reset_foreground)
+  write_bytes(@color.reset_foreground)
 }
 
 ///|
@@ -416,21 +413,21 @@ async fn render_prompt_current(
   cols : Int,
 ) -> Unit {
   erase_current_line()
-  write_colored_text(@vt_color.BrightGreen, prefix)
+  write_colored_text(@color.BrightGreen, prefix)
   write(fit_line(line, cols - display_width(prefix)))
 }
 
 ///|
 async fn render_status_current(status : String, cols : Int) -> Unit {
   erase_current_line()
-  write_bytes(@vt_color.foreground(@vt_color.Basic(@vt_color.BrightBlack)))
+  write_bytes(@color.foreground(@color.Basic(@color.BrightBlack)))
   let text = if status.length() == 0 {
     "Enter send  Ctrl-J newline  Arrows move  Backspace edit  Ctrl-C quit"
   } else {
     status
   }
   write(fit_line(text, cols))
-  write_bytes(@vt_color.reset_foreground)
+  write_bytes(@color.reset_foreground)
 }
 
 ///|
@@ -484,7 +481,7 @@ async fn redraw_input_from(
 ///|
 async fn render_transcript_row(
   prefix : String,
-  color : @vt_color.BasicColor,
+  color : @color.BasicColor,
   text : String,
   size : AgentSize,
 ) -> Unit {
@@ -497,7 +494,7 @@ async fn render_transcript_row(
 ///|
 async fn render_transcript_at_cursor(
   role : String,
-  color : @vt_color.BasicColor,
+  color : @color.BasicColor,
   text : String,
   size : AgentSize,
 ) -> Unit {
@@ -514,7 +511,7 @@ async fn render_transcript_at_cursor(
 async fn append_transcript(
   cursor_editor : Editor,
   role : String,
-  color : @vt_color.BasicColor,
+  color : @color.BasicColor,
   text : String,
   editor : Editor,
   status : String,
@@ -537,7 +534,7 @@ async fn append_user(
   append_transcript(
     cursor_editor,
     "user",
-    @vt_color.BrightCyan,
+    @color.BrightCyan,
     text,
     editor,
     status,
@@ -556,7 +553,7 @@ async fn append_agent(
   append_transcript(
     cursor_editor,
     "agent",
-    @vt_color.BrightMagenta,
+    @color.BrightMagenta,
     text,
     editor,
     status,
@@ -567,7 +564,7 @@ async fn append_agent(
 ///|
 async fn restore_terminal() -> Unit {
   write_bytes(@tty/vt.reset_top_bottom_margins)
-  write_bytes(@vt_color.reset_all)
+  write_bytes(@color.reset_style)
   write_bytes(@tty/vt.show_cursor)
 }
 
@@ -616,13 +613,13 @@ async fn run_agent() -> Unit {
   write_bytes(@tty/vt.show_cursor)
   render_transcript_at_cursor(
     "system",
-    @vt_color.BrightBlack,
+    @color.BrightBlack,
     "primary-screen agent demo",
     size,
   )
   render_transcript_at_cursor(
     "system",
-    @vt_color.BrightBlack,
+    @color.BrightBlack,
     "type a message and press Enter",
     size,
   )

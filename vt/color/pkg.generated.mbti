@@ -1,14 +1,10 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "tonyfettes/tty/vt/color"
 
-import {
-  "moonbitlang/core/debug",
-}
-
 // Values
-pub fn background(Color) -> Bytes
+pub fn background(@tonyfettes/tty/color.Color) -> Bytes
 
-pub fn foreground(Color) -> Bytes
+pub fn foreground(@tonyfettes/tty/color.Color) -> Bytes
 
 pub let reset_all : Bytes
 
@@ -16,36 +12,16 @@ pub let reset_background : Bytes
 
 pub let reset_foreground : Bytes
 
+pub let reset_style : Bytes
+
 // Errors
 
 // Types and methods
-pub(all) enum BasicColor {
-  Black
-  Red
-  Green
-  Yellow
-  Blue
-  Magenta
-  Cyan
-  White
-  BrightBlack
-  BrightRed
-  BrightGreen
-  BrightYellow
-  BrightBlue
-  BrightMagenta
-  BrightCyan
-  BrightWhite
-} derive(Eq, @debug.Debug)
-
-pub(all) enum Color {
-  Default
-  Basic(BasicColor)
-  Indexed(Int)
-  Rgb(Int, Int, Int)
-} derive(Eq, @debug.Debug)
 
 // Type aliases
+pub using @tonyfettes/tty/color {type BasicColor}
+
+pub using @tonyfettes/tty/color {type Color}
 
 // Traits
 

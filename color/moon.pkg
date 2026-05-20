@@ -1,5 +1,5 @@
 import {
-  "tonyfettes/tty/color" @tty_color,
+  "tonyfettes/tty/vt",
 }
 
 import {
