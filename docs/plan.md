@@ -27,7 +27,7 @@ This board tracks implementation direction for `tonyfettes/tty`. Use
 | VT-3 | done | scroll region and reverse index sequences | `docs/plans/2026-05-20-vt-scroll-region.md`, `vt/` | demos can set/reset terminal scrolling margins and emit RI without `vt` owning output or screen state | `moon fmt`, `moon test vt`, `moon test`, `moon check`, `moon info` |
 | VT-4 | done | SGR color byte sequences | `docs/plans/2026-05-20-vt-color.md`, `vt/internal/seq`, `vt/color`, `cmd/color` | color helpers emit scoped SGR bytes and specimen demo shows basic, indexed, and truecolor colors | `moon fmt`, `moon test vt/internal/seq`, `moon test vt/color`, `moon check cmd/color`, `moon test`, `moon check`, `moon info`, manual `cmd/color` run |
 | CMD-1 | done | primary-screen pager demo | `docs/plans/2026-05-20-cmd-pager.md`, `cmd/pager` | demo pages a required file path with raw input, terminal size query, scroll margins, and RI | `moon fmt`, `moon test cmd/pager`, `moon check cmd/pager`, `moon test`, `moon check`, `moon info`, manual PTY smoke |
-| MVP-1 | todo | Codex-like primary-screen demo | `cmd/` | scrollback stays in terminal primary screen and an input buffer redraws reliably | task plan required |
+| MVP-1 | done | primary-screen agent demo | `docs/plans/2026-05-20-cmd-agent.md`, `cmd/agent` | transcript enters primary-screen scrollback and a trailing input region redraws reliably without startup blank fill | `moon fmt`, `moon test cmd/agent`, `moon check cmd/agent`, `moon test`, `moon check`, `moon info`, manual PTY smoke |
 
 ## Current Rules
 

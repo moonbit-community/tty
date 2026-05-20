@@ -1,0 +1,16 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/io" @async/io,
+  "kawaz/grapheme",
+  "rami3l/unicodewidth",
+  "tonyfettes/tty",
+  "tonyfettes/tty/input" @tty/input,
+  "tonyfettes/tty/vt" @tty/vt,
+  "tonyfettes/tty/vt/color" @vt_color,
+}
+
+supported_targets = "native"
+
+options(
+  "is-main": true,
+)

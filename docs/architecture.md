@@ -113,6 +113,8 @@ must segment and measure that text at their own layer.
 - `cmd/pager` validates primary-screen paging with a fixed status row and
   scrolling margins
 - `cmd/color` validates SGR color output visually
+- `cmd/agent` validates primary-screen transcript output with a trailing input
+  region that starts at the current cursor location
 
 These commands can carry small UI experiments, but public API decisions should
 be recorded in `docs/architecture.md` or an active task plan before being moved
