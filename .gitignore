@@ -2,5 +2,8 @@
 _build/
 .mooncakes/
 
+# Local notes
+docs/local-*.md
+
 # clangd
 compile_flags.txt

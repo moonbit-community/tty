@@ -30,6 +30,12 @@ pub let hide_cursor : Bytes
 
 pub let leave_alt_screen : Bytes
 
+pub let reset_top_bottom_margins : Bytes
+
+pub let reverse_index : Bytes
+
+pub fn set_top_bottom_margins(Int, Int) -> Bytes
+
 pub let show_cursor : Bytes
 
 // Errors

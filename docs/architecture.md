@@ -47,6 +47,7 @@ It should:
 - construct cursor movement sequences
 - construct erase sequences
 - construct screen mode sequences such as alternate-screen enter/leave
+- construct scrolling-margin and reverse-index sequences
 - document the standard or terminal family each sequence comes from
 
 It should not:
@@ -85,6 +86,8 @@ must segment and measure that text at their own layer.
 - `cmd/raw-mode` validates raw mode behavior on a real tty
 - `cmd/cursor` validates VT cursor/screen sequences visually
 - `cmd/input` validates input decoding and line-buffer experiments
+- `cmd/pager` validates primary-screen paging with a fixed status row and
+  scrolling margins
 
 These commands can carry small UI experiments, but public API decisions should
 be recorded in `docs/architecture.md` or an active task plan before being moved
