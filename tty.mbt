@@ -66,10 +66,9 @@ pub async fn Tty::query_cursor_position(
   timeout_ms? : Int = 50,
 ) -> CursorPosition? {
   self.write(@vt.request_cursor_position)
-  match self.reader.read_cursor_position_response(timeout_ms~) {
-    Some((row, col)) => Some(CursorPosition::{ row, col })
-    None => None
+  if self.reader.read_cursor_position_response(timeout_ms~) is Some((row, col)) {
+    Some(CursorPosition::{ row, col })
+  } else {
+    None
   }
 }
-
-///|
