@@ -100,7 +100,7 @@ Root `Tty` methods map color values onto SGR byte sequences when writing to a
 terminal. Raw byte callers should use low-level `vt` helpers directly.
 
 Root callers that want decoded terminal input events should use
-`Tty::read_event` so terminal request/response side channels and normal input
+`Tty::read_input` so terminal request/response side channels and normal input
 decoding share one buffered reader. Direct `EventReader` construction belongs to
 the low-level `input` package for callers decoding an arbitrary `@io.Reader`.
 
@@ -211,7 +211,7 @@ The timeout boundary belongs close to byte acquisition because a standalone ESC
 cannot be distinguished from the start of a longer escape sequence without
 waiting. `EventReader` is the current boundary for that behavior inside the
 low-level `input` package. Root terminal callers should go through
-`Tty::read_event`.
+`Tty::read_input`.
 
 Unsupported complete input sequences should produce `Input(Unknown(Bytes))`.
 Incomplete ESC or CSI sequences can become `Input(Unknown(...))` after timeout.
@@ -220,10 +220,10 @@ sequence.
 
 Terminal request/response reports such as Cursor Position Report (`CSI row ;
 col R`) are not user input events. They may appear as low-level stream events,
-but root `Tty::read_event` should return only `InputEvent` values. Root
+but root `Tty::read_input` should return only `InputEvent` values. Root
 request/response operations such as `Tty::query_cursor_position` should use the
 shared reader, consume the matching response, and preserve interleaved input
-events for later `Tty::read_event` calls.
+events for later `Tty::read_input` calls.
 
 ## Public API Rule
 

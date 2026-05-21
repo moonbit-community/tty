@@ -977,7 +977,7 @@ async fn run_agent(tty : @tty.Tty) -> Unit {
     None => ()
   }
   while true {
-    let event = tty.read_event(esc_timeout_ms~) catch {
+    let event = tty.read_input(esc_timeout_ms~) catch {
       @async/io.ReaderClosed => break
       error => raise error
     }

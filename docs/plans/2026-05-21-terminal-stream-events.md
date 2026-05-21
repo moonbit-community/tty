@@ -20,12 +20,12 @@ Done.
 - `@input.Event` will become the terminal stream event:
   `Input(InputEvent)` for user input and `CursorPosition(row~, col~)` for CPR.
 - The old user-input-only event shape becomes `@input.InputEvent`.
-- Root `Tty::read_event` remains a user-input API and returns
+- Root `Tty::read_input` remains a user-input API and returns
   `@input.InputEvent`, skipping unmatched terminal responses.
 - `Tty::query_cursor_position` writes `CSI 6 n` inside a single async timeout,
   then reads stream events until it sees `CursorPosition` or that timeout
   expires. Input events read while waiting are stored on `Tty` and returned by
-  later `Tty::read_event`.
+  later `Tty::read_input`.
 - `CSI R` without CPR parameters remains F3. `CSI row ; col R` is decoded as a
   cursor position stream event. This follows the response-aware stream model;
   modified F3 ambiguity is accepted for now and can be revisited with extended
@@ -59,12 +59,12 @@ Done.
   `@async.with_timeout_opt` around the whole request/response operation.
 - Remove `@input.EventReader::read_cursor_position_response`; callers can read
   stream `Event` and match `CursorPosition`.
-- Change root `Tty::read_event` to return `@input.InputEvent`.
+- Change root `Tty::read_input` to return `@input.InputEvent`.
 
 ## Invariants
 
 - `EventReader` remains the only low-level byte-to-event decoder.
-- Normal root input loops using `Tty::read_event` do not receive CPR responses.
+- Normal root input loops using `Tty::read_input` do not receive CPR responses.
 - `Tty::query_cursor_position` does not drop user input that arrives before the
   CPR response.
 - Unsupported complete input sequences still become `Input(Unknown(bytes))`.
@@ -79,7 +79,7 @@ Done.
 - `Tty::query_cursor_position` can return a cursor position when an input event
   arrives before the CPR response.
 - Input events observed during a cursor-position query are returned by the next
-  `Tty::read_event` call in order.
+  `Tty::read_input` call in order.
 - A cursor-position query uses a global deadline rather than a per-byte query
   timeout.
 - Cancelling a low-level `read_event` while it is reading a partial ESC/CSI/UTF-8
@@ -124,5 +124,5 @@ moon info
   low-level read API is `read_event(esc_timeout_ms?)`.
 - `@input.EventReader::read_event` now rolls back its in-flight decoder window
   if cancellation or another error interrupts a partial event before commit.
-- Root `Tty::read_event` returns `@input.InputEvent`, so root callers do not
+- Root `Tty::read_input` returns `@input.InputEvent`, so root callers do not
   receive CPR responses in ordinary input loops.

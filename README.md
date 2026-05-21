@@ -29,7 +29,7 @@ Use `Tty` when an operation needs a real terminal handle:
   `Tty::with_raw_mode`
 - terminal size: `Tty::window_size`
 - cursor position report: `Tty::query_cursor_position`
-- input events: `Tty::read_event`
+- input events: `Tty::read_input`
 - output commands: cursor visibility, alternate screen, foreground/background
   colors, and style reset
 
@@ -52,7 +52,7 @@ Terminal input byte decoding.
 `EventReader` decodes an `@io.Reader` into terminal stream events. Stream
 events wrap user input events and terminal responses such as cursor position
 reports. Root callers that are working with a terminal should normally use
-`Tty::read_event` for user input so terminal request/response traffic and
+`Tty::read_input` for user input so terminal request/response traffic and
 normal input share the same buffered reader.
 
 ### `tonyfettes/tty/color`
@@ -97,7 +97,7 @@ async fn main {
   tty.with_raw_mode(() => {
     tty.write("press q to quit\r\n")
     while true {
-      match tty.read_event() {
+      match tty.read_input() {
         @tty/input.Key(key) =>
           match key.code {
             Char('q') => break

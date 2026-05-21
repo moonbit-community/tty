@@ -45,7 +45,7 @@ pub fn Tty::close(self : Self) -> Unit {
 }
 
 ///|
-pub async fn Tty::read_event(
+pub async fn Tty::read_input(
   self : Self,
   esc_timeout_ms? : Int = 50,
 ) -> @input.InputEvent {

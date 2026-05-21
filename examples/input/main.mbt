@@ -132,7 +132,7 @@ async fn run_input_buffer(tty : @tty.Tty) -> Unit {
   )
   redraw_input(tty, buffer, "")
   while true {
-    let event = tty.read_event(esc_timeout_ms~) catch {
+    let event = tty.read_input(esc_timeout_ms~) catch {
       @async/io.ReaderClosed => break
       error => raise error
     }

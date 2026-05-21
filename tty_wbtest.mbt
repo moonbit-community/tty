@@ -102,7 +102,7 @@ async test "tty query cursor position coordinates input and output" {
       None => fail("expected cursor position")
     }
     @debug.assert_eq(
-      tty.read_event(),
+      tty.read_input(),
       @input.Key(@input.KeyEvent::new(@input.Char('a'), text="a")),
     )
   }

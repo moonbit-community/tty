@@ -362,7 +362,7 @@ async fn run_pager(
   let mut offset = clamp_offset(0, lines, body_rows(size))
   let mut full_screen = render_initial(tty, title, lines, offset, size)
   while true {
-    let event = tty.read_event(esc_timeout_ms~) catch {
+    let event = tty.read_input(esc_timeout_ms~) catch {
       @async/io.ReaderClosed => break
       error => raise error
     }

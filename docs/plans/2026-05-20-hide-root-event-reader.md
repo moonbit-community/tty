@@ -36,7 +36,7 @@ Done.
 - Remove root `Input::event_reader` from `tonyfettes/tty`.
 - Keep `@input.EventReader` public in `tonyfettes/tty/input` for low-level
   decoder users.
-- Keep `Tty::read_event` as the root event-reading API.
+- Keep `Tty::read_input` as the root event-reading API.
 
 Breaking change:
 
@@ -55,7 +55,7 @@ Breaking change:
 
 - Root `pkg.generated.mbti` no longer contains `Input::event_reader` or a root
   method returning `@input.EventReader`.
-- `examples/input` and `examples/pager` read events through `Tty::read_event`.
+- `examples/input` and `examples/pager` read events through `Tty::read_input`.
 - `tonyfettes/tty/input` still exposes `EventReader` for direct decoder use.
 
 ## Validation Commands
@@ -86,7 +86,7 @@ moon info
 
 - Root `pkg.generated.mbti` no longer exposes `Input::event_reader`.
 - No root public method returns `@input.EventReader`.
-- `Tty::read_event` remains the root package event-reading API.
+- `Tty::read_input` remains the root package event-reading API.
 - `tonyfettes/tty/input` still exposes opaque `EventReader`,
   `EventReader::new`, `EventReader::read_event`, and the CPR side-channel
   method for low-level decoder users and root `Tty` implementation.

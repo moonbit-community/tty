@@ -52,7 +52,7 @@ Done.
 ## Public API Changes
 
 - Add opaque root `Tty`.
-- Add `Tty::open`, `Tty::stdio`, `Tty::close`, `Tty::read_event`,
+- Add `Tty::open`, `Tty::stdio`, `Tty::close`, `Tty::read_input`,
   `Tty::with_raw_mode`, `Tty::write`, `Tty::write_string`,
   `Tty::window_size`, and `Tty::query_cursor_position`.
 - Add readable root `CursorPosition { row, col }`.
