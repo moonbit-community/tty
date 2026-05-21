@@ -12,14 +12,18 @@ import {
 
 // Types and methods
 pub(all) enum Event {
-  Key(KeyEvent)
-  Unknown(Bytes)
+  Input(InputEvent)
+  CursorPosition(row~ : Int, col~ : Int)
 } derive(Eq, @debug.Debug)
 
 type EventReader
 pub fn EventReader::new(&@io.Reader) -> Self
-pub async fn EventReader::read_cursor_position_response(Self, timeout_ms? : Int) -> (Int, Int)?
-pub async fn EventReader::read_event(Self, esc_timeout? : Int) -> Event
+pub async fn EventReader::read_event(Self, esc_timeout_ms? : Int) -> Event
+
+pub(all) enum InputEvent {
+  Key(KeyEvent)
+  Unknown(Bytes)
+} derive(Eq, @debug.Debug)
 
 pub(all) enum KeyCode {
   Char(Char)

@@ -1,7 +1,15 @@
 ///|
-pub(all) enum Event {
+/// User input decoded from terminal bytes.
+pub(all) enum InputEvent {
   Key(KeyEvent)
   Unknown(Bytes)
+} derive(Eq, Debug)
+
+///|
+/// Terminal stream event decoded from the input byte stream.
+pub(all) enum Event {
+  Input(InputEvent)
+  CursorPosition(row~ : Int, col~ : Int)
 } derive(Eq, Debug)
 
 ///|

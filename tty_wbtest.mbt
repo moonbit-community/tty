@@ -84,7 +84,7 @@ async test "file tty terminal commands write sequences" {
 async test "tty query cursor position coordinates input and output" {
   let input_path = "_build/tty_query_cursor_position_input_test"
   let output_path = "_build/tty_query_cursor_position_output_test"
-  @async/fs.write_file(input_path, b"\x1b[7;9Ra", create_mode=CreateOrTruncate)
+  @async/fs.write_file(input_path, b"a\x1b[7;9R", create_mode=CreateOrTruncate)
   {
     let input = @async/fs.open(input_path, mode=ReadOnly)
     let output = @async/fs.open(

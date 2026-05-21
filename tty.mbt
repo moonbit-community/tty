@@ -16,6 +16,7 @@ struct Tty {
   input : &Reader
   output : &Writer
   reader : @input.EventReader
+  pending_input : Array[@input.InputEvent]
 }
 
 ///|
@@ -27,6 +28,7 @@ pub fn[I : Reader, O : Writer] Tty::new(input : I, output : O) -> Tty {
     input,
     output,
     reader: @input.EventReader::new(input as &@async/io.Reader),
+    pending_input: [],
   }
 }
 
@@ -45,9 +47,17 @@ pub fn Tty::close(self : Self) -> Unit {
 ///|
 pub async fn Tty::read_event(
   self : Self,
-  esc_timeout? : Int = 50,
-) -> @input.Event {
-  self.reader.read_event(esc_timeout~)
+  esc_timeout_ms? : Int = 50,
+) -> @input.InputEvent {
+  if self.pending_input.length() > 0 {
+    return self.pending_input.remove(0)
+  }
+  for ;; {
+    match self.reader.read_event(esc_timeout_ms~) {
+      @input.Input(event) => return event
+      @input.CursorPosition(row=_, col=_) => ()
+    }
+  }
 }
 
 ///|
@@ -65,10 +75,13 @@ pub async fn Tty::query_cursor_position(
   self : Self,
   timeout_ms? : Int = 50,
 ) -> CursorPosition? {
-  self.write(@vt.request_cursor_position)
-  if self.reader.read_cursor_position_response(timeout_ms~) is Some((row, col)) {
-    Some(CursorPosition::{ row, col })
-  } else {
-    None
-  }
+  @async.with_timeout_opt(timeout_ms, () => {
+    self.write(@vt.request_cursor_position)
+    for ;; {
+      match self.reader.read_event() {
+        @input.CursorPosition(row~, col~) => return CursorPosition::{ row, col }
+        @input.Input(event) => self.pending_input.push(event)
+      }
+    }
+  })
 }

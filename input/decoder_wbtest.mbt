@@ -16,7 +16,7 @@ test "ensure capacity handles zero sized buffer" {
 
 ///|
 test "parse csi rejects malformed private input" {
-  @debug.assert_eq(parse_csi([]), Unknown(b""))
+  @debug.assert_eq(parse_csi([]), Input(Unknown(b"")))
 }
 
 ///|

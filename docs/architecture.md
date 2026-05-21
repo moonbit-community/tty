@@ -109,15 +109,18 @@ because it combines tty state, environment policy, and terminal conventions.
 
 ### `input`
 
-`tonyfettes/tty/input` decodes host input bytes into input events.
+`tonyfettes/tty/input` decodes host input bytes into terminal stream events.
 
 Current shape:
 
 - `EventReader` reads from an `@io.Reader`
-- `EventReader::read_event` owns the ESC timeout boundary
-- `Event` currently contains key events and unknown byte sequences
+- `EventReader::read_event` owns the ESC timeout boundary and returns terminal
+  stream events
+- `Event` contains `Input(InputEvent)` for user input and terminal responses
+  such as cursor-position reports
+- `InputEvent` contains key events and unknown byte sequences
 - unsupported or intentionally unmodeled sequences should become `Unknown`
-  rather than hard errors
+  input events rather than hard errors
 
 The decoder should stay focused on terminal input events. Higher-level line
 editing, Unicode grapheme management, completion queues, history, and prompt
@@ -210,14 +213,17 @@ waiting. `EventReader` is the current boundary for that behavior inside the
 low-level `input` package. Root terminal callers should go through
 `Tty::read_event`.
 
-Unsupported complete sequences should produce `Unknown(Bytes)`. Incomplete ESC
-or CSI sequences can become `Unknown` after timeout. This keeps the public API
-usable before the decoder knows every terminal sequence.
+Unsupported complete input sequences should produce `Input(Unknown(Bytes))`.
+Incomplete ESC or CSI sequences can become `Input(Unknown(...))` after timeout.
+This keeps the public API usable before the decoder knows every terminal
+sequence.
 
 Terminal request/response reports such as Cursor Position Report (`CSI row ;
-col R`) are not user input events. They should be consumed through dedicated
-`EventReader` side-channel methods used by root `Tty` operations. If such a
-report reaches `read_event`, it should not be misreported as a key press.
+col R`) are not user input events. They may appear as low-level stream events,
+but root `Tty::read_event` should return only `InputEvent` values. Root
+request/response operations such as `Tty::query_cursor_position` should use the
+shared reader, consume the matching response, and preserve interleaved input
+events for later `Tty::read_event` calls.
 
 ## Public API Rule
 

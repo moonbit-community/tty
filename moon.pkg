@@ -1,4 +1,5 @@
 import {
+  "moonbitlang/async",
   "moonbitlang/async/types" @async/types,
   "moonbitlang/async/fs" @async/fs,
   "moonbitlang/async/stdio" @async/stdio,

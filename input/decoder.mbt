@@ -25,42 +25,45 @@ pub fn EventReader::new(reader : &@io.Reader) -> EventReader {
 }
 
 ///|
+/// Read one terminal stream event.
+///
+/// `esc_timeout_ms` is the short wait used after an event has started to
+/// disambiguate standalone Esc and incomplete multi-byte sequences.
 pub async fn EventReader::read_event(
   self : EventReader,
-  esc_timeout? : Int = 50,
+  esc_timeout_ms? : Int = 50,
 ) -> Event {
-  guard self.read_byte() is Some(byte) else { abort("unreachable") }
-  let event = if byte == Esc {
-    read_escape(self, esc_timeout)
-  } else {
-    read_byte_event(self, byte, esc_timeout)
+  let start = self.read
+  try {
+    let byte = self.read_byte()
+    let event = if byte == Esc {
+      read_escape(self, esc_timeout_ms)
+    } else {
+      Input(read_byte_event(self, byte, esc_timeout_ms))
+    }
+    self.commit()
+    event
+  } catch {
+    err => {
+      self.rollback_to(start)
+      raise err
+    }
   }
-  self.commit()
-  event
 }
 
 ///|
-async fn EventReader::read_byte(self : EventReader, timeout? : Int) -> Byte? {
+async fn EventReader::read_byte(self : EventReader) -> Byte {
   if self.read < self.tail {
     let byte = self.data[self.read]
     self.read += 1
-    Some(byte)
+    byte
   } else {
-    let byte = match timeout {
-      Some(timeout) =>
-        @async.with_timeout_opt(timeout, () => self.read_byte_raw())
-      None => Some(self.read_byte_raw())
-    }
-    match byte {
-      Some(byte) => {
-        self.ensure_capacity(1)
-        self.data[self.tail] = byte
-        self.tail += 1
-        self.read += 1
-        Some(byte)
-      }
-      None => None
-    }
+    let byte = self.read_byte_raw()
+    self.ensure_capacity(1)
+    self.data[self.tail] = byte
+    self.tail += 1
+    self.read += 1
+    byte
   }
 }
 
@@ -76,8 +79,8 @@ fn EventReader::unread_byte(self : EventReader) -> Unit {
 }
 
 ///|
-fn EventReader::rollback(self : EventReader) -> Unit {
-  self.read = self.head
+fn EventReader::rollback_to(self : EventReader, read : Int) -> Unit {
+  self.read = read
 }
 
 ///|
@@ -123,72 +126,35 @@ fn EventReader::commit(self : EventReader) -> Unit {
 }
 
 ///|
-pub async fn EventReader::read_cursor_position_response(
-  self : EventReader,
-  timeout_ms? : Int = 50,
-) -> (Int, Int)? {
-  guard self.read_byte(timeout=timeout_ms) is Some(Esc) else {
-    self.rollback()
-    return None
-  }
-  guard self.read_byte(timeout=timeout_ms) is Some(b'[') else {
-    self.rollback()
-    return None
-  }
-  for ;; {
-    guard self.read_byte(timeout=timeout_ms) is Some(byte) else {
-      self.rollback()
-      return None
-    }
-    match byte {
-      0x30..<0x40 => ()
-      0x40..<0x7f => {
-        let response = parse_cursor_position_response(self.view())
-        match response {
-          Some(_) => {
-            self.commit()
-            return response
-          }
-          None => {
-            self.rollback()
-            return None
-          }
-        }
-      }
-      _ => {
-        self.rollback()
-        return None
-      }
-    }
-  }
-}
-
-///|
-async fn read_escape(reader : EventReader, esc_timeout : Int) -> Event {
-  guard reader.read_byte(timeout=esc_timeout) is Some(byte) else {
-    Key(KeyEvent::new(Escape))
+async fn read_escape(reader : EventReader, esc_timeout_ms : Int) -> Event {
+  guard @async.with_timeout_opt(esc_timeout_ms, () => reader.read_byte())
+    is Some(byte) else {
+    Input(Key(KeyEvent::new(Escape)))
   }
   match byte {
     Esc => {
       reader.unread_byte()
-      Key(KeyEvent::new(Escape))
+      Input(Key(KeyEvent::new(Escape)))
     }
-    b'[' => read_csi(reader, esc_timeout~)
-    b'O' => read_ss3(reader, esc_timeout~)
+    b'[' => read_csi(reader, esc_timeout_ms~)
+    b'O' => Input(read_ss3(reader, esc_timeout_ms~))
     0x20..<0x7f as byte =>
-      Key(
-        KeyEvent::new(
-          Char(byte.to_char()),
-          modifiers=KeyModifiers::new(alt=true),
+      Input(
+        Key(
+          KeyEvent::new(
+            Char(byte.to_char()),
+            modifiers=KeyModifiers::new(alt=true),
+          ),
         ),
       )
-    _ => Unknown(Bytes::from_array(reader.view()))
+    _ => Input(Unknown(Bytes::from_array(reader.view())))
   }
 }
 
 ///|
-async fn read_ss3(reader : EventReader, esc_timeout~ : Int) -> Event {
-  guard reader.read_byte(timeout=esc_timeout) is Some(byte) else {
+async fn read_ss3(reader : EventReader, esc_timeout_ms~ : Int) -> InputEvent {
+  guard @async.with_timeout_opt(esc_timeout_ms, () => reader.read_byte())
+    is Some(byte) else {
     return Unknown(Bytes::from_array(reader.view()))
   }
   if byte == Esc {
@@ -199,29 +165,32 @@ async fn read_ss3(reader : EventReader, esc_timeout~ : Int) -> Event {
 }
 
 ///|
-async fn read_csi(reader : EventReader, esc_timeout~ : Int) -> Event {
+async fn read_csi(reader : EventReader, esc_timeout_ms~ : Int) -> Event {
   let mut seen_intermediate = false
   for ;; {
-    guard reader.read_byte(timeout=esc_timeout) is Some(byte) else {
+    guard @async.with_timeout_opt(esc_timeout_ms, () => reader.read_byte())
+      is Some(byte) else {
       return match reader.view() {
         [Esc, b'['] =>
-          Key(KeyEvent::new(Char('['), modifiers=KeyModifiers::new(alt=true)))
-        _ => Unknown(Bytes::from_array(reader.view()))
+          Input(
+            Key(KeyEvent::new(Char('['), modifiers=KeyModifiers::new(alt=true))),
+          )
+        _ => Input(Unknown(Bytes::from_array(reader.view())))
       }
     }
     match byte {
       0x30..<0x40 if seen_intermediate =>
-        break Unknown(Bytes::from_array(reader.view()))
+        break Input(Unknown(Bytes::from_array(reader.view())))
       0x30..<0x40 => ()
       0x20..<0x30 => seen_intermediate = true
       0x40..<0x7f => break parse_csi(reader.view())
-      _ => break Unknown(Bytes::from_array(reader.view()))
+      _ => break Input(Unknown(Bytes::from_array(reader.view())))
     }
   }
 }
 
 ///|
-fn ss3_event(ss3 : ArrayView[Byte]) -> Event {
+fn ss3_event(ss3 : ArrayView[Byte]) -> InputEvent {
   match ss3 {
     [Esc, b'O', b'A'] => Key(KeyEvent::new(Up))
     [Esc, b'O', b'B'] => Key(KeyEvent::new(Down))
@@ -241,45 +210,34 @@ fn ss3_event(ss3 : ArrayView[Byte]) -> Event {
 fn parse_csi(csi : ArrayView[Byte]) -> Event {
   match csi {
     [Esc, b'[', b'Z'] =>
-      Key(KeyEvent::new(Tab, modifiers=KeyModifiers::new(shift=true)))
+      Input(Key(KeyEvent::new(Tab, modifiers=KeyModifiers::new(shift=true))))
     [Esc, b'[', .. params, b'~'] => {
       guard parse_csi_params(params) is Some(params) else {
-        return Unknown(Bytes::from_array(csi))
+        return Input(Unknown(Bytes::from_array(csi)))
       }
-      parse_csi_tilde_key(csi, params)
+      Input(parse_csi_tilde_key(csi, params))
     }
     [Esc, b'[', .. params, final_byte] => {
       guard parse_csi_params(params) is Some(params) else {
-        return Unknown(Bytes::from_array(csi))
+        return Input(Unknown(Bytes::from_array(csi)))
       }
       match final_byte {
-        b'A' => parse_csi_key(csi, params, Up)
-        b'B' => parse_csi_key(csi, params, Down)
-        b'C' => parse_csi_key(csi, params, Right)
-        b'D' => parse_csi_key(csi, params, Left)
-        b'H' => parse_csi_key(csi, params, Home)
-        b'F' => parse_csi_key(csi, params, End)
-        b'P' => parse_csi_key(csi, params, F1)
-        b'Q' => parse_csi_key(csi, params, F2)
-        b'R' if parse_cursor_position_params(params) is Some(_) =>
-          Unknown(Bytes::from_array(csi))
-        b'R' => parse_csi_key(csi, params, F3)
-        b'S' => parse_csi_key(csi, params, F4)
-        _ => Unknown(Bytes::from_array(csi))
+        b'A' => Input(parse_csi_key(csi, params, Up))
+        b'B' => Input(parse_csi_key(csi, params, Down))
+        b'C' => Input(parse_csi_key(csi, params, Right))
+        b'D' => Input(parse_csi_key(csi, params, Left))
+        b'H' => Input(parse_csi_key(csi, params, Home))
+        b'F' => Input(parse_csi_key(csi, params, End))
+        b'P' => Input(parse_csi_key(csi, params, F1))
+        b'Q' => Input(parse_csi_key(csi, params, F2))
+        b'R' if parse_cursor_position_params(params) is Some((row, col)) =>
+          CursorPosition(row~, col~)
+        b'R' => Input(parse_csi_key(csi, params, F3))
+        b'S' => Input(parse_csi_key(csi, params, F4))
+        _ => Input(Unknown(Bytes::from_array(csi)))
       }
     }
-    _ => Unknown(Bytes::from_array(csi))
-  }
-}
-
-///|
-fn parse_cursor_position_response(csi : ArrayView[Byte]) -> (Int, Int)? {
-  match csi {
-    [Esc, b'[', .. params, b'R'] => {
-      guard parse_csi_params(params) is Some(params) else { return None }
-      parse_cursor_position_params(params)
-    }
-    _ => None
+    _ => Input(Unknown(Bytes::from_array(csi)))
   }
 }
 
@@ -296,7 +254,7 @@ fn parse_csi_key(
   csi : ArrayView[Byte],
   params : Array[Int?],
   code : KeyCode,
-) -> Event {
+) -> InputEvent {
   guard parse_csi_key_modifiers(params) is Some(modifiers) else {
     return Unknown(Bytes::from_array(csi))
   }
@@ -342,7 +300,10 @@ fn parse_csi_key_modifiers(params : Array[Int?]) -> KeyModifiers? {
 }
 
 ///|
-fn parse_csi_tilde_key(csi : ArrayView[Byte], params : Array[Int?]) -> Event {
+fn parse_csi_tilde_key(
+  csi : ArrayView[Byte],
+  params : Array[Int?],
+) -> InputEvent {
   let (code, modifiers) = match params {
     [Some(code)] => (code, KeyModifiers::new())
     [Some(code), None] => (code, KeyModifiers::new())
@@ -399,8 +360,8 @@ fn modifiers_from_param(param : Int) -> KeyModifiers {
 async fn read_byte_event(
   reader : EventReader,
   byte : Byte,
-  esc_timeout : Int,
-) -> Event {
+  esc_timeout_ms : Int,
+) -> InputEvent {
   match byte {
     b'\r' => Key(KeyEvent::new(Enter))
     b'\n' =>
@@ -427,7 +388,7 @@ async fn read_byte_event(
       let char = byte.to_char()
       Key(KeyEvent::new(Char(char), text=[char]))
     }
-    _ => read_utf8_text(reader, byte, esc_timeout~)
+    _ => read_utf8_text(reader, byte, esc_timeout_ms~)
   }
 }
 
@@ -435,13 +396,14 @@ async fn read_byte_event(
 async fn read_utf8_text(
   reader : EventReader,
   first : Byte,
-  esc_timeout~ : Int,
-) -> Event {
+  esc_timeout_ms~ : Int,
+) -> InputEvent {
   guard utf8_sequence_length(first) is Some(len) else {
     return Unknown([first])
   }
   for _ in 1..<len {
-    guard reader.read_byte(timeout=esc_timeout) is Some(byte) else {
+    guard @async.with_timeout_opt(esc_timeout_ms, () => reader.read_byte())
+      is Some(byte) else {
       return Unknown(Bytes::from_array(reader.view()))
     }
     if !is_utf8_continuation(byte) {
@@ -458,7 +420,7 @@ async fn read_utf8_text(
 }
 
 ///|
-fn text_event(text : String) -> Event {
+fn text_event(text : String) -> InputEvent {
   let mut count = 0
   let mut first = '\u{0}'
   for ch in text {

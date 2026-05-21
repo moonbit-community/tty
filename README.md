@@ -49,10 +49,11 @@ position request, and low-level SGR helpers.
 
 Terminal input byte decoding.
 
-`EventReader` decodes an `@io.Reader` into key events and unknown byte
-sequences. Root callers that are working with a terminal should normally use
-`Tty::read_event` so terminal request/response traffic and normal input share
-the same buffered reader.
+`EventReader` decodes an `@io.Reader` into terminal stream events. Stream
+events wrap user input events and terminal responses such as cursor position
+reports. Root callers that are working with a terminal should normally use
+`Tty::read_event` for user input so terminal request/response traffic and
+normal input share the same buffered reader.
 
 ### `tonyfettes/tty/color`
 
