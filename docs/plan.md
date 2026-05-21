@@ -39,6 +39,7 @@ This board tracks implementation direction for `tonyfettes/tty`. Use
 | TTY-7 | done | trait-based terminal handles | `docs/plans/2026-05-20-tty-reader-writer-traits.md`, root package | `Tty::new` accepts any terminal reader/writer pair implementing root traits while `Tty` stays opaque and non-generic | `moon fmt`, `moon test .`, `moon check examples/agent`, `moon test`, `moon check`, `moon info`, `git diff --check` |
 | TTY-8 | done | remove root `Input`/`Output` wrappers | `docs/plans/2026-05-20-remove-input-output-wrappers.md`, root package, examples | root terminal API exposes `Tty` plus terminal handle traits; raw stdio/file I/O comes from `moonbitlang/async` | `moon fmt`, `moon test .`, targeted `moon check examples/*`, `moon test`, `moon check`, `moon info`, `git diff --check` |
 | TTY-9 | done | RawFd-backed controlling terminal open | `docs/plans/2026-05-21-tty-open-raw-fd.md`, root package | Unix `Tty::open` avoids macOS kqueue registration for `/dev/tty` while keeping the public API shape | `moon fmt`, `moon test .`, `moon check examples/agent`, `moon test`, `moon check`, `moon info`, manual PTY smoke |
+| TTY-10 | done | Unix resize events | `docs/plans/2026-05-21-resize-events.md`, root package, examples | root `Tty::read_event` reports input and coalesced Unix resize events while CPR remains a low-level terminal response | `moon fmt`, `moon test .`, `moon test input`, targeted example checks, `moon test`, `moon check`, `moon info`, `git diff --check` |
 
 ## Current Rules
 
@@ -48,4 +49,5 @@ This board tracks implementation direction for `tonyfettes/tty`. Use
 - Keep `examples/input` as a demo. Its grapheme-aware buffer validates higher-level
   editing behavior but does not create a public line-editing API.
 - When a task touches `.mbti`, include public API audit notes in its plan.
-- Do not add resize events until a plan defines signal/console-event ownership.
+- Resize events use the TTY-10 plan: Unix `SIGWINCH` is process-global and
+  coalesced; Windows console resize events need a later backend plan.

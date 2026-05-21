@@ -100,10 +100,14 @@ async test "tty query cursor position coordinates input and output" {
       }
       None => fail("expected cursor position")
     }
-    @debug.assert_eq(
-      tty.read_input(),
-      @input.Key(@input.KeyEvent::new(@input.Char('a'), text="a")),
-    )
+    match tty.read_event() {
+      Input(event) =>
+        @debug.assert_eq(
+          event,
+          @input.Key(@input.KeyEvent::new(@input.Char('a'), text="a")),
+        )
+      Resize(_) => fail("expected pending input")
+    }
   })
   inspect(output, content="\u{1B}[6n")
 }

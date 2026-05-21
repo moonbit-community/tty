@@ -2,7 +2,7 @@
 pub struct WindowSize {
   rows : Int
   cols : Int
-}
+} derive(Eq)
 
 ///|
 pub fn Tty::window_size(self : Self) -> WindowSize raise @os_error.OSError {

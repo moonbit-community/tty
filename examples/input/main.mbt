@@ -132,51 +132,55 @@ async fn run_input_buffer(tty : @tty.Tty) -> Unit {
   )
   redraw_input(tty, buffer, "")
   while true {
-    let event = tty.read_input(esc_timeout_ms~) catch {
+    let event = tty.read_event(esc_timeout_ms~) catch {
       @async/io.ReaderClosed => break
       error => raise error
     }
     match event {
-      Key(key) =>
-        match key.code {
-          Char('c') if key.modifiers.ctrl() => {
-            tty.write("\r")
-            tty.write(@tty/vt.erase_line_all)
-            writeln(tty, "exiting")
-            break
-          }
-          Enter => {
-            submit(tty, buffer)
-            buffer = ""
-          }
-          Backspace => {
-            buffer = delete_last_grapheme(buffer)
-            redraw_input(tty, buffer, "event: Backspace")
-          }
-          Text =>
-            match key.text {
-              Some(text) => {
+      @tty.Input(input) =>
+        match input {
+          Key(key) =>
+            match key.code {
+              Char('c') if key.modifiers.ctrl() => {
+                tty.write("\r")
+                tty.write(@tty/vt.erase_line_all)
+                writeln(tty, "exiting")
+                break
+              }
+              Enter => {
+                submit(tty, buffer)
+                buffer = ""
+              }
+              Backspace => {
+                buffer = delete_last_grapheme(buffer)
+                redraw_input(tty, buffer, "event: Backspace")
+              }
+              Text =>
+                match key.text {
+                  Some(text) => {
+                    buffer = buffer + text
+                    redraw_input(tty, buffer, describe_key(key))
+                  }
+                  None => redraw_input(tty, buffer, describe_key(key))
+                }
+              Char(ch) if !key.modifiers.ctrl() && !key.modifiers.alt() => {
+                let text = match key.text {
+                  Some(text) => text
+                  None => [ch]
+                }
                 buffer = buffer + text
                 redraw_input(tty, buffer, describe_key(key))
               }
-              None => redraw_input(tty, buffer, describe_key(key))
+              _ => redraw_input(tty, buffer, describe_key(key))
             }
-          Char(ch) if !key.modifiers.ctrl() && !key.modifiers.alt() => {
-            let text = match key.text {
-              Some(text) => text
-              None => [ch]
-            }
-            buffer = buffer + text
-            redraw_input(tty, buffer, describe_key(key))
-          }
-          _ => redraw_input(tty, buffer, describe_key(key))
+          @tty/input.Unknown(bytes) =>
+            redraw_input(
+              tty,
+              buffer,
+              "event: Unknown \{bytes.length()} bytes [\{describe_bytes(bytes)}]",
+            )
         }
-      @tty/input.Unknown(bytes) =>
-        redraw_input(
-          tty,
-          buffer,
-          "event: Unknown \{bytes.length()} bytes [\{describe_bytes(bytes)}]",
-        )
+      @tty.Resize(_) => redraw_input(tty, buffer, "")
     }
   }
 }

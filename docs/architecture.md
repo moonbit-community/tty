@@ -35,6 +35,7 @@ operations:
   (`moonbitlang/async` files, stdio handles, and OS pipes implement them)
 - `isatty`
 - terminal window size queries through `Tty`
+- decoded root terminal events through `Tty`
 - coordinated cursor position report queries through `Tty`
 - command helpers for common screen, cursor, and style operations through `Tty`
 - terminal state operations such as `Tty::get_state`, `Tty::set_state`, and raw
@@ -100,10 +101,10 @@ It should not:
 Root `Tty` methods map color values onto SGR byte sequences when writing to a
 terminal. Raw byte callers should use low-level `vt` helpers directly.
 
-Root callers that want decoded terminal input events should use
-`Tty::read_input` so terminal request/response side channels and normal input
-decoding share one buffered reader. Direct `EventReader` construction belongs to
-the low-level `input` package for callers decoding an arbitrary `@io.Reader`.
+Root callers that want decoded terminal events should use `Tty::read_event` so
+terminal request/response side channels, resize notifications, and normal input
+decoding share one coordinated handle. Direct `EventReader` construction belongs
+to the low-level `input` package for callers decoding an arbitrary `@io.Reader`.
 
 Color capability detection belongs in a future higher-level package or plan
 because it combines tty state, environment policy, and terminal conventions.
@@ -168,9 +169,9 @@ handle-based storage per target.
 
 Window size is exposed through `Tty` because callers usually need the visible
 screen buffer size while coordinating terminal input and output. The current
-implementation queries the output-side handle. Resize notification is
-deliberately separate from size querying and should not be added without a plan
-for Unix signal and Windows console-event ownership.
+query implementation uses the output-side handle. Unix resize notification is a
+process-global `SIGWINCH` source surfaced as coalesced root `Tty::read_event`
+resize events. Windows resize events need a later console-input backend.
 
 ## Raw Mode
 
@@ -212,7 +213,7 @@ The timeout boundary belongs close to byte acquisition because a standalone ESC
 cannot be distinguished from the start of a longer escape sequence without
 waiting. `EventReader` is the current boundary for that behavior inside the
 low-level `input` package. Root terminal callers should go through
-`Tty::read_input`.
+`Tty::read_event`.
 
 Unsupported complete input sequences should produce `Input(Unknown(Bytes))`.
 Incomplete ESC or CSI sequences can become `Input(Unknown(...))` after timeout.
@@ -221,10 +222,10 @@ sequence.
 
 Terminal request/response reports such as Cursor Position Report (`CSI row ;
 col R`) are not user input events. They may appear as low-level stream events,
-but root `Tty::read_input` should return only `InputEvent` values. Root
+but root `Tty::read_event` should not surface CPR as a public root event. Root
 request/response operations such as `Tty::query_cursor_position` should use the
 shared reader, consume the matching response, and preserve interleaved input
-events for later `Tty::read_input` calls.
+events for later `Tty::read_event` calls.
 
 ## Public API Rule
 

@@ -362,7 +362,7 @@ async fn run_pager(
   let mut offset = clamp_offset(0, lines, body_rows(size))
   let mut full_screen = render_initial(tty, title, lines, offset, size)
   while true {
-    let event = tty.read_input(esc_timeout_ms~) catch {
+    let event = tty.read_event(esc_timeout_ms~) catch {
       @async/io.ReaderClosed => break
       error => raise error
     }
@@ -371,19 +371,24 @@ async fn run_pager(
     let mut next_offset = offset
     let mut quit = false
     match event {
-      @tty/input.Key(key) =>
-        match key.code {
-          Char('q') => quit = true
-          Char('c') if key.modifiers.ctrl() => quit = true
-          Down | Char('j') => next_offset = offset + 1
-          Up | Char('k') => next_offset = offset - 1
-          PageDown | Char(' ') => next_offset = offset + page_step(size)
-          PageUp | Char('b') => next_offset = offset - page_step(size)
-          Home | Char('g') => next_offset = 0
-          End | Char('G') => next_offset = max_offset(lines, body_rows(size))
-          _ => ()
+      @tty.Input(input) =>
+        match input {
+          @tty/input.Key(key) =>
+            match key.code {
+              Char('q') => quit = true
+              Char('c') if key.modifiers.ctrl() => quit = true
+              Down | Char('j') => next_offset = offset + 1
+              Up | Char('k') => next_offset = offset - 1
+              PageDown | Char(' ') => next_offset = offset + page_step(size)
+              PageUp | Char('b') => next_offset = offset - page_step(size)
+              Home | Char('g') => next_offset = 0
+              End | Char('G') =>
+                next_offset = max_offset(lines, body_rows(size))
+              _ => ()
+            }
+          Unknown(_) => ()
         }
-      Unknown(_) => ()
+      @tty.Resize(_) => ()
     }
     if quit {
       break

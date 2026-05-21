@@ -8,6 +8,13 @@ pub struct CursorPosition {
 } derive(Eq)
 
 ///|
+/// Terminal event reported by the coordinated root `Tty` handle.
+pub(all) enum Event {
+  Input(@input.InputEvent)
+  Resize(WindowSize)
+} derive(Eq)
+
+///|
 /// Coordinated terminal input/output handle.
 ///
 /// `Tty` is for terminal protocols that need to write a request and read the
@@ -45,17 +52,22 @@ pub fn Tty::close(self : Self) -> Unit {
 }
 
 ///|
-pub async fn Tty::read_input(
-  self : Self,
-  esc_timeout_ms? : Int = 50,
-) -> @input.InputEvent {
+pub async fn Tty::read_event(self : Self, esc_timeout_ms? : Int = 50) -> Event {
   if self.pending_input.length() > 0 {
-    return self.pending_input.remove(0)
+    return Input(self.pending_input.remove(0))
   }
+  self.read_event_from_sources(esc_timeout_ms)
+}
+
+///|
+async fn Tty::read_decoded_input_event(
+  self : Self,
+  esc_timeout_ms : Int,
+) -> Event {
   for ;; {
     match self.reader.read_event(esc_timeout_ms~) {
-      @input.Input(event) => return event
-      @input.CursorPosition(row=_, col=_) => ()
+      @input.Input(event) => return Input(event)
+      @input.CursorPosition(..) => ()
     }
   }
 }

@@ -977,13 +977,13 @@ async fn run_agent(tty : @tty.Tty) -> Unit {
     None => ()
   }
   while true {
-    let event = tty.read_input(esc_timeout_ms~) catch {
+    let event = tty.read_event(esc_timeout_ms~) catch {
       @async/io.ReaderClosed => break
       error => raise error
     }
     size = terminal_size(tty)
     match event {
-      @tty/input.Key(key) =>
+      @tty.Input(@tty/input.Key(key)) =>
         match key.code {
           @tty/input.Char('c') if key.modifiers.ctrl() => break
           @tty/input.Char('d') if key.modifiers.ctrl() &&
@@ -1075,7 +1075,7 @@ async fn run_agent(tty : @tty.Tty) -> Unit {
                 )
             }
         }
-      @tty/input.Unknown(bytes) =>
+      @tty.Input(@tty/input.Unknown(bytes)) =>
         viewport_top = redraw_input(
           tty,
           viewport_top,
@@ -1084,6 +1084,8 @@ async fn run_agent(tty : @tty.Tty) -> Unit {
           "unknown input: \{bytes.length()} bytes",
           size,
         )
+      @tty.Resize(_) =>
+        viewport_top = redraw_input(tty, viewport_top, editor, editor, "", size)
     }
   }
   leave_agent(tty, editor, viewport_top)
