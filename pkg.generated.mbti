@@ -33,8 +33,11 @@ pub fn State::make_raw(Self) -> Self
 
 type Tty
 pub fn Tty::close(Self) -> Unit
+pub async fn Tty::cursor_forward(Self, Int) -> Unit
+pub async fn Tty::cursor_up(Self, Int) -> Unit
 pub async fn Tty::enter_alt_screen(Self) -> Unit
 pub fn Tty::enter_raw_mode(Self) -> State raise @os_error.OSError
+pub async fn Tty::erase_line_all(Self) -> Unit
 pub fn Tty::get_state(Self) -> State raise @os_error.OSError
 pub async fn Tty::hide_cursor(Self) -> Unit
 pub async fn Tty::leave_alt_screen(Self) -> Unit
@@ -46,10 +49,13 @@ pub async fn Tty::read_event(Self, esc_timeout_ms? : Int) -> Event
 pub async fn Tty::reset_background(Self) -> Unit
 pub async fn Tty::reset_foreground(Self) -> Unit
 pub async fn Tty::reset_style(Self) -> Unit
+pub async fn Tty::reset_top_bottom_margins(Self) -> Unit
+pub async fn Tty::reverse_index(Self) -> Unit
 pub async fn Tty::set_background(Self, @color.Color) -> Unit
 pub async fn Tty::set_cursor_position(Self, Int, Int) -> Unit
 pub async fn Tty::set_foreground(Self, @color.Color) -> Unit
 pub fn Tty::set_state(Self, State) -> State raise @os_error.OSError
+pub async fn Tty::set_top_bottom_margins(Self, Int, Int) -> Unit
 pub async fn Tty::show_cursor(Self) -> Unit
 pub fn Tty::stdio() -> Self
 pub fn Tty::window_size(Self) -> WindowSize raise @os_error.OSError

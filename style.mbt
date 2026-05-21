@@ -148,6 +148,46 @@ pub async fn Tty::set_cursor_position(
 }
 
 ///|
+/// Cursor Up (CUU), ECMA-48.
+pub async fn Tty::cursor_up(self : Self, n : Int) -> Unit {
+  self.write(@vt.cursor_up(n))
+}
+
+///|
+/// Cursor Forward (CUF), ECMA-48.
+pub async fn Tty::cursor_forward(self : Self, n : Int) -> Unit {
+  self.write(@vt.cursor_forward(n))
+}
+
+///|
+/// Erase the entire current line (EL 2), ECMA-48.
+pub async fn Tty::erase_line_all(self : Self) -> Unit {
+  self.write(@vt.erase_line_all)
+}
+
+///|
+/// Set Top and Bottom Margins (DECSTBM).
+pub async fn Tty::set_top_bottom_margins(
+  self : Self,
+  top : Int,
+  bottom : Int,
+) -> Unit {
+  self.write(@vt.set_top_bottom_margins(top, bottom))
+}
+
+///|
+/// Reset Top and Bottom Margins (DECSTBM).
+pub async fn Tty::reset_top_bottom_margins(self : Self) -> Unit {
+  self.write(@vt.reset_top_bottom_margins)
+}
+
+///|
+/// Reverse Index (RI), ECMA-48.
+pub async fn Tty::reverse_index(self : Self) -> Unit {
+  self.write(@vt.reverse_index)
+}
+
+///|
 /// Set the foreground color.
 pub async fn Tty::set_foreground(self : Self, color : @color.Color) -> Unit {
   self.write(foreground_sequence(color))

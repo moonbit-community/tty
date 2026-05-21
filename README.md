@@ -31,8 +31,8 @@ Use `Tty` when an operation needs a real terminal handle:
 - terminal size: `Tty::window_size`
 - cursor position report: `Tty::query_cursor_position`
 - terminal events: `Tty::read_event`
-- output commands: cursor visibility/position, alternate screen,
-  foreground/background colors, and style reset
+- output commands: cursor movement/visibility, line erase, scroll margins,
+  reverse index, alternate screen, foreground/background colors, and style reset
 
 Raw file and stdio byte I/O should use `moonbitlang/async/fs` and
 `moonbitlang/async/stdio` directly. The root package does not wrap them as

@@ -422,21 +422,16 @@ async fn write(tty : @tty.Tty, text : String) -> Unit {
 }
 
 ///|
-async fn write_bytes(tty : @tty.Tty, bytes : Bytes) -> Unit {
-  tty.write(bytes)
-}
-
-///|
 async fn move_up(tty : @tty.Tty, rows : Int) -> Unit {
   if rows > 0 {
-    write_bytes(tty, @tty/vt.cursor_up(rows))
+    tty.cursor_up(rows)
   }
 }
 
 ///|
 async fn move_forward(tty : @tty.Tty, cols : Int) -> Unit {
   if cols > 0 {
-    write_bytes(tty, @tty/vt.cursor_forward(cols))
+    tty.cursor_forward(cols)
   }
 }
 
@@ -454,7 +449,7 @@ async fn write_colored_text(
 ///|
 async fn erase_current_line(tty : @tty.Tty) -> Unit {
   write(tty, "\r")
-  write_bytes(tty, @tty/vt.erase_line_all)
+  tty.erase_line_all()
 }
 
 ///|
@@ -712,12 +707,12 @@ async fn shift_viewport_down_for_insert(
   if shift <= 0 {
     top
   } else {
-    write_bytes(tty, @tty/vt.set_top_bottom_margins(top, size.rows))
+    tty.set_top_bottom_margins(top, size.rows)
     tty.set_cursor_position(top, 1)
     for _ in 0..<shift {
-      write_bytes(tty, @tty/vt.reverse_index)
+      tty.reverse_index()
     }
-    write_bytes(tty, @tty/vt.reset_top_bottom_margins)
+    tty.reset_top_bottom_margins()
     top + shift
   }
 }
@@ -735,11 +730,11 @@ async fn insert_transcript_row_above_viewport(
   if history_bottom < 1 {
     render_transcript_row(tty, prefix, color, text, size)
   } else {
-    write_bytes(tty, @tty/vt.set_top_bottom_margins(1, history_bottom))
+    tty.set_top_bottom_margins(1, history_bottom)
     tty.set_cursor_position(history_bottom, 1)
     write(tty, "\r\n")
     render_transcript_row_current(tty, prefix, color, text, size)
-    write_bytes(tty, @tty/vt.reset_top_bottom_margins)
+    tty.reset_top_bottom_margins()
   }
 }
 
@@ -818,7 +813,7 @@ async fn append_agent_above_viewport(
 
 ///|
 async fn restore_terminal(tty : @tty.Tty) -> Unit {
-  write_bytes(tty, @tty/vt.reset_top_bottom_margins)
+  tty.reset_top_bottom_margins()
   tty.reset_style()
   tty.show_cursor()
 }
