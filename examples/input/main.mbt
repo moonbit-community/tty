@@ -179,6 +179,14 @@ async fn run_input_buffer(tty : @tty.Tty) -> Unit {
               buffer,
               "event: Unknown \{bytes.length()} bytes [\{describe_bytes(bytes)}]",
             )
+          @tty/input.Paste(text) => {
+            buffer = buffer + text
+            redraw_input(
+              tty,
+              buffer,
+              "event: Paste \{display_width(text)} cols",
+            )
+          }
         }
       @tty.Resize(_) => redraw_input(tty, buffer, "")
     }
@@ -188,5 +196,5 @@ async fn run_input_buffer(tty : @tty.Tty) -> Unit {
 ///|
 async fn main {
   let tty = @tty.Tty::stdio()
-  tty.with_raw_mode(() => run_input_buffer(tty))
+  tty.with_raw_mode(() => tty.with_bracketed_paste(() => run_input_buffer(tty)))
 }

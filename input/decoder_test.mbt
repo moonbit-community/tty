@@ -42,6 +42,11 @@ fn input_unknown(bytes : Bytes) -> @input.Event {
 }
 
 ///|
+fn input_paste(text : String) -> @input.Event {
+  @input.Input(@input.Paste(text))
+}
+
+///|
 test "key modifier accessors" {
   let modifiers = @input.KeyModifiers::new(
     shift=true,
@@ -660,6 +665,44 @@ async test "decode unsupported csi as unknown and leaves following bytes buffere
     @debug.assert_eq(
       events.read_event(),
       input_key(@input.KeyEvent::new(@input.Char('a'), text="a")),
+    )
+  })
+}
+
+///|
+async test "decode bracketed paste as one input event" {
+  with_input(b"\x1b[200~hello\x1b[201~a", events => {
+    @debug.assert_eq(events.read_event(), input_paste("hello"))
+    @debug.assert_eq(
+      events.read_event(),
+      input_key(@input.KeyEvent::new(@input.Char('a'), text="a")),
+    )
+  })
+}
+
+///|
+async test "decode bracketed paste payload without nested key parsing" {
+  with_input(b"\x1b[200~o\x1b[2D\r\x1b[201~", events => {
+    @debug.assert_eq(events.read_event(), input_paste("o\u{1B}[2D\r"))
+  })
+}
+
+///|
+async test "decode invalid utf8 bracketed paste as unknown" {
+  with_input(b"\x1b[200~\xff\x1b[201~", events => {
+    @debug.assert_eq(
+      events.read_event(),
+      input_unknown(b"\x1b[200~\xff\x1b[201~"),
+    )
+  })
+}
+
+///|
+async test "decode unclosed bracketed paste as unknown after timeout" {
+  with_delayed_input(b"\x1b[200~hello", b"", 50, events => {
+    @debug.assert_eq(
+      events.read_event(esc_timeout_ms=10),
+      input_unknown(b"\x1b[200~hello"),
     )
   })
 }

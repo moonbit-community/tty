@@ -75,6 +75,7 @@ test "style color sequences encode semantic colors" {
 async test "pipe tty terminal commands write sequences" {
   let output = with_pipe_tty(b"", tty => {
     tty.enter_alt_screen()
+    tty.enable_bracketed_paste()
     tty.hide_cursor()
     tty.set_cursor_position(3, 4)
     tty.cursor_up(2)
@@ -89,11 +90,12 @@ async test "pipe tty terminal commands write sequences" {
     tty.reset_background()
     tty.reset_style()
     tty.show_cursor()
+    tty.disable_bracketed_paste()
     tty.leave_alt_screen()
   })
   inspect(
     output,
-    content="\u{1B}[?1049h\u{1B}[?25l\u{1B}[3;4H\u{1B}[2A\u{1B}[3C\u{1B}[2K\u{1B}[1;5r\u{1B}M\u{1B}[r\u{1B}[31m\u{1B}[39m\u{1B}[48;5;42m\u{1B}[49m\u{1B}[0m\u{1B}[?25h\u{1B}[?1049l",
+    content="\u{1B}[?1049h\u{1B}[?2004h\u{1B}[?25l\u{1B}[3;4H\u{1B}[2A\u{1B}[3C\u{1B}[2K\u{1B}[1;5r\u{1B}M\u{1B}[r\u{1B}[31m\u{1B}[39m\u{1B}[48;5;42m\u{1B}[49m\u{1B}[0m\u{1B}[?25h\u{1B}[?2004l\u{1B}[?1049l",
   )
 }
 

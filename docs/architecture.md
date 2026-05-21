@@ -38,6 +38,7 @@ operations:
 - decoded root terminal events through `Tty`
 - coordinated cursor position report queries through `Tty`
 - command helpers for common screen, cursor, and style operations through `Tty`
+- bracketed paste mode helpers through `Tty`
 - terminal state operations such as `Tty::get_state`, `Tty::set_state`, and raw
   mode helpers through `Tty`
 
@@ -62,6 +63,7 @@ It should:
 - construct cursor movement sequences
 - construct erase sequences
 - construct screen mode sequences such as alternate-screen enter/leave
+- construct bracketed paste enable/disable sequences
 - construct scrolling-margin and reverse-index sequences
 - construct low-level SGR sequences
 - document the standard or terminal family each sequence comes from
@@ -120,7 +122,8 @@ Current shape:
   stream events
 - `Event` contains `Input(InputEvent)` for user input and terminal responses
   such as cursor-position reports
-- `InputEvent` contains key events and unknown byte sequences
+- `InputEvent` contains key events, complete valid UTF-8 bracketed paste
+  payloads, and unknown byte sequences
 - unsupported or intentionally unmodeled sequences should become `Unknown`
   input events rather than hard errors
 
@@ -131,6 +134,10 @@ redraw belong in a caller or a future higher-level package.
 `KeyEvent::text` is decoded terminal text, not a promise about grapheme
 clusters, display columns, or cursor movement. Callers that edit visible text
 must segment and measure that text at their own layer.
+
+Bracketed paste decoding treats payload bytes as text until the closing
+`CSI 201 ~` marker. Payloads that are invalid UTF-8 or unclosed are reported as
+`Unknown` rather than partial paste text.
 
 ### `examples`
 

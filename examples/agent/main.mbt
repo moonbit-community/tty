@@ -1400,6 +1400,13 @@ async fn run_agent(tty : @tty.Tty) -> Unit {
                 "unknown input: \{bytes.length()} bytes",
                 size,
               )
+            @tty.Input(@tty/input.Paste(text)) => {
+              let old_editor = editor
+              editor = editor.insert_user_text(text)
+              viewport_top = redraw_input(
+                tty, viewport_top, old_editor, editor, "", size,
+              )
+            }
             @tty.Resize(_) =>
               viewport_top = redraw_input(
                 tty, viewport_top, editor, editor, "", size,

@@ -22,6 +22,7 @@ pub async fn EventReader::read_event(Self, esc_timeout_ms? : Int) -> Event
 
 pub(all) enum InputEvent {
   Key(KeyEvent)
+  Paste(String)
   Unknown(Bytes)
 } derive(Eq, @debug.Debug)
 

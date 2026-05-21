@@ -2,6 +2,7 @@
 /// User input decoded from terminal bytes.
 pub(all) enum InputEvent {
   Key(KeyEvent)
+  Paste(String)
   Unknown(Bytes)
 } derive(Eq, Debug)
 

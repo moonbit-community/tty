@@ -386,6 +386,7 @@ async fn run_pager(
                 next_offset = max_offset(lines, body_rows(size))
               _ => ()
             }
+          Paste(_) => ()
           Unknown(_) => ()
         }
       @tty.Resize(_) => ()

@@ -126,6 +126,35 @@ pub async fn[T] Tty::with_alt_screen(self : Self, f : async () -> T) -> T {
 }
 
 ///|
+/// Enable bracketed paste mode.
+pub async fn Tty::enable_bracketed_paste(self : Self) -> Unit {
+  self.write(@vt.enable_bracketed_paste)
+}
+
+///|
+/// Disable bracketed paste mode.
+pub async fn Tty::disable_bracketed_paste(self : Self) -> Unit {
+  self.write(@vt.disable_bracketed_paste)
+}
+
+///|
+/// Run `f` with bracketed paste mode enabled.
+pub async fn[T] Tty::with_bracketed_paste(self : Self, f : async () -> T) -> T {
+  self.enable_bracketed_paste()
+  try f() catch {
+    error => {
+      self.disable_bracketed_paste()
+      raise error
+    }
+  } noraise {
+    value => {
+      self.disable_bracketed_paste()
+      value
+    }
+  }
+}
+
+///|
 /// Hide the terminal cursor.
 pub async fn Tty::hide_cursor(self : Self) -> Unit {
   self.write(@vt.hide_cursor)

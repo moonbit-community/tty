@@ -18,6 +18,10 @@ pub fn cursor_prev_line(Int) -> Bytes
 
 pub fn cursor_up(Int) -> Bytes
 
+pub let disable_bracketed_paste : Bytes
+
+pub let enable_bracketed_paste : Bytes
+
 pub let enter_alt_screen : Bytes
 
 pub let erase_line_all : Bytes

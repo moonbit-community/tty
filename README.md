@@ -32,7 +32,8 @@ Use `Tty` when an operation needs a real terminal handle:
 - cursor position report: `Tty::query_cursor_position`
 - terminal events: `Tty::read_event`
 - output commands: cursor movement/visibility, line erase, scroll margins,
-  reverse index, alternate screen, foreground/background colors, and style reset
+  reverse index, alternate screen, bracketed paste mode,
+  foreground/background colors, and style reset
 
 Raw file and stdio byte I/O should use `moonbitlang/async/fs` and
 `moonbitlang/async/stdio` directly. The root package does not wrap them as
@@ -44,7 +45,7 @@ Pure VT/ANSI byte sequence helpers.
 
 This package returns `Bytes` and does not own an output stream. It contains
 cursor movement, erase, alternate-screen, scroll-region, reverse-index, cursor
-position request, and low-level SGR helpers.
+position request, bracketed paste mode, and low-level SGR helpers.
 
 ### `tonyfettes/tty/input`
 
@@ -55,6 +56,8 @@ events wrap user input events and terminal responses such as cursor position
 reports. Root callers that are working with a terminal should normally use
 `Tty::read_event` so input, resize notifications, and terminal
 request/response traffic share the same coordinated terminal handle.
+When bracketed paste mode is enabled, complete valid UTF-8 paste payloads are
+reported as one paste input event.
 
 ### `tonyfettes/tty/color`
 
@@ -105,6 +108,7 @@ async fn main {
             Char('q') => break
             _ => ()
           }
+        @tty.Input(@tty/input.Paste(_)) => ()
         @tty.Input(@tty/input.Unknown(_)) => ()
         @tty.Resize(_) => ()
       }

@@ -84,8 +84,8 @@ fn EventReader::rollback_to(self : EventReader, read : Int) -> Unit {
 }
 
 ///|
-fn EventReader::view(self : EventReader) -> ArrayView[Byte] {
-  self.data[self.head:self.read]
+fn EventReader::view(self : EventReader) -> BytesView {
+  self.data.unsafe_reinterpret_as_bytes()[self.head:self.read]
 }
 
 ///|
@@ -147,7 +147,7 @@ async fn read_escape(reader : EventReader, esc_timeout_ms : Int) -> Event {
           ),
         ),
       )
-    _ => Input(Unknown(Bytes::from_array(reader.view())))
+    _ => Input(Unknown(reader.view().to_owned()))
   }
 }
 
@@ -155,11 +155,11 @@ async fn read_escape(reader : EventReader, esc_timeout_ms : Int) -> Event {
 async fn read_ss3(reader : EventReader, esc_timeout_ms~ : Int) -> InputEvent {
   guard @async.with_timeout_opt(esc_timeout_ms, () => reader.read_byte())
     is Some(byte) else {
-    return Unknown(Bytes::from_array(reader.view()))
+    return Unknown(reader.view().to_owned())
   }
   if byte == Esc {
     reader.unread_byte()
-    return Unknown(Bytes::from_array(reader.view()))
+    return Unknown(reader.view().to_owned())
   }
   ss3_event(reader.view())
 }
@@ -175,22 +175,67 @@ async fn read_csi(reader : EventReader, esc_timeout_ms~ : Int) -> Event {
           Input(
             Key(KeyEvent::new(Char('['), modifiers=KeyModifiers::new(alt=true))),
           )
-        _ => Input(Unknown(Bytes::from_array(reader.view())))
+        _ => Input(Unknown(reader.view().to_owned()))
       }
     }
     match byte {
       0x30..<0x40 if seen_intermediate =>
-        break Input(Unknown(Bytes::from_array(reader.view())))
+        break Input(Unknown(reader.view().to_owned()))
       0x30..<0x40 => ()
       0x20..<0x30 => seen_intermediate = true
-      0x40..<0x7f => break parse_csi(reader.view())
-      _ => break Input(Unknown(Bytes::from_array(reader.view())))
+      0x40..<0x7f =>
+        break if is_bracketed_paste_start(reader.view()) {
+          read_bracketed_paste(reader, esc_timeout_ms~)
+        } else {
+          parse_csi(reader.view())
+        }
+      _ => break Input(Unknown(reader.view().to_owned()))
     }
   }
 }
 
 ///|
-fn ss3_event(ss3 : ArrayView[Byte]) -> InputEvent {
+fn is_bracketed_paste_start(csi : BytesView) -> Bool {
+  match csi {
+    [Esc, .. b"[200~"] => true
+    _ => false
+  }
+}
+
+///|
+async fn read_bracketed_paste(
+  reader : EventReader,
+  esc_timeout_ms~ : Int,
+) -> Event {
+  for ;; {
+    guard @async.with_timeout_opt(esc_timeout_ms, () => reader.read_byte())
+      is Some(_) else {
+      return Input(Unknown(reader.view().to_owned()))
+    }
+    let view = reader.view()
+    if parse_bracketed_paste(view) is Some(event) {
+      return event
+    }
+  }
+}
+
+///|
+fn parse_bracketed_paste(paste : BytesView) -> Event? {
+  match paste {
+    [Esc, .. b"[200~", .. payload, Esc, .. b"[201~"] =>
+      Some(
+        try @utf8.decode(payload) catch {
+          _ => Input(Unknown(paste.to_owned()))
+        } noraise {
+          text => Input(Paste(text))
+        },
+      )
+    _ => None
+  }
+}
+
+///|
+fn ss3_event(ss3 : BytesView) -> InputEvent {
   match ss3 {
     [Esc, b'O', b'A'] => Key(KeyEvent::new(Up))
     [Esc, b'O', b'B'] => Key(KeyEvent::new(Down))
@@ -202,24 +247,24 @@ fn ss3_event(ss3 : ArrayView[Byte]) -> InputEvent {
     [Esc, b'O', b'Q'] => Key(KeyEvent::new(F2))
     [Esc, b'O', b'R'] => Key(KeyEvent::new(F3))
     [Esc, b'O', b'S'] => Key(KeyEvent::new(F4))
-    _ => Unknown(Bytes::from_array(ss3))
+    _ => Unknown(ss3.to_owned())
   }
 }
 
 ///|
-fn parse_csi(csi : ArrayView[Byte]) -> Event {
+fn parse_csi(csi : BytesView) -> Event {
   match csi {
     [Esc, b'[', b'Z'] =>
       Input(Key(KeyEvent::new(Tab, modifiers=KeyModifiers::new(shift=true))))
     [Esc, b'[', .. params, b'~'] => {
       guard parse_csi_params(params) is Some(params) else {
-        return Input(Unknown(Bytes::from_array(csi)))
+        return Input(Unknown(csi.to_owned()))
       }
       Input(parse_csi_tilde_key(csi, params))
     }
     [Esc, b'[', .. params, final_byte] => {
       guard parse_csi_params(params) is Some(params) else {
-        return Input(Unknown(Bytes::from_array(csi)))
+        return Input(Unknown(csi.to_owned()))
       }
       match final_byte {
         b'A' => Input(parse_csi_key(csi, params, Up))
@@ -234,10 +279,10 @@ fn parse_csi(csi : ArrayView[Byte]) -> Event {
           CursorPosition(row~, col~)
         b'R' => Input(parse_csi_key(csi, params, F3))
         b'S' => Input(parse_csi_key(csi, params, F4))
-        _ => Input(Unknown(Bytes::from_array(csi)))
+        _ => Input(Unknown(csi.to_owned()))
       }
     }
-    _ => Input(Unknown(Bytes::from_array(csi)))
+    _ => Input(Unknown(csi.to_owned()))
   }
 }
 
@@ -251,18 +296,18 @@ fn parse_cursor_position_params(params : Array[Int?]) -> (Int, Int)? {
 
 ///|
 fn parse_csi_key(
-  csi : ArrayView[Byte],
+  csi : BytesView,
   params : Array[Int?],
   code : KeyCode,
 ) -> InputEvent {
   guard parse_csi_key_modifiers(params) is Some(modifiers) else {
-    return Unknown(Bytes::from_array(csi))
+    return Unknown(csi.to_owned())
   }
   Key(KeyEvent::new(code, modifiers~))
 }
 
 ///|
-fn parse_csi_params(params_bytes : ArrayView[Byte]) -> Array[Int?]? {
+fn parse_csi_params(params_bytes : BytesView) -> Array[Int?]? {
   let params : Array[Int?] = []
   if params_bytes.length() == 0 {
     return Some(params)
@@ -300,18 +345,15 @@ fn parse_csi_key_modifiers(params : Array[Int?]) -> KeyModifiers? {
 }
 
 ///|
-fn parse_csi_tilde_key(
-  csi : ArrayView[Byte],
-  params : Array[Int?],
-) -> InputEvent {
+fn parse_csi_tilde_key(csi : BytesView, params : Array[Int?]) -> InputEvent {
   let (code, modifiers) = match params {
     [Some(code)] => (code, KeyModifiers::new())
     [Some(code), None] => (code, KeyModifiers::new())
     [Some(code), Some(modifier)] => (code, modifiers_from_param(modifier))
-    _ => return Unknown(Bytes::from_array(csi))
+    _ => return Unknown(csi.to_owned())
   }
   guard tilde_key_code(code) is Some(key_code) else {
-    return Unknown(Bytes::from_array(csi))
+    return Unknown(csi.to_owned())
   }
   Key(KeyEvent::new(key_code, modifiers~))
 }
@@ -404,14 +446,14 @@ async fn read_utf8_text(
   for _ in 1..<len {
     guard @async.with_timeout_opt(esc_timeout_ms, () => reader.read_byte())
       is Some(byte) else {
-      return Unknown(Bytes::from_array(reader.view()))
+      return Unknown(reader.view().to_owned())
     }
     if !is_utf8_continuation(byte) {
       reader.unread_byte()
-      return Unknown(Bytes::from_array(reader.view()))
+      return Unknown(reader.view().to_owned())
     }
   }
-  let bytes = Bytes::from_array(reader.view())
+  let bytes = reader.view().to_owned()
   try @utf8.decode(bytes) catch {
     _ => Unknown(bytes)
   } noraise {
