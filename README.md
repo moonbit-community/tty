@@ -142,8 +142,8 @@ The examples are manual validation tools, not framework APIs:
 - `examples/color` prints a color specimen.
 - `examples/cursor` draws with cursor movement and erase sequences.
 - `examples/pager` demonstrates primary-screen paging with a fixed status row.
-- `examples/agent` demonstrates a Codex-like primary-screen transcript plus
-  input composer.
+- `examples/agent` demonstrates a Codex-like primary-screen transcript, input
+  composer, delayed queued input, and shell command execution.
 
 ## Design Boundaries
 

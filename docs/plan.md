@@ -42,6 +42,7 @@ This board tracks implementation direction for `tonyfettes/tty`. Use
 | TTY-10 | done | Unix resize events | `docs/plans/2026-05-21-resize-events.md`, root package, examples | root `Tty::read_event` reports input and coalesced Unix resize events while CPR remains a low-level terminal response | `moon fmt`, `moon test .`, `moon test input`, targeted example checks, `moon test`, `moon check`, `moon info`, `git diff --check` |
 | TTY-11 | done | root cursor position command | `docs/plans/2026-05-21-root-cursor-position.md`, root package, examples | `Tty::set_cursor_position` writes absolute cursor-position sequences while `vt` stays byte-only | `moon fmt`, `moon test .`, targeted example checks, `moon test`, `moon check`, `moon info`, `git diff --check` |
 | TTY-12 | done | root VT command methods | `docs/plans/2026-05-21-root-vt-command-methods.md`, root package, `examples/agent` | `examples/agent` can use root `Tty` methods for the VT commands it currently writes through `@tty/vt` | `moon fmt`, `moon test .`, `moon check examples/agent`, `moon test examples/agent`, `moon test`, `moon check`, `moon info`, `git diff --check` |
+| MVP-2 | done | queued input and shell commands in agent demo | `docs/plans/2026-05-21-agent-queued-shell.md`, `examples/agent` | `Tab` queues input for delayed submission and `!cmd` runs through `moonbitlang/async/process` without background tasks writing directly to tty | `moon fmt`, `moon check examples/agent`, `moon test examples/agent`, `moon check`, `moon test`, `moon info`, `git diff --check` |
 
 ## Current Rules
 

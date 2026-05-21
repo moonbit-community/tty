@@ -2,6 +2,9 @@
 let esc_timeout_ms : Int = 50
 
 ///|
+let queued_submit_delay_ms : Int = 1000
+
+///|
 let input_text_rows : Int = 2
 
 ///|
@@ -11,6 +14,14 @@ let composer_rows : Int = input_text_rows + 2
 priv struct AgentSize {
   rows : Int
   cols : Int
+}
+
+///|
+priv enum AgentEvent {
+  Terminal(@tty.Event)
+  TerminalClosed
+  QueuedInput(text~ : String, shell_mode~ : Bool)
+  ShellResult(command~ : String, exit_code~ : Int, output~ : String)
 }
 
 ///|
@@ -219,6 +230,7 @@ priv struct Editor {
   cursor : Int
   preferred_column : Int?
   view_start : Int
+  shell_mode : Bool
 }
 
 ///|
@@ -227,10 +239,11 @@ fn make_editor(
   cursor : Int,
   preferred_column : Int?,
   view_start : Int,
+  shell_mode? : Bool = false,
 ) -> Editor {
   let cursor = clamp_int(cursor, 0, grapheme_count(text))
   let view_start = ensure_cursor_visible(text, cursor, view_start)
-  { text, cursor, preferred_column, view_start }
+  { text, cursor, preferred_column, view_start, shell_mode }
 }
 
 ///|
@@ -254,7 +267,13 @@ fn Editor::move_to_cursor(
   cursor : Int,
   preferred_column : Int?,
 ) -> Editor {
-  make_editor(self.text, cursor, preferred_column, self.view_start)
+  make_editor(
+    self.text,
+    cursor,
+    preferred_column,
+    self.view_start,
+    shell_mode=self.shell_mode,
+  )
 }
 
 ///|
@@ -266,13 +285,35 @@ fn Editor::insert(self : Editor, text : String) -> Editor {
     self.cursor + grapheme_count(text),
     None,
     self.view_start,
+    shell_mode=self.shell_mode,
   )
+}
+
+///|
+fn Editor::insert_user_text(self : Editor, text : String) -> Editor {
+  if !self.shell_mode && self.text.length() == 0 && self.cursor == 0 {
+    match text {
+      [.. "!", .. rest] => {
+        let rest_text = rest.to_owned()
+        make_editor(
+          rest_text,
+          grapheme_count(rest_text),
+          None,
+          self.view_start,
+          shell_mode=true,
+        )
+      }
+      _ => self.insert(text)
+    }
+  } else {
+    self.insert(text)
+  }
 }
 
 ///|
 fn Editor::delete_before(self : Editor) -> Editor {
   if self.cursor <= 0 {
-    make_editor(self.text, 0, None, self.view_start)
+    make_editor(self.text, 0, None, self.view_start, shell_mode=false)
   } else {
     let prefix = grapheme_slice(self.text, 0, self.cursor - 1)
     let suffix = grapheme_slice(
@@ -280,7 +321,13 @@ fn Editor::delete_before(self : Editor) -> Editor {
       self.cursor,
       grapheme_count(self.text),
     )
-    make_editor(prefix + suffix, self.cursor - 1, None, self.view_start)
+    make_editor(
+      prefix + suffix,
+      self.cursor - 1,
+      None,
+      self.view_start,
+      shell_mode=self.shell_mode,
+    )
   }
 }
 
@@ -288,11 +335,23 @@ fn Editor::delete_before(self : Editor) -> Editor {
 fn Editor::delete_after(self : Editor) -> Editor {
   let length = grapheme_count(self.text)
   if self.cursor >= length {
-    make_editor(self.text, self.cursor, None, self.view_start)
+    make_editor(
+      self.text,
+      self.cursor,
+      None,
+      self.view_start,
+      shell_mode=self.shell_mode,
+    )
   } else {
     let prefix = grapheme_slice(self.text, 0, self.cursor)
     let suffix = grapheme_slice(self.text, self.cursor + 1, length)
-    make_editor(prefix + suffix, self.cursor, None, self.view_start)
+    make_editor(
+      prefix + suffix,
+      self.cursor,
+      None,
+      self.view_start,
+      shell_mode=self.shell_mode,
+    )
   }
 }
 
@@ -339,9 +398,17 @@ fn Editor::move_vertical(self : Editor, delta : Int) -> Editor {
 }
 
 ///|
-fn input_prefix(row_index : Int, start : Int) -> String {
+fn input_prefix(
+  row_index : Int,
+  start : Int,
+  shell_mode? : Bool = false,
+) -> String {
   if start == 0 && row_index == 0 {
-    "> "
+    if shell_mode {
+      "! "
+    } else {
+      "> "
+    }
   } else {
     "  "
   }
@@ -364,7 +431,11 @@ fn input_cursor_offset(editor : Editor, cols : Int) -> Int {
   let lines = split_input_lines(editor.text)
   let point = editor.cursor_point()
   let row = editor_cursor_row(editor)
-  let prefix = input_prefix(row, editor.view_start)
+  let prefix = input_prefix(
+    row,
+    editor.view_start,
+    shell_mode=editor.shell_mode,
+  )
   let line = line_at(lines, point.line)
   let before_cursor = grapheme_slice(line, 0, point.grapheme_column)
   let visible = fit_line(before_cursor, cols - display_width(prefix))
@@ -414,6 +485,59 @@ fn min_int(a : Int, b : Int) -> Int {
 fn fake_response(input : String) -> String {
   let display = input.replace_all(old="\n", new=" / ")
   "received: \{display}"
+}
+
+///|
+fn shell_command_text(input : String) -> String {
+  input.trim().to_owned()
+}
+
+///|
+#cfg(platform="windows")
+fn shell_program() -> String {
+  "powershell"
+}
+
+///|
+#cfg(not(platform="windows"))
+fn shell_program() -> String {
+  "sh"
+}
+
+///|
+#cfg(platform="windows")
+fn shell_args(command : String) -> Array[String] {
+  ["-NoProfile", "-Command", command]
+}
+
+///|
+#cfg(not(platform="windows"))
+fn shell_args(command : String) -> Array[String] {
+  ["-c", command]
+}
+
+///|
+fn format_shell_result(
+  command : String,
+  exit_code : Int,
+  output : String,
+) -> String {
+  let output = output
+    .replace_all(old="\r\n", new="\n")
+    .replace_all(old="\r", new="\n")
+    .trim(chars="\n")
+    .to_owned()
+  let command = if command.length() == 0 { "<empty command>" } else { command }
+  let header = if exit_code == 0 {
+    "$ \{command}"
+  } else {
+    "$ \{command} (exit \{exit_code})"
+  }
+  if output.length() == 0 {
+    "\{header}\n(no output)"
+  } else {
+    "\{header}\n\{output}"
+  }
 }
 
 ///|
@@ -481,7 +605,7 @@ async fn render_status_current(
   erase_current_line(tty)
   tty.set_foreground(@color.Basic(@color.BrightBlack))
   let text = if status.length() == 0 {
-    "Enter send  Ctrl-J newline  Arrows move  Backspace edit  Ctrl-C quit"
+    "Enter send  Tab queue  !cmd shell  Ctrl-J newline  Arrows move  Ctrl-C quit"
   } else {
     status
   }
@@ -498,13 +622,14 @@ async fn render_input_at_cursor(
 ) -> Unit {
   let lines = split_input_lines(editor.text)
   let start = editor.view_start
+  let shell_mode = editor.shell_mode
   render_separator_current(tty, size.cols)
   write(tty, "\r\n")
   for row in 0..<input_text_rows {
     let absolute = start + row
     render_prompt_current(
       tty,
-      input_prefix(row, start),
+      input_prefix(row, start, shell_mode~),
       line_at(lines, absolute),
       size.cols,
     )
@@ -554,13 +679,14 @@ async fn render_input_at_top(
 ) -> Unit {
   let lines = split_input_lines(editor.text)
   let start = editor.view_start
+  let shell_mode = editor.shell_mode
   tty.set_cursor_position(top, 1)
   render_separator_current(tty, size.cols)
   for row in 0..<input_text_rows {
     tty.set_cursor_position(top + 1 + row, 1)
     render_prompt_current(
       tty,
-      input_prefix(row, start),
+      input_prefix(row, start, shell_mode~),
       line_at(lines, start + row),
       size.cols,
     )
@@ -696,6 +822,27 @@ async fn append_agent(
 }
 
 ///|
+async fn append_shell(
+  tty : @tty.Tty,
+  cursor_editor : Editor,
+  text : String,
+  editor : Editor,
+  status : String,
+  size : AgentSize,
+) -> Unit {
+  append_transcript(
+    tty,
+    cursor_editor,
+    "shell",
+    @color.BrightYellow,
+    text,
+    editor,
+    status,
+    size,
+  )
+}
+
+///|
 async fn shift_viewport_down_for_insert(
   tty : @tty.Tty,
   top : Int,
@@ -812,6 +959,27 @@ async fn append_agent_above_viewport(
 }
 
 ///|
+async fn append_shell_above_viewport(
+  tty : @tty.Tty,
+  top : Int,
+  text : String,
+  editor : Editor,
+  status : String,
+  size : AgentSize,
+) -> Int {
+  append_transcript_above_viewport(
+    tty,
+    top,
+    "shell",
+    @color.BrightYellow,
+    text,
+    editor,
+    status,
+    size,
+  )
+}
+
+///|
 async fn restore_terminal(tty : @tty.Tty) -> Unit {
   tty.reset_top_bottom_margins()
   tty.reset_style()
@@ -903,181 +1071,344 @@ async fn detect_viewport_top(
 }
 
 ///|
-async fn submit(tty : @tty.Tty, editor : Editor, viewport_top : Int?) -> Int? {
-  let empty = Editor::new()
-  let mut size = terminal_size(tty)
+async fn read_terminal_events(
+  tty : @tty.Tty,
+  events : @aqueue.Queue[AgentEvent],
+) -> Unit {
+  while true {
+    let event = tty.read_event(esc_timeout_ms~) catch {
+      @async/io.ReaderClosed => {
+        events.put(TerminalClosed)
+        return
+      }
+      error => raise error
+    }
+    events.put(Terminal(event))
+  }
+}
+
+///|
+fn schedule_queued_input(
+  group : @async.TaskGroup[Unit],
+  events : @aqueue.Queue[AgentEvent],
+  input : String,
+  shell_mode : Bool,
+) -> Unit {
+  group.spawn_bg(no_wait=true) <| () => {
+    @async.sleep(queued_submit_delay_ms)
+    events.put(QueuedInput(text=input, shell_mode~))
+  }
+}
+
+///|
+fn schedule_shell_command(
+  group : @async.TaskGroup[Unit],
+  events : @aqueue.Queue[AgentEvent],
+  command : String,
+) -> Unit {
+  group.spawn_bg(no_wait=true) <| () => {
+    let event = try {
+      let (process_stdin, process_stdin_write) = @process.write_to_process()
+      process_stdin_write.close()
+      let (exit_code, output) = @process.collect_output_merged(
+        shell_program(),
+        shell_args(command),
+        stdin=process_stdin,
+      )
+      let output = output.text() catch {
+        _ => "<non-UTF-8 output: \{output.binary().length()} bytes>"
+      }
+      ShellResult(command~, exit_code~, output~)
+    } catch {
+      error =>
+        ShellResult(
+          command~,
+          exit_code=-1,
+          output="failed to execute shell: \{error}",
+        )
+    }
+    events.put(event)
+  }
+}
+
+///|
+async fn append_user_turn(
+  tty : @tty.Tty,
+  cursor_editor : Editor,
+  text : String,
+  editor : Editor,
+  status : String,
+  size : AgentSize,
+  viewport_top : Int?,
+) -> Int? {
   match viewport_top {
     Some(top) => {
       let top = clamp_viewport_top(top, size)
-      redraw_input_at_top(tty, top, empty, "sending...", size)
-      let top = append_user_above_viewport(
-        tty,
-        top,
-        editor.text,
-        empty,
-        "sending...",
-        size,
-      )
-      size = terminal_size(tty)
-      let top = append_agent_above_viewport(
-        tty,
-        top,
-        fake_response(editor.text),
-        empty,
-        "ready",
-        size,
-      )
+      let top = append_user_above_viewport(tty, top, text, editor, status, size)
       Some(top)
     }
     None => {
-      redraw_input_from(tty, editor, empty, "sending...", size)
-      append_user(tty, empty, editor.text, empty, "sending...", size)
-      size = terminal_size(tty)
-      append_agent(tty, empty, fake_response(editor.text), empty, "ready", size)
+      append_user(tty, cursor_editor, text, editor, status, size)
       None
     }
   }
 }
 
 ///|
-async fn run_agent(tty : @tty.Tty) -> Unit {
-  let mut editor = Editor::new()
-  let mut size = terminal_size(tty)
-  tty.show_cursor()
-  render_transcript_at_cursor(
-    tty,
-    "system",
-    @color.BrightBlack,
-    "primary-screen agent demo",
-    size,
-  )
-  render_transcript_at_cursor(
-    tty,
-    "system",
-    @color.BrightBlack,
-    "type a message and press Enter",
-    size,
-  )
-  render_input_at_cursor(tty, editor, "", size)
-  place_input_cursor(tty, editor, size)
-  let mut viewport_top = detect_viewport_top(tty, editor, size)
+async fn append_shell_result(
+  tty : @tty.Tty,
+  command : String,
+  exit_code : Int,
+  output : String,
+  editor : Editor,
+  viewport_top : Int?,
+) -> Int? {
+  let size = terminal_size(tty)
+  let text = format_shell_result(command, exit_code, output)
   match viewport_top {
-    Some(top) => redraw_input_at_top(tty, top, editor, "", size)
-    None => ()
-  }
-  while true {
-    let event = tty.read_event(esc_timeout_ms~) catch {
-      @async/io.ReaderClosed => break
-      error => raise error
+    Some(top) => {
+      let top = clamp_viewport_top(top, size)
+      let top = append_shell_above_viewport(
+        tty, top, text, editor, "ready", size,
+      )
+      Some(top)
     }
-    size = terminal_size(tty)
-    match event {
-      @tty.Input(@tty/input.Key(key)) =>
-        match key.code {
-          @tty/input.Char('c') if key.modifiers.ctrl() => break
-          @tty/input.Char('d') if key.modifiers.ctrl() &&
-            editor.text.length() == 0 => break
-          @tty/input.Enter =>
-            if editor.text.length() > 0 {
-              viewport_top = submit(tty, editor, viewport_top)
-              editor = Editor::new()
-            } else {
-              viewport_top = redraw_input(
-                tty, viewport_top, editor, editor, "empty input", size,
-              )
-            }
-          @tty/input.Up => {
-            let old_editor = editor
-            editor = editor.move_vertical(-1)
-            viewport_top = redraw_input(
-              tty, viewport_top, old_editor, editor, "", size,
-            )
-          }
-          @tty/input.Down => {
-            let old_editor = editor
-            editor = editor.move_vertical(1)
-            viewport_top = redraw_input(
-              tty, viewport_top, old_editor, editor, "", size,
-            )
-          }
-          @tty/input.Left => {
-            let old_editor = editor
-            editor = editor.move_left()
-            viewport_top = redraw_input(
-              tty, viewport_top, old_editor, editor, "", size,
-            )
-          }
-          @tty/input.Right => {
-            let old_editor = editor
-            editor = editor.move_right()
-            viewport_top = redraw_input(
-              tty, viewport_top, old_editor, editor, "", size,
-            )
-          }
-          @tty/input.Home => {
-            let old_editor = editor
-            editor = editor.move_home()
-            viewport_top = redraw_input(
-              tty, viewport_top, old_editor, editor, "", size,
-            )
-          }
-          @tty/input.End => {
-            let old_editor = editor
-            editor = editor.move_end()
-            viewport_top = redraw_input(
-              tty, viewport_top, old_editor, editor, "", size,
-            )
-          }
-          _ if is_newline_key(key) => {
-            let old_editor = editor
-            editor = editor.insert("\n")
-            viewport_top = redraw_input(
-              tty, viewport_top, old_editor, editor, "", size,
-            )
-          }
-          @tty/input.Backspace => {
-            let old_editor = editor
-            editor = editor.delete_before()
-            viewport_top = redraw_input(
-              tty, viewport_top, old_editor, editor, "", size,
-            )
-          }
-          @tty/input.Delete => {
-            let old_editor = editor
-            editor = editor.delete_after()
-            viewport_top = redraw_input(
-              tty, viewport_top, old_editor, editor, "", size,
-            )
-          }
-          _ =>
-            match text_from_key(key) {
-              Some(text) => {
-                let old_editor = editor
-                editor = editor.insert(text)
-                viewport_top = redraw_input(
-                  tty, viewport_top, old_editor, editor, "", size,
-                )
-              }
-              None =>
-                viewport_top = redraw_input(
-                  tty, viewport_top, editor, editor, "ignored key", size,
-                )
-            }
-        }
-      @tty.Input(@tty/input.Unknown(bytes)) =>
-        viewport_top = redraw_input(
+    None => {
+      append_shell(tty, editor, text, editor, "ready", size)
+      None
+    }
+  }
+}
+
+///|
+async fn submit_text(
+  tty : @tty.Tty,
+  group : @async.TaskGroup[Unit],
+  events : @aqueue.Queue[AgentEvent],
+  text : String,
+  shell_mode : Bool,
+  cursor_editor : Editor,
+  editor : Editor,
+  viewport_top : Int?,
+) -> Int? {
+  if shell_mode {
+    let command = shell_command_text(text)
+    let display_text = "!\{text}"
+    let size = terminal_size(tty)
+    let viewport_top = append_user_turn(
+      tty, cursor_editor, display_text, editor, "running shell...", size, viewport_top,
+    )
+    if command.length() == 0 {
+      append_shell_result(
+        tty, command, 1, "empty shell command", editor, viewport_top,
+      )
+    } else {
+      schedule_shell_command(group, events, command)
+      viewport_top
+    }
+  } else {
+    let size = terminal_size(tty)
+    let viewport_top = append_user_turn(
+      tty, cursor_editor, text, editor, "sending...", size, viewport_top,
+    )
+    let size = terminal_size(tty)
+    match viewport_top {
+      Some(top) => {
+        let top = append_agent_above_viewport(
           tty,
-          viewport_top,
+          top,
+          fake_response(text),
           editor,
-          editor,
-          "unknown input: \{bytes.length()} bytes",
+          "ready",
           size,
         )
-      @tty.Resize(_) =>
-        viewport_top = redraw_input(tty, viewport_top, editor, editor, "", size)
+        Some(top)
+      }
+      None => {
+        append_agent(tty, editor, fake_response(text), editor, "ready", size)
+        None
+      }
     }
   }
-  leave_agent(tty, editor, viewport_top)
+}
+
+///|
+async fn run_agent(tty : @tty.Tty) -> Unit {
+  @async.with_task_group() <| group => {
+    let events : @aqueue.Queue[AgentEvent] = @aqueue.Queue(
+      kind=@aqueue.Unbounded,
+    )
+    let mut editor = Editor::new()
+    let mut size = terminal_size(tty)
+    tty.show_cursor()
+    render_transcript_at_cursor(
+      tty,
+      "system",
+      @color.BrightBlack,
+      "primary-screen agent demo",
+      size,
+    )
+    render_transcript_at_cursor(
+      tty,
+      "system",
+      @color.BrightBlack,
+      "Enter send  Tab queue  !cmd shell",
+      size,
+    )
+    render_input_at_cursor(tty, editor, "", size)
+    place_input_cursor(tty, editor, size)
+    let mut viewport_top = detect_viewport_top(tty, editor, size)
+    match viewport_top {
+      Some(top) => redraw_input_at_top(tty, top, editor, "", size)
+      None => ()
+    }
+    group.spawn_bg(no_wait=true) <| () => { read_terminal_events(tty, events) }
+    let mut done = false
+    while !done {
+      let agent_event = events.get()
+      size = terminal_size(tty)
+      match agent_event {
+        TerminalClosed => done = true
+        QueuedInput(text~, shell_mode~) =>
+          viewport_top = submit_text(
+            tty, group, events, text, shell_mode, editor, editor, viewport_top,
+          )
+        ShellResult(command~, exit_code~, output~) =>
+          viewport_top = append_shell_result(
+            tty, command, exit_code, output, editor, viewport_top,
+          )
+        Terminal(event) =>
+          match event {
+            @tty.Input(@tty/input.Key(key)) =>
+              match key.code {
+                @tty/input.Char('c') if key.modifiers.ctrl() => done = true
+                @tty/input.Char('d') if key.modifiers.ctrl() &&
+                  editor.text.length() == 0 => done = true
+                @tty/input.Enter =>
+                  if editor.text.length() > 0 || editor.shell_mode {
+                    let old_editor = editor
+                    let text = editor.text
+                    let shell_mode = editor.shell_mode
+                    editor = Editor::new()
+                    viewport_top = submit_text(
+                      tty, group, events, text, shell_mode, old_editor, editor, viewport_top,
+                    )
+                  } else {
+                    viewport_top = redraw_input(
+                      tty, viewport_top, editor, editor, "empty input", size,
+                    )
+                  }
+                @tty/input.Tab =>
+                  if editor.text.length() > 0 || editor.shell_mode {
+                    let old_editor = editor
+                    let text = editor.text
+                    let shell_mode = editor.shell_mode
+                    editor = Editor::new()
+                    schedule_queued_input(group, events, text, shell_mode)
+                    viewport_top = redraw_input(
+                      tty, viewport_top, old_editor, editor, "queued input", size,
+                    )
+                  } else {
+                    viewport_top = redraw_input(
+                      tty, viewport_top, editor, editor, "empty input", size,
+                    )
+                  }
+                @tty/input.Up => {
+                  let old_editor = editor
+                  editor = editor.move_vertical(-1)
+                  viewport_top = redraw_input(
+                    tty, viewport_top, old_editor, editor, "", size,
+                  )
+                }
+                @tty/input.Down => {
+                  let old_editor = editor
+                  editor = editor.move_vertical(1)
+                  viewport_top = redraw_input(
+                    tty, viewport_top, old_editor, editor, "", size,
+                  )
+                }
+                @tty/input.Left => {
+                  let old_editor = editor
+                  editor = editor.move_left()
+                  viewport_top = redraw_input(
+                    tty, viewport_top, old_editor, editor, "", size,
+                  )
+                }
+                @tty/input.Right => {
+                  let old_editor = editor
+                  editor = editor.move_right()
+                  viewport_top = redraw_input(
+                    tty, viewport_top, old_editor, editor, "", size,
+                  )
+                }
+                @tty/input.Home => {
+                  let old_editor = editor
+                  editor = editor.move_home()
+                  viewport_top = redraw_input(
+                    tty, viewport_top, old_editor, editor, "", size,
+                  )
+                }
+                @tty/input.End => {
+                  let old_editor = editor
+                  editor = editor.move_end()
+                  viewport_top = redraw_input(
+                    tty, viewport_top, old_editor, editor, "", size,
+                  )
+                }
+                _ if is_newline_key(key) => {
+                  let old_editor = editor
+                  editor = editor.insert("\n")
+                  viewport_top = redraw_input(
+                    tty, viewport_top, old_editor, editor, "", size,
+                  )
+                }
+                @tty/input.Backspace => {
+                  let old_editor = editor
+                  editor = editor.delete_before()
+                  viewport_top = redraw_input(
+                    tty, viewport_top, old_editor, editor, "", size,
+                  )
+                }
+                @tty/input.Delete => {
+                  let old_editor = editor
+                  editor = editor.delete_after()
+                  viewport_top = redraw_input(
+                    tty, viewport_top, old_editor, editor, "", size,
+                  )
+                }
+                _ =>
+                  match text_from_key(key) {
+                    Some(text) => {
+                      let old_editor = editor
+                      editor = editor.insert_user_text(text)
+                      viewport_top = redraw_input(
+                        tty, viewport_top, old_editor, editor, "", size,
+                      )
+                    }
+                    None =>
+                      viewport_top = redraw_input(
+                        tty, viewport_top, editor, editor, "ignored key", size,
+                      )
+                  }
+              }
+            @tty.Input(@tty/input.Unknown(bytes)) =>
+              viewport_top = redraw_input(
+                tty,
+                viewport_top,
+                editor,
+                editor,
+                "unknown input: \{bytes.length()} bytes",
+                size,
+              )
+            @tty.Resize(_) =>
+              viewport_top = redraw_input(
+                tty, viewport_top, editor, editor, "", size,
+              )
+          }
+      }
+    }
+    leave_agent(tty, editor, viewport_top)
+  }
 }
 
 ///|

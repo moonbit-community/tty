@@ -46,6 +46,17 @@ test "editor inserts and deletes at cursor" {
 }
 
 ///|
+test "editor shell mode keeps marker out of text" {
+  let shell = Editor::new().insert_user_text("!echo hi")
+  assert_true(shell.shell_mode)
+  inspect(shell.text, content="echo hi")
+  inspect(shell.cursor, content="7")
+  let normal = Editor::new().insert_user_text("!").delete_before()
+  assert_false(normal.shell_mode)
+  inspect(normal.text, content="")
+}
+
+///|
 test "editor home end moves within logical line" {
   let editor = Editor::from_text("ab\ncd")
   let home = editor.move_home()
@@ -59,8 +70,10 @@ test "editor home end moves within logical line" {
 ///|
 test "input prefix marks only the first logical input line" {
   inspect(input_prefix(0, 0), content="> ")
+  inspect(input_prefix(0, 0, shell_mode=true), content="! ")
   inspect(input_prefix(1, 0), content="  ")
   inspect(input_prefix(0, 1), content="  ")
+  inspect(input_prefix(0, 1, shell_mode=true), content="  ")
 }
 
 ///|
@@ -74,6 +87,10 @@ test "input cursor offset accounts for prompt and display width" {
   )
   inspect(input_cursor_offset(Editor::from_text("a\nb"), 80), content="3")
   inspect(input_cursor_offset(Editor::from_text("abcdef"), 5), content="5")
+  inspect(
+    input_cursor_offset(Editor::new().insert_user_text("!abc"), 80),
+    content="5",
+  )
 }
 
 ///|
@@ -111,6 +128,25 @@ test "split input lines keeps trailing input row" {
 test "fake response echoes input" {
   inspect(fake_response("hello"), content="received: hello")
   inspect(fake_response("hello\nworld"), content="received: hello / world")
+}
+
+///|
+test "shell command text trims command" {
+  inspect(shell_command_text(" echo hi"), content="echo hi")
+  inspect(shell_command_text(""), content="")
+}
+
+///|
+test "format shell result includes command and exit code" {
+  inspect(format_shell_result("echo hi", 0, "hi\n"), content="$ echo hi\nhi")
+  inspect(
+    format_shell_result("bad", 2, ""),
+    content="$ bad (exit 2)\n(no output)",
+  )
+  inspect(
+    format_shell_result("", 1, "empty shell command"),
+    content="$ <empty command> (exit 1)\nempty shell command",
+  )
 }
 
 ///|
