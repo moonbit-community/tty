@@ -3,6 +3,7 @@ import {
   "moonbitlang/async/types" @async/types,
   "moonbitlang/async/fs" @async/fs,
   "moonbitlang/async/pipe" @async/pipe,
+  "moonbitlang/async/raw_fd" @async/raw_fd,
   "moonbitlang/async/stdio" @async/stdio,
   "moonbitlang/async/os_error",
   "moonbitlang/async/io" @async/io,
@@ -24,5 +25,5 @@ import {
 supported_targets = "native"
 
 options(
-  "native-stub": [ "isatty.c", "state.c", "size.c" ],
+  "native-stub": [ "isatty.c", "state.c", "size.c", "tty_open.c" ],
 )
