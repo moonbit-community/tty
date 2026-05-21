@@ -39,6 +39,26 @@ pub impl Writer for @async/fs.File with close(self) {
 }
 
 ///|
+pub impl Reader for @async/pipe.PipeRead with fd(self) {
+  @async/pipe.PipeRead::fd(self)
+}
+
+///|
+pub impl Reader for @async/pipe.PipeRead with close(self) {
+  @async/pipe.PipeRead::close(self)
+}
+
+///|
+pub impl Writer for @async/pipe.PipeWrite with fd(self) {
+  @async/pipe.PipeWrite::fd(self)
+}
+
+///|
+pub impl Writer for @async/pipe.PipeWrite with close(self) {
+  @async/pipe.PipeWrite::close(self)
+}
+
+///|
 pub impl Reader for @async/stdio.Input with fd(self) {
   @async/stdio.Input::fd(self)
 }

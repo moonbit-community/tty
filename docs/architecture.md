@@ -32,6 +32,7 @@ operations:
   `/dev/tty` style handles where supported
 - `Reader` and `Writer`, terminal-handle traits that extend async I/O with
   descriptor and close operations for `Tty::new`
+  (`moonbitlang/async` files, stdio handles, and OS pipes implement them)
 - `isatty`
 - terminal window size queries through `Tty`
 - coordinated cursor position report queries through `Tty`

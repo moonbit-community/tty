@@ -1,4 +1,27 @@
 ///|
+async fn with_pipe_tty(input_bytes : Bytes, f : async (Tty) -> Unit) -> String {
+  @async.with_task_group() <| group => {
+    let (input, input_writer) = @async/pipe.pipe()
+    let (output_reader, output) = @async/pipe.pipe()
+    defer output_reader.close()
+    if input_bytes.length() == 0 {
+      input_writer.close()
+    } else {
+      group.spawn_bg() <| () => {
+        defer input_writer.close()
+        input_writer.write(input_bytes)
+      }
+    }
+    {
+      let tty = Tty::new(input, output)
+      defer tty.close()
+      f(tty)
+    }
+    output_reader.read_all().text()
+  }
+}
+
+///|
 test "style color sequences encode semantic colors" {
   @debug.assert_eq(foreground_sequence(@color.Default), b"\x1b[39m")
   @debug.assert_eq(foreground_sequence(@color.Basic(@color.Black)), b"\x1b[30m")
@@ -49,19 +72,8 @@ test "style color sequences encode semantic colors" {
 }
 
 ///|
-async test "file tty terminal commands write sequences" {
-  let input_path = "_build/tty_file_commands_input_test"
-  let output_path = "_build/tty_file_output_commands_test"
-  @async/fs.write_file(input_path, b"", create_mode=CreateOrTruncate)
-  {
-    let input = @async/fs.open(input_path, mode=ReadOnly)
-    let output = @async/fs.open(
-      output_path,
-      mode=WriteOnly,
-      create_mode=CreateOrTruncate,
-    )
-    let tty = Tty::new(input, output)
-    defer tty.close()
+async test "pipe tty terminal commands write sequences" {
+  let output = with_pipe_tty(b"", tty => {
     tty.enter_alt_screen()
     tty.hide_cursor()
     tty.set_foreground(@color.Basic(@color.Red))
@@ -71,29 +83,16 @@ async test "file tty terminal commands write sequences" {
     tty.reset_style()
     tty.show_cursor()
     tty.leave_alt_screen()
-  }
+  })
   inspect(
-    @async/fs.read_file(output_path).text(),
+    output,
     content="\u{1B}[?1049h\u{1B}[?25l\u{1B}[31m\u{1B}[39m\u{1B}[48;5;42m\u{1B}[49m\u{1B}[0m\u{1B}[?25h\u{1B}[?1049l",
   )
-  @async/fs.remove(input_path)
-  @async/fs.remove(output_path)
 }
 
 ///|
 async test "tty query cursor position coordinates input and output" {
-  let input_path = "_build/tty_query_cursor_position_input_test"
-  let output_path = "_build/tty_query_cursor_position_output_test"
-  @async/fs.write_file(input_path, b"a\x1b[7;9R", create_mode=CreateOrTruncate)
-  {
-    let input = @async/fs.open(input_path, mode=ReadOnly)
-    let output = @async/fs.open(
-      output_path,
-      mode=WriteOnly,
-      create_mode=CreateOrTruncate,
-    )
-    let tty = Tty::new(input, output)
-    defer tty.close()
+  let output = with_pipe_tty(b"a\x1b[7;9R", tty => {
     match tty.query_cursor_position() {
       Some(pos) => {
         @debug.assert_eq(pos.row, 7)
@@ -105,54 +104,23 @@ async test "tty query cursor position coordinates input and output" {
       tty.read_input(),
       @input.Key(@input.KeyEvent::new(@input.Char('a'), text="a")),
     )
-  }
-  inspect(@async/fs.read_file(output_path).text(), content="\u{1B}[6n")
-  @async/fs.remove(input_path)
-  @async/fs.remove(output_path)
+  })
+  inspect(output, content="\u{1B}[6n")
 }
 
 ///|
-async test "file tty with alt screen restores on success" {
-  let input_path = "_build/tty_file_alt_screen_input_test"
-  let output_path = "_build/tty_file_output_with_alt_screen_test"
-  @async/fs.write_file(input_path, b"", create_mode=CreateOrTruncate)
-  {
-    let input = @async/fs.open(input_path, mode=ReadOnly)
-    let output = @async/fs.open(
-      output_path,
-      mode=WriteOnly,
-      create_mode=CreateOrTruncate,
-    )
-    let tty = Tty::new(input, output)
-    defer tty.close()
+async test "pipe tty with alt screen restores on success" {
+  let output = with_pipe_tty(b"", tty => {
     tty.with_alt_screen(() => tty.write("body"))
-  }
-  inspect(
-    @async/fs.read_file(output_path).text(),
-    content="\u{1B}[?1049hbody\u{1B}[?1049l",
-  )
-  @async/fs.remove(input_path)
-  @async/fs.remove(output_path)
+  })
+  inspect(output, content="\u{1B}[?1049hbody\u{1B}[?1049l")
 }
 
 ///|
 async test "tty window size rejects non tty output" {
-  let input_path = "_build/tty_window_size_input_test"
-  let output_path = "_build/tty_window_size_non_tty_test"
-  @async/fs.write_file(input_path, b"", create_mode=CreateOrTruncate)
-  {
-    let input = @async/fs.open(input_path, mode=ReadOnly)
-    let output = @async/fs.open(
-      output_path,
-      mode=WriteOnly,
-      create_mode=CreateOrTruncate,
-    )
-    let tty = Tty::new(input, output)
-    defer tty.close()
-    assert_true((try? tty.window_size()) is Err(_))
-  }
-  @async/fs.remove(input_path)
-  @async/fs.remove(output_path)
+  ignore(
+    with_pipe_tty(b"", tty => assert_true((try? tty.window_size()) is Err(_))),
+  )
 }
 
 ///|
@@ -174,26 +142,15 @@ test "state buffer can be made raw" {
 }
 
 ///|
-async test "tty state operations reject non tty file" {
-  let input_path = "_build/tty_state_non_tty_input_test"
-  let output_path = "_build/tty_state_non_tty_output_test"
-  @async/fs.write_file(input_path, b"x", create_mode=CreateOrTruncate)
-  {
-    let input = @async/fs.open(input_path, mode=ReadOnly)
-    let output = @async/fs.open(
-      output_path,
-      mode=WriteOnly,
-      create_mode=CreateOrTruncate,
-    )
-    let tty = Tty::new(input, output)
-    defer tty.close()
-    let state = State::new()
-    assert_true((try? tty.get_state()) is Err(_))
-    assert_true((try? tty.set_state(state)) is Err(_))
-    assert_true((try? tty.enter_raw_mode()) is Err(_))
-    assert_true((try? tty.leave_raw_mode(state)) is Err(_))
-    assert_true((try? tty.with_raw_mode(() => ())) is Err(_))
-  }
-  @async/fs.remove(input_path)
-  @async/fs.remove(output_path)
+async test "tty state operations reject non tty pipe" {
+  ignore(
+    with_pipe_tty(b"", tty => {
+      let state = State::new()
+      assert_true((try? tty.get_state()) is Err(_))
+      assert_true((try? tty.set_state(state)) is Err(_))
+      assert_true((try? tty.enter_raw_mode()) is Err(_))
+      assert_true((try? tty.leave_raw_mode(state)) is Err(_))
+      assert_true((try? tty.with_raw_mode(() => ())) is Err(_))
+    }),
+  )
 }

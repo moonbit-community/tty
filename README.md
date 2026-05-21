@@ -25,6 +25,7 @@ Use `Tty` when an operation needs a real terminal handle:
 - process stdio: `Tty::stdio()`
 - controlling terminal: `Tty::open()`
 - custom handles: `Tty::new(input, output)` with `Reader` and `Writer` traits
+  for async files, stdio, and OS pipes
 - raw mode: `Tty::get_state`, `State::make_raw`, `Tty::set_state`,
   `Tty::with_raw_mode`
 - terminal size: `Tty::window_size`

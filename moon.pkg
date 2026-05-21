@@ -2,6 +2,7 @@ import {
   "moonbitlang/async",
   "moonbitlang/async/types" @async/types,
   "moonbitlang/async/fs" @async/fs,
+  "moonbitlang/async/pipe" @async/pipe,
   "moonbitlang/async/stdio" @async/stdio,
   "moonbitlang/async/os_error",
   "moonbitlang/async/io" @async/io,
