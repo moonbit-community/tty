@@ -13,17 +13,17 @@ let global_sigwinch_watcher : Ref[SigwinchWatcher?] = Ref(None)
 ///|
 #cfg(not(platform="windows"))
 fn sigwinch_watcher() -> SigwinchWatcher raise {
-  guard global_sigwinch_watcher.val is Some(watcher) else {
-    let (read, write) = @async/pipe.pipe()
-    if install_sigwinch_handler(write.fd()) < 0 {
-      read.close()
-      write.close()
-      @os_error.check_errno("install SIGWINCH handler")
-    }
-    let watcher = SigwinchWatcher::{ read, write }
-    global_sigwinch_watcher.val = Some(watcher)
-    watcher
+  if global_sigwinch_watcher.val is Some(watcher) {
+    return watcher
   }
+  let (read, write) = @async/pipe.pipe()
+  if install_sigwinch_handler(write.fd()) < 0 {
+    read.close()
+    write.close()
+    @os_error.check_errno("install SIGWINCH handler")
+  }
+  let watcher = SigwinchWatcher::{ read, write }
+  global_sigwinch_watcher.val = Some(watcher)
   watcher
 }
 
