@@ -54,7 +54,7 @@ impl @async/io.Writer for ControllingTerminal with write_once(
 
 ///|
 #cfg(not(platform="windows"))
-impl Reader for ControllingTerminal with fd(self) {
+impl Fd for ControllingTerminal with fd(self) {
   self.raw.fd
 }
 
@@ -62,12 +62,6 @@ impl Reader for ControllingTerminal with fd(self) {
 #cfg(not(platform="windows"))
 impl Reader for ControllingTerminal with close(self) {
   self.raw.close()
-}
-
-///|
-#cfg(not(platform="windows"))
-impl Writer for ControllingTerminal with fd(self) {
-  self.raw.fd
 }
 
 ///|

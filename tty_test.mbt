@@ -21,7 +21,7 @@ async test "Tty::open() when controlling tty is available" {
 
 ///|
 test "stdout window size when stdout is a tty" {
-  if @tty.isatty(@async/stdio.stdout.fd()) {
+  if @tty.isatty(@async/stdio.stdout) {
     let tty = @tty.Tty::stdio()
     try tty.window_size() catch {
       _ => fail("expected stdout window size")

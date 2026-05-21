@@ -1,7 +1,7 @@
 ///|
 test "isatty" {
   debug_inspect(
-    @tty.isatty(@async/stdio.stdin.fd()),
+    @tty.isatty(@async/stdio.stdin),
     content=(
       #|false
     ),

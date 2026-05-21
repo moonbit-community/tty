@@ -75,17 +75,20 @@ pub(open) trait Fd {
   fn fd(Self) -> Int
 }
 pub impl Fd for Int
+pub impl Fd for @fs.File
+pub impl Fd for @pipe.PipeRead
+pub impl Fd for @pipe.PipeWrite
+pub impl Fd for @stdio.Input
+pub impl Fd for @stdio.Output
 
-pub(open) trait Reader : @io.Reader {
-  fn fd(Self) -> Int
+pub(open) trait Reader : @io.Reader + Fd {
   fn close(Self) -> Unit
 }
 pub impl Reader for @fs.File
 pub impl Reader for @pipe.PipeRead
 pub impl Reader for @stdio.Input
 
-pub(open) trait Writer : @io.Writer {
-  fn fd(Self) -> Int
+pub(open) trait Writer : @io.Writer + Fd {
   fn close(Self) -> Unit
 }
 pub impl Writer for @fs.File
