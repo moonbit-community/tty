@@ -37,7 +37,8 @@ operations:
 - terminal window size queries through `Tty`
 - decoded root terminal events through `Tty`
 - coordinated cursor position report queries through `Tty`
-- command helpers for common screen, cursor, and style operations through `Tty`
+- command helpers for common screen, cursor, color, and style operations
+  through `Tty`
 - bracketed paste mode helpers through `Tty`
 - terminal state operations such as `Tty::get_state`, `Tty::set_state`, and raw
   mode helpers through `Tty`
@@ -65,7 +66,7 @@ It should:
 - construct screen mode sequences such as alternate-screen enter/leave
 - construct bracketed paste enable/disable sequences
 - construct scrolling-margin and reverse-index sequences
-- construct low-level SGR sequences
+- construct low-level SGR sequences and fixed SGR attribute bytes
 - document the standard or terminal family each sequence comes from
 
 It should not:

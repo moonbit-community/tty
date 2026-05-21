@@ -1,4 +1,36 @@
 ///|
+/// Bold or increased intensity (SGR 1), ECMA-48.
+pub let bold : Bytes = b"\x1b[1m"
+
+///|
+/// Normal intensity (SGR 22), ECMA-48.
+pub let reset_bold : Bytes = b"\x1b[22m"
+
+///|
+/// Italic (SGR 3), ECMA-48.
+pub let italic : Bytes = b"\x1b[3m"
+
+///|
+/// Not italic (SGR 23), ECMA-48.
+pub let reset_italic : Bytes = b"\x1b[23m"
+
+///|
+/// Underline (SGR 4), ECMA-48.
+pub let underline : Bytes = b"\x1b[4m"
+
+///|
+/// Not underlined (SGR 24), ECMA-48.
+pub let reset_underline : Bytes = b"\x1b[24m"
+
+///|
+/// Reverse video (SGR 7), ECMA-48.
+pub let reverse : Bytes = b"\x1b[7m"
+
+///|
+/// Positive image (SGR 27), ECMA-48.
+pub let reset_reverse : Bytes = b"\x1b[27m"
+
+///|
 /// Construct an SGR sequence with one parameter.
 pub fn sgr1(p1 : Int) -> Bytes {
   csi1(p1, b'm')

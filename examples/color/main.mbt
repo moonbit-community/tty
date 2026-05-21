@@ -160,9 +160,32 @@ async fn write_truecolor_gradient(tty : @tty.Tty) -> Unit {
 }
 
 ///|
+async fn write_attributes(tty : @tty.Tty) -> Unit {
+  writeln(tty, "SGR attributes")
+  tty.bold()
+  write(tty, "bold")
+  tty.reset_bold()
+  write(tty, " ")
+  tty.italic()
+  write(tty, "italic")
+  tty.reset_italic()
+  write(tty, " ")
+  tty.underline()
+  write(tty, "underline")
+  tty.reset_underline()
+  write(tty, " ")
+  tty.reverse()
+  write(tty, "reverse")
+  tty.reset_reverse()
+  writeln(tty, "")
+}
+
+///|
 async fn main {
   let tty = @tty.Tty::stdio()
-  writeln(tty, "tty color specimen")
+  writeln(tty, "tty color and style specimen")
+  writeln(tty, "")
+  write_attributes(tty)
   writeln(tty, "")
   write_basic_foregrounds(tty)
   writeln(tty, "")

@@ -241,6 +241,54 @@ pub async fn Tty::reset_background(self : Self) -> Unit {
 }
 
 ///|
+/// Set bold or increased intensity.
+pub async fn Tty::bold(self : Self) -> Unit {
+  self.write(@vt.bold)
+}
+
+///|
+/// Reset bold by restoring normal intensity.
+pub async fn Tty::reset_bold(self : Self) -> Unit {
+  self.write(@vt.reset_bold)
+}
+
+///|
+/// Set italic text.
+pub async fn Tty::italic(self : Self) -> Unit {
+  self.write(@vt.italic)
+}
+
+///|
+/// Reset italic text.
+pub async fn Tty::reset_italic(self : Self) -> Unit {
+  self.write(@vt.reset_italic)
+}
+
+///|
+/// Set underlined text.
+pub async fn Tty::underline(self : Self) -> Unit {
+  self.write(@vt.underline)
+}
+
+///|
+/// Reset underlined text.
+pub async fn Tty::reset_underline(self : Self) -> Unit {
+  self.write(@vt.reset_underline)
+}
+
+///|
+/// Set reverse video.
+pub async fn Tty::reverse(self : Self) -> Unit {
+  self.write(@vt.reverse)
+}
+
+///|
+/// Reset reverse video.
+pub async fn Tty::reset_reverse(self : Self) -> Unit {
+  self.write(@vt.reset_reverse)
+}
+
+///|
 /// Reset all SGR style attributes.
 pub async fn Tty::reset_style(self : Self) -> Unit {
   self.write(reset_style_sequence)

@@ -2,6 +2,8 @@
 package "tonyfettes/tty/vt"
 
 // Values
+pub let bold : Bytes
+
 pub fn cursor_back(Int) -> Bytes
 
 pub fn cursor_down(Int) -> Bytes
@@ -32,11 +34,23 @@ pub let erase_line_right : Bytes
 
 pub let hide_cursor : Bytes
 
+pub let italic : Bytes
+
 pub let leave_alt_screen : Bytes
 
 pub let request_cursor_position : Bytes
 
+pub let reset_bold : Bytes
+
+pub let reset_italic : Bytes
+
+pub let reset_reverse : Bytes
+
 pub let reset_top_bottom_margins : Bytes
+
+pub let reset_underline : Bytes
+
+pub let reverse : Bytes
 
 pub let reverse_index : Bytes
 
@@ -49,6 +63,8 @@ pub fn sgr3(Int, Int, Int) -> Bytes
 pub fn sgr5(Int, Int, Int, Int, Int) -> Bytes
 
 pub let show_cursor : Bytes
+
+pub let underline : Bytes
 
 // Errors
 
