@@ -47,6 +47,7 @@ pub async fn Tty::reset_background(Self) -> Unit
 pub async fn Tty::reset_foreground(Self) -> Unit
 pub async fn Tty::reset_style(Self) -> Unit
 pub async fn Tty::set_background(Self, @color.Color) -> Unit
+pub async fn Tty::set_cursor_position(Self, Int, Int) -> Unit
 pub async fn Tty::set_foreground(Self, @color.Color) -> Unit
 pub fn Tty::set_state(Self, State) -> State raise @os_error.OSError
 pub async fn Tty::show_cursor(Self) -> Unit

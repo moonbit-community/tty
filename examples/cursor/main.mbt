@@ -52,25 +52,25 @@ fn clamp(value : Int, min : Int, max : Int) -> Int {
 
 ///|
 async fn draw_box(tty : @tty.Tty, anchor : Anchor, size : Size) -> Unit {
-  tty.write(@tty/vt.cursor_position(anchor.top, anchor.left))
+  tty.set_cursor_position(anchor.top, anchor.left)
   tty.write("+\{String::make(size.width, '-')}+")
   for row in 1..<=size.height {
-    tty.write(@tty/vt.cursor_position(anchor.top + row, anchor.left))
+    tty.set_cursor_position(anchor.top + row, anchor.left)
     tty.write("|\{String::make(size.width, ' ')}|")
   }
-  tty.write(@tty/vt.cursor_position(anchor.top + size.height + 1, anchor.left))
+  tty.set_cursor_position(anchor.top + size.height + 1, anchor.left)
   tty.write("+\{String::make(size.width, '-')}+")
 }
 
 ///|
 async fn draw_marker(tty : @tty.Tty, pos : Anchor, x : Int, y : Int) -> Unit {
-  tty.write(@tty/vt.cursor_position(pos.top + 1 + y, pos.left + 1 + x))
+  tty.set_cursor_position(pos.top + 1 + y, pos.left + 1 + x)
   tty.write("@")
 }
 
 ///|
 async fn erase_marker(tty : @tty.Tty, pos : Anchor, x : Int, y : Int) -> Unit {
-  tty.write(@tty/vt.cursor_position(pos.top + 1 + y, pos.left + 1 + x))
+  tty.set_cursor_position(pos.top + 1 + y, pos.left + 1 + x)
   tty.write(" ")
 }
 
@@ -83,7 +83,7 @@ async fn draw_status(
   y : Int,
   visible : Bool,
 ) -> Unit {
-  tty.write(@tty/vt.cursor_position(pos.top + size.height + 3, pos.left))
+  tty.set_cursor_position(pos.top + size.height + 3, pos.left)
   let cursor = if visible { "shown" } else { "hidden" }
   tty.write(
     "WASD/HJKL move  C toggle cursor  Q quit  pos=(\{x},\{y}) cursor=\{cursor}",

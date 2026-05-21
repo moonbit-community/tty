@@ -550,11 +550,6 @@ async fn redraw_input_from(
 }
 
 ///|
-async fn move_to(tty : @tty.Tty, row : Int, col : Int) -> Unit {
-  write_bytes(tty, @tty/vt.cursor_position(row, col))
-}
-
-///|
 async fn render_input_at_top(
   tty : @tty.Tty,
   top : Int,
@@ -564,10 +559,10 @@ async fn render_input_at_top(
 ) -> Unit {
   let lines = split_input_lines(editor.text)
   let start = editor.view_start
-  move_to(tty, top, 1)
+  tty.set_cursor_position(top, 1)
   render_separator_current(tty, size.cols)
   for row in 0..<input_text_rows {
-    move_to(tty, top + 1 + row, 1)
+    tty.set_cursor_position(top + 1 + row, 1)
     render_prompt_current(
       tty,
       input_prefix(row, start),
@@ -575,7 +570,7 @@ async fn render_input_at_top(
       size.cols,
     )
   }
-  move_to(tty, top + input_text_rows + 1, 1)
+  tty.set_cursor_position(top + input_text_rows + 1, 1)
   render_status_current(tty, status, size.cols)
 }
 
@@ -586,8 +581,7 @@ async fn place_input_cursor_at_top(
   editor : Editor,
   size : AgentSize,
 ) -> Unit {
-  move_to(
-    tty,
+  tty.set_cursor_position(
     top + 1 + editor_cursor_row(editor),
     1 + input_cursor_offset(editor, size.cols),
   )
@@ -719,7 +713,7 @@ async fn shift_viewport_down_for_insert(
     top
   } else {
     write_bytes(tty, @tty/vt.set_top_bottom_margins(top, size.rows))
-    move_to(tty, top, 1)
+    tty.set_cursor_position(top, 1)
     for _ in 0..<shift {
       write_bytes(tty, @tty/vt.reverse_index)
     }
@@ -742,7 +736,7 @@ async fn insert_transcript_row_above_viewport(
     render_transcript_row(tty, prefix, color, text, size)
   } else {
     write_bytes(tty, @tty/vt.set_top_bottom_margins(1, history_bottom))
-    move_to(tty, history_bottom, 1)
+    tty.set_cursor_position(history_bottom, 1)
     write(tty, "\r\n")
     render_transcript_row_current(tty, prefix, color, text, size)
     write_bytes(tty, @tty/vt.reset_top_bottom_margins)
@@ -843,7 +837,7 @@ async fn leave_agent(
   restore_terminal(tty)
   match viewport_top {
     Some(top) => {
-      move_to(tty, viewport_bottom(top), 1)
+      tty.set_cursor_position(viewport_bottom(top), 1)
       write(tty, "\r\n")
     }
     None =>

@@ -31,8 +31,8 @@ Use `Tty` when an operation needs a real terminal handle:
 - terminal size: `Tty::window_size`
 - cursor position report: `Tty::query_cursor_position`
 - terminal events: `Tty::read_event`
-- output commands: cursor visibility, alternate screen, foreground/background
-  colors, and style reset
+- output commands: cursor visibility/position, alternate screen,
+  foreground/background colors, and style reset
 
 Raw file and stdio byte I/O should use `moonbitlang/async/fs` and
 `moonbitlang/async/stdio` directly. The root package does not wrap them as
@@ -83,6 +83,7 @@ Write terminal commands through a `Tty`:
 async fn main {
   let tty = @tty.Tty::stdio()
   tty.hide_cursor()
+  tty.set_cursor_position(1, 1)
   tty.set_foreground(@tty/color.Basic(@tty/color.Green))
   tty.write("hello from tty\r\n")
   tty.reset_style()

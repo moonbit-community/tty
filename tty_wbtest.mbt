@@ -76,6 +76,7 @@ async test "pipe tty terminal commands write sequences" {
   let output = with_pipe_tty(b"", tty => {
     tty.enter_alt_screen()
     tty.hide_cursor()
+    tty.set_cursor_position(3, 4)
     tty.set_foreground(@color.Basic(@color.Red))
     tty.reset_foreground()
     tty.set_background(@color.Indexed(42))
@@ -86,7 +87,7 @@ async test "pipe tty terminal commands write sequences" {
   })
   inspect(
     output,
-    content="\u{1B}[?1049h\u{1B}[?25l\u{1B}[31m\u{1B}[39m\u{1B}[48;5;42m\u{1B}[49m\u{1B}[0m\u{1B}[?25h\u{1B}[?1049l",
+    content="\u{1B}[?1049h\u{1B}[?25l\u{1B}[3;4H\u{1B}[31m\u{1B}[39m\u{1B}[48;5;42m\u{1B}[49m\u{1B}[0m\u{1B}[?25h\u{1B}[?1049l",
   )
 }
 

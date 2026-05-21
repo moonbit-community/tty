@@ -40,6 +40,7 @@ This board tracks implementation direction for `tonyfettes/tty`. Use
 | TTY-8 | done | remove root `Input`/`Output` wrappers | `docs/plans/2026-05-20-remove-input-output-wrappers.md`, root package, examples | root terminal API exposes `Tty` plus terminal handle traits; raw stdio/file I/O comes from `moonbitlang/async` | `moon fmt`, `moon test .`, targeted `moon check examples/*`, `moon test`, `moon check`, `moon info`, `git diff --check` |
 | TTY-9 | done | RawFd-backed controlling terminal open | `docs/plans/2026-05-21-tty-open-raw-fd.md`, root package | Unix `Tty::open` avoids macOS kqueue registration for `/dev/tty` while keeping the public API shape | `moon fmt`, `moon test .`, `moon check examples/agent`, `moon test`, `moon check`, `moon info`, manual PTY smoke |
 | TTY-10 | done | Unix resize events | `docs/plans/2026-05-21-resize-events.md`, root package, examples | root `Tty::read_event` reports input and coalesced Unix resize events while CPR remains a low-level terminal response | `moon fmt`, `moon test .`, `moon test input`, targeted example checks, `moon test`, `moon check`, `moon info`, `git diff --check` |
+| TTY-11 | done | root cursor position command | `docs/plans/2026-05-21-root-cursor-position.md`, root package, examples | `Tty::set_cursor_position` writes absolute cursor-position sequences while `vt` stays byte-only | `moon fmt`, `moon test .`, targeted example checks, `moon test`, `moon check`, `moon info`, `git diff --check` |
 
 ## Current Rules
 

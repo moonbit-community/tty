@@ -182,7 +182,7 @@ async fn render_content_row(
   text : String,
   cols : Int,
 ) -> Unit {
-  tty.write(@tty/vt.cursor_position(row, 1))
+  tty.set_cursor_position(row, 1)
   tty.write(@tty/vt.erase_line_all)
   tty.write(fit_line(text, cols))
 }
@@ -195,7 +195,7 @@ async fn render_status(
   offset : Int,
   size : PagerSize,
 ) -> Unit {
-  tty.write(@tty/vt.cursor_position(status_row(size), 1))
+  tty.set_cursor_position(status_row(size), 1)
   render_status_current(tty, title, lines, offset, size)
 }
 
@@ -252,7 +252,7 @@ async fn render_initial(
     }
     render_status_current(tty, title, lines, offset, size)
     tty.write(@tty/vt.set_top_bottom_margins(1, rows))
-    tty.write(@tty/vt.cursor_position(status_row(size), 1))
+    tty.set_cursor_position(status_row(size), 1)
     render_status_current(tty, title, lines, offset, size)
     true
   }
@@ -284,7 +284,7 @@ async fn scroll_forward_one(
 ) -> Unit {
   let rows = body_rows(size)
   tty.write(@tty/vt.set_top_bottom_margins(1, rows))
-  tty.write(@tty/vt.cursor_position(rows, 1))
+  tty.set_cursor_position(rows, 1)
   tty.write("\n")
   render_content_row(tty, rows, line_at(lines, offset + rows - 1), size.cols)
   render_status(tty, title, lines, offset, size)
@@ -300,7 +300,7 @@ async fn scroll_backward_one(
 ) -> Unit {
   let rows = body_rows(size)
   tty.write(@tty/vt.set_top_bottom_margins(1, rows))
-  tty.write(@tty/vt.cursor_position(1, 1))
+  tty.set_cursor_position(1, 1)
   tty.write(@tty/vt.reverse_index)
   render_content_row(tty, 1, line_at(lines, offset), size.cols)
   render_status(tty, title, lines, offset, size)
@@ -345,7 +345,7 @@ async fn leave_pager(tty : @tty.Tty, full_screen : Bool) -> Unit {
   if full_screen {
     let size = terminal_size(tty)
     restore_terminal(tty)
-    tty.write(@tty/vt.cursor_position(status_row(size), 1))
+    tty.set_cursor_position(status_row(size), 1)
   } else {
     tty.show_cursor()
   }

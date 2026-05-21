@@ -138,6 +138,16 @@ pub async fn Tty::show_cursor(self : Self) -> Unit {
 }
 
 ///|
+/// Move the terminal cursor to a 1-based row and column.
+pub async fn Tty::set_cursor_position(
+  self : Self,
+  row : Int,
+  col : Int,
+) -> Unit {
+  self.write(@vt.cursor_position(row, col))
+}
+
+///|
 /// Set the foreground color.
 pub async fn Tty::set_foreground(self : Self, color : @color.Color) -> Unit {
   self.write(foreground_sequence(color))
