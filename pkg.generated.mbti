@@ -85,7 +85,6 @@ pub struct WindowSize {
 pub(open) trait Fd {
   fn fd(Self) -> Int
 }
-pub impl Fd for Int
 pub impl Fd for @fs.File
 pub impl Fd for @pipe.PipeRead
 pub impl Fd for @pipe.PipeWrite

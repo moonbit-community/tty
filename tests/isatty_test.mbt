@@ -39,20 +39,34 @@ async fn read_until_nul(pty : @pty.Pty, timeout_ms? : Int = 3000) -> String {
 }
 
 ///|
+fn parse_build_output(output : &@io.Data) -> String raise {
+  let output_text = output.text()
+  for line in output_text.split("\n") {
+    let line = line.trim()
+    if line.has_prefix("{") {
+      let data : &@io.Data = line
+      let build_output = data.json()
+      guard build_output is { "artifacts_path": [String(artifacts_path)], .. } else {
+        fail("invalid build output: \{output_text}")
+      }
+      return artifacts_path
+    }
+  }
+  fail("missing build output JSON: \{output_text}")
+}
+
+///|
 async fn build(name : String) -> String {
   let (build_exit, build_stdout, build_stderr) = @process.collect_output(
     "moon",
     ["-C", "tests/\{name}", "run", ".", "--build-only"],
   )
   guard build_exit is 0 else { fail("build failed: \{build_stderr.text()}") }
-  let build_output = build_stdout.json()
-  guard build_output is { "artifacts_path": [String(artifacts_path)], .. } else {
-    fail("invalid build output: \{build_stdout.text()}")
-  }
-  artifacts_path
+  parse_build_output(build_stdout)
 }
 
 ///|
+#cfg(not(platform="windows"))
 async test "isatty" {
   @async.with_task_group() <| group => {
     let artifacts_path = build("isatty")

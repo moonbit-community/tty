@@ -145,15 +145,6 @@ async test "tty window size rejects non tty output" {
 }
 
 ///|
-test "isatty rejects invalid fd" {
-  try isatty(-1) catch {
-    @os_error.OSError(_, context~) => @debug.assert_eq(context, "isatty")
-  } noraise {
-    _ => fail("expected invalid fd error")
-  }
-}
-
-///|
 test "state buffer can be made raw" {
   assert_true(sizeof_state > 0)
   let state = State::new()

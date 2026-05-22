@@ -21,11 +21,6 @@ pub(open) trait Fd {
 }
 
 ///|
-pub impl Fd for @async/types.Fd with fn fd(self) {
-  self
-}
-
-///|
 pub impl Fd for @async/fs.File with fn fd(self) {
   @async/fs.File::fd(self)
 }
