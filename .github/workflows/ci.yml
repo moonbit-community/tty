@@ -46,7 +46,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
           irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
           "$env:USERPROFILE\.moon\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           "MOON_HOME=$env:USERPROFILE\.moon" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
