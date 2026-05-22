@@ -55,9 +55,10 @@ Raw file and stdio I/O belongs to `moonbitlang/async/fs` and
 `moonbitlang/async/stdio`; the root package should not duplicate those APIs with
 thin wrapper types.
 
-### `vt`
+### Internal VT Helpers
 
-`tonyfettes/tty/vt` is a pure byte-sequence package.
+`tonyfettes/tty/internal/vt` is a pure byte-sequence implementation package used
+by the root `Tty` command methods. It is not downstream API.
 
 It should:
 
@@ -71,16 +72,14 @@ It should:
 
 It should not:
 
+- be imported by examples or downstream callers
 - write to or own an output stream
 - depend on `@io.Writer`
 - remember cursor position
 - model a screen buffer
 
-Callers decide when and where to write the returned `Bytes`.
-
-Small CSI and SGR byte builders live inside `vt` as implementation helpers.
-Only intentionally supported protocol helpers such as `sgr1`, `sgr3`, and
-`sgr5` should appear in the public interface.
+Root `Tty` methods are the public output-command surface. Small CSI and SGR byte
+builders stay inside `internal/vt` as implementation helpers.
 
 ### `color`
 
@@ -102,7 +101,7 @@ It should not:
 - mutate terminal palettes or query terminal color state
 
 Root `Tty` methods map color values onto SGR byte sequences when writing to a
-terminal. Raw byte callers should use low-level `vt` helpers directly.
+terminal.
 
 Root callers that want decoded terminal events should use `Tty::read_event` so
 terminal request/response side channels, resize notifications, and normal input

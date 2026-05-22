@@ -9,7 +9,7 @@ import {
   "moonbitlang/async/io" @async/io,
   "tonyfettes/tty/color",
   "tonyfettes/tty/input",
-  "tonyfettes/tty/vt",
+  "tonyfettes/tty/internal/vt",
 }
 
 import {

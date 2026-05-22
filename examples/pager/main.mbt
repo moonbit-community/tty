@@ -183,7 +183,7 @@ async fn render_content_row(
   cols : Int,
 ) -> Unit {
   tty.set_cursor_position(row, 1)
-  tty.write(@tty/vt.erase_line_all)
+  tty.erase_line_all()
   tty.write(fit_line(text, cols))
 }
 
@@ -217,7 +217,7 @@ async fn render_status_current(
   }
   let status = "\{title}  \{first}-\{last}/\{lines.length()}  \{controls}"
   tty.write("\r")
-  tty.write(@tty/vt.erase_line_all)
+  tty.erase_line_all()
   tty.write(fit_line(status, size.cols))
 }
 
@@ -251,7 +251,7 @@ async fn render_initial(
       write_inline_content_row(tty, line_at(lines, offset + row), size.cols)
     }
     render_status_current(tty, title, lines, offset, size)
-    tty.write(@tty/vt.set_top_bottom_margins(1, rows))
+    tty.set_top_bottom_margins(1, rows)
     tty.set_cursor_position(status_row(size), 1)
     render_status_current(tty, title, lines, offset, size)
     true
@@ -267,7 +267,7 @@ async fn render_full(
   size : PagerSize,
 ) -> Unit {
   let rows = body_rows(size)
-  tty.write(@tty/vt.set_top_bottom_margins(1, rows))
+  tty.set_top_bottom_margins(1, rows)
   for row in 1..<=rows {
     render_content_row(tty, row, line_at(lines, offset + row - 1), size.cols)
   }
@@ -283,7 +283,7 @@ async fn scroll_forward_one(
   size : PagerSize,
 ) -> Unit {
   let rows = body_rows(size)
-  tty.write(@tty/vt.set_top_bottom_margins(1, rows))
+  tty.set_top_bottom_margins(1, rows)
   tty.set_cursor_position(rows, 1)
   tty.write("\n")
   render_content_row(tty, rows, line_at(lines, offset + rows - 1), size.cols)
@@ -299,9 +299,9 @@ async fn scroll_backward_one(
   size : PagerSize,
 ) -> Unit {
   let rows = body_rows(size)
-  tty.write(@tty/vt.set_top_bottom_margins(1, rows))
+  tty.set_top_bottom_margins(1, rows)
   tty.set_cursor_position(1, 1)
-  tty.write(@tty/vt.reverse_index)
+  tty.reverse_index()
   render_content_row(tty, 1, line_at(lines, offset), size.cols)
   render_status(tty, title, lines, offset, size)
 }
@@ -336,7 +336,7 @@ async fn redraw(
 
 ///|
 async fn restore_terminal(tty : @tty.Tty) -> Unit {
-  tty.write(@tty/vt.reset_top_bottom_margins)
+  tty.reset_top_bottom_margins()
   tty.show_cursor()
 }
 

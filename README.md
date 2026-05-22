@@ -3,8 +3,8 @@
 Low-level terminal primitives for MoonBit.
 
 `tonyfettes/tty` provides a small foundation for programs that need to talk to a
-real terminal: tty detection, raw mode, terminal size queries, VT byte
-sequences, color values, and host input decoding. It is intentionally below a
+real terminal: tty detection, raw mode, terminal size queries, output
+commands, color values, and host input decoding. It is intentionally below a
 full TUI framework. It does not own a screen model, layout engine, widget tree,
 pane system, or scrollback buffer.
 
@@ -39,14 +39,9 @@ Raw file and stdio byte I/O should use `moonbitlang/async/fs` and
 `moonbitlang/async/stdio` directly. The root package does not wrap them as
 `stdin`, `stdout`, or `stderr`.
 
-### `tonyfettes/tty/vt`
-
-Pure VT/ANSI byte sequence helpers.
-
-This package returns `Bytes` and does not own an output stream. It contains
-cursor movement, erase, alternate-screen, scroll-region, reverse-index, cursor
-position request, bracketed paste mode, low-level SGR helpers, and fixed SGR
-attribute bytes.
+VT/ANSI byte construction is an internal implementation detail. Downstream callers
+should use root `Tty` output command methods instead of importing byte-sequence
+helpers directly.
 
 ### `tonyfettes/tty/input`
 
@@ -73,11 +68,9 @@ Add the module and import the packages you need in `moon.pkg`:
 
 ```moonbit
 import {
-  "moonbitlang/async/stdio" @async/stdio
   "tonyfettes/tty"
   "tonyfettes/tty/color" @tty/color
   "tonyfettes/tty/input" @tty/input
-  "tonyfettes/tty/vt" @tty/vt
 }
 ```
 
@@ -119,15 +112,6 @@ async fn main {
 }
 ```
 
-Use low-level VT bytes when you already own the writer:
-
-```moonbit
-async fn main {
-  @async/stdio.stdout.write(@tty/vt.cursor_position(1, 1))
-  @async/stdio.stdout.write(@tty/vt.erase_line_all)
-}
-```
-
 ## Examples
 
 Examples live in a separate workspace member under `examples/`.
@@ -155,7 +139,7 @@ The examples are manual validation tools, not framework APIs:
 
 - `tty` owns terminal handles, platform state, raw mode, terminal size, cursor
   position queries, and command-style terminal operations.
-- `vt` only builds byte sequences.
+- internal VT helpers only build byte sequences for root `Tty` methods.
 - `input` decodes host input bytes into events.
 - `color` only represents semantic color values.
 - Higher-level editing, layout, widgets, screen rendering, and terminal-emulator

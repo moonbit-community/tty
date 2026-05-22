@@ -13,13 +13,13 @@ async fn writeln(tty : @tty.Tty, line : String) -> Unit {
 ///|
 async fn redraw_input(tty : @tty.Tty, buffer : String, status : String) -> Unit {
   tty.write("\r")
-  tty.write(@tty/vt.erase_line_all)
+  tty.erase_line_all()
   tty.write(prompt)
   tty.write(buffer)
   if status.length() > 0 {
     let suffix = "  \{status}"
     tty.write(suffix)
-    tty.write(@tty/vt.cursor_back(display_width(suffix)))
+    tty.cursor_back(display_width(suffix))
   }
 }
 
@@ -42,7 +42,7 @@ fn delete_last_grapheme(text : String) -> String {
 ///|
 async fn submit(tty : @tty.Tty, line : String) -> Unit {
   tty.write("\r")
-  tty.write(@tty/vt.erase_line_all)
+  tty.erase_line_all()
   writeln(tty, "\{prompt}\{line}")
   writeln(tty, "submitted: \{line}")
   redraw_input(tty, "", "submitted")
@@ -143,7 +143,7 @@ async fn run_input_buffer(tty : @tty.Tty) -> Unit {
             match key.code {
               Char('c') if key.modifiers.ctrl() => {
                 tty.write("\r")
-                tty.write(@tty/vt.erase_line_all)
+                tty.erase_line_all()
                 writeln(tty, "exiting")
                 break
               }

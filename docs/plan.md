@@ -41,16 +41,17 @@ This board tracks implementation direction for `tonyfettes/tty`. Use
 | TTY-9 | done | RawFd-backed controlling terminal open | `docs/plans/2026-05-21-tty-open-raw-fd.md`, root package | Unix `Tty::open` avoids macOS kqueue registration for `/dev/tty` while keeping the public API shape | `moon fmt`, `moon test .`, `moon check examples/agent`, `moon test`, `moon check`, `moon info`, manual PTY smoke |
 | TTY-10 | done | Unix resize events | `docs/plans/2026-05-21-resize-events.md`, root package, examples | root `Tty::read_event` reports input and coalesced Unix resize events while CPR remains a low-level terminal response | `moon fmt`, `moon test .`, `moon test input`, targeted example checks, `moon test`, `moon check`, `moon info`, `git diff --check` |
 | TTY-11 | done | root cursor position command | `docs/plans/2026-05-21-root-cursor-position.md`, root package, examples | `Tty::set_cursor_position` writes absolute cursor-position sequences while `vt` stays byte-only | `moon fmt`, `moon test .`, targeted example checks, `moon test`, `moon check`, `moon info`, `git diff --check` |
-| TTY-12 | done | root VT command methods | `docs/plans/2026-05-21-root-vt-command-methods.md`, root package, `examples/agent` | `examples/agent` can use root `Tty` methods for the VT commands it currently writes through `@tty/vt` | `moon fmt`, `moon test .`, `moon check examples/agent`, `moon test examples/agent`, `moon test`, `moon check`, `moon info`, `git diff --check` |
+| TTY-12 | done | root VT command methods | `docs/plans/2026-05-21-root-vt-command-methods.md`, root package, `examples/agent` | `examples/agent` uses root `Tty` methods for its VT commands | `moon fmt`, `moon test .`, `moon check examples/agent`, `moon test examples/agent`, `moon test`, `moon check`, `moon info`, `git diff --check` |
 | TTY-13 | done | `isatty` OS error integration | `docs/plans/2026-05-21-isatty-os-error.md`, root package | `isatty` reports real OS errors through `@os_error.OSError` while valid non-terminal handles still return `false` | `moon fmt`, `moon test .`, `moon check`, `moon test`, `moon info`, `git diff --check` |
 | TTY-14 | done | SGR attribute command helpers | `docs/plans/2026-05-21-sgr-attributes.md`, `vt/`, root package, `examples/color` | common text attributes have low-level VT bytes and root `Tty` command methods without adding style state | `moon fmt`, `moon test vt`, `moon test .`, `moon check examples/color`, `moon test`, `moon check`, `moon info`, `git diff --check` |
+| TTY-15 | done | internal VT package | `docs/plans/2026-05-22-internal-vt.md`, `internal/vt/`, root package, examples, docs | downstream callers use root `Tty` command methods and the old public VT package is removed | `moon fmt`, `moon check`, `moon test internal/vt`, `moon check examples/input`, `moon check examples/pager`, `moon test .`, `moon test`, `moon info`, `git diff --check` |
 | MVP-2 | done | queued input and shell commands in agent demo | `docs/plans/2026-05-21-agent-queued-shell.md`, `examples/agent` | `Tab` queues input for delayed submission and `!cmd` runs through `moonbitlang/async/process` without background tasks writing directly to tty | `moon fmt`, `moon check examples/agent`, `moon test examples/agent`, `moon check`, `moon test`, `moon info`, `git diff --check` |
 
 ## Current Rules
 
 - Do not start `IN-2` until `IN-1` has a committed public event shape.
-- Keep `vt` byte-only unless a plan explicitly introduces platform-dispatched
-  output operations.
+- Keep `internal/vt` byte-only unless a plan explicitly introduces
+  platform-dispatched output operations.
 - Keep `examples/input` as a demo. Its grapheme-aware buffer validates higher-level
   editing behavior but does not create a public line-editing API.
 - When a task touches `.mbti`, include public API audit notes in its plan.

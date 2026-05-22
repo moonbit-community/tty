@@ -189,6 +189,12 @@ pub async fn Tty::cursor_forward(self : Self, n : Int) -> Unit {
 }
 
 ///|
+/// Cursor Back (CUB), ECMA-48.
+pub async fn Tty::cursor_back(self : Self, n : Int) -> Unit {
+  self.write(@vt.cursor_back(n))
+}
+
+///|
 /// Erase the entire current line (EL 2), ECMA-48.
 pub async fn Tty::erase_line_all(self : Self) -> Unit {
   self.write(@vt.erase_line_all)

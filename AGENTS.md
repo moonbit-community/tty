@@ -58,12 +58,13 @@
 
 - The root `tonyfettes/tty` package owns tty handles, stdio construction,
   raw-mode state, and platform FFI.
-- `tonyfettes/tty/vt` emits VT/ANSI byte sequences. It does not own an output
-  stream and does not maintain screen state.
+- `tonyfettes/tty/internal/vt` emits VT/ANSI byte sequences for root `Tty`
+  methods. It does not own an output stream and does not maintain screen state.
 - `tonyfettes/tty/input` decodes host input bytes from an `@io.Reader` into
   input events. It is not a text editor and should not own a line buffer.
 - `examples/*` packages are demos and manual validation tools. They can exercise
-  APIs, but they are not themselves public library API.
+  APIs, but they are not themselves public library API and should not import
+  `tonyfettes/tty/internal/vt` directly.
 
 ## Code Readability
 

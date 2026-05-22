@@ -33,6 +33,7 @@ pub fn State::make_raw(Self) -> Self
 type Tty
 pub async fn Tty::bold(Self) -> Unit
 pub fn Tty::close(Self) -> Unit
+pub async fn Tty::cursor_back(Self, Int) -> Unit
 pub async fn Tty::cursor_forward(Self, Int) -> Unit
 pub async fn Tty::cursor_up(Self, Int) -> Unit
 pub async fn Tty::disable_bracketed_paste(Self) -> Unit

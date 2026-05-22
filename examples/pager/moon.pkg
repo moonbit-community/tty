@@ -8,7 +8,6 @@ import {
   "rami3l/unicodewidth",
   "tonyfettes/tty",
   "tonyfettes/tty/input" @tty/input,
-  "tonyfettes/tty/vt" @tty/vt,
 }
 
 supported_targets = "native"
