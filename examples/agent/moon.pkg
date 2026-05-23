@@ -5,9 +5,9 @@ import {
   "moonbitlang/async/process",
   "kawaz/grapheme",
   "rami3l/unicodewidth",
-  "tonyfettes/tty",
-  "tonyfettes/tty/color",
-  "tonyfettes/tty/input" @tty/input,
+  "moonbit-community/tty",
+  "moonbit-community/tty/color",
+  "moonbit-community/tty/input" @tty/input,
 }
 
 supported_targets = "native"

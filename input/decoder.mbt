@@ -5,6 +5,10 @@ const Esc : Byte = b'\x1b'
 const EventReaderInitialBufferCapacity : Int = 8
 
 ///|
+/// Low-level terminal byte stream decoder.
+///
+/// Use this directly when decoding an arbitrary `@io.Reader`. Terminal callers
+/// that own a `Tty` should usually prefer `Tty::read_event`.
 struct EventReader {
   reader : &@io.Reader
   mut data : FixedArray[Byte]
@@ -14,6 +18,7 @@ struct EventReader {
 }
 
 ///|
+/// Create an event reader over an async byte reader.
 pub fn EventReader::new(reader : &@io.Reader) -> EventReader {
   EventReader::{
     reader,

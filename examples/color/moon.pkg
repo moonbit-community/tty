@@ -1,7 +1,7 @@
 import {
   "moonbitlang/async",
-  "tonyfettes/tty",
-  "tonyfettes/tty/color" @tty_color,
+  "moonbit-community/tty",
+  "moonbit-community/tty/color" @tty_color,
 }
 
 supported_targets = "native"

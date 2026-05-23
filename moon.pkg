@@ -7,9 +7,9 @@ import {
   "moonbitlang/async/stdio" @async/stdio,
   "moonbitlang/async/os_error",
   "moonbitlang/async/io" @async/io,
-  "tonyfettes/tty/color",
-  "tonyfettes/tty/input",
-  "tonyfettes/tty/internal/vt",
+  "moonbit-community/tty/color",
+  "moonbit-community/tty/input",
+  "moonbit-community/tty/internal/vt",
 }
 
 import {

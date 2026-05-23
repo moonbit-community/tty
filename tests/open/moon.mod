@@ -1,9 +1,9 @@
-name = "tonyfettes/tty/tests/open"
+name = "moonbit-community/tty/tests/open"
 
 version = "0.1.0"
 
 import {
-  "tonyfettes/tty@0.1.0",
+  "moonbit-community/tty@0.1.0",
   "moonbitlang/async@0.19.1",
 }
 

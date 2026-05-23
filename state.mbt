@@ -1,8 +1,13 @@
 ///|
-/// Terminal State
+/// Opaque terminal state snapshot.
+///
+/// Capture a state with `Tty::get_state`, derive raw mode with
+/// `State::make_raw`, and restore it with `Tty::set_state` or
+/// `Tty::leave_raw_mode`.
 struct State(Bytes)
 
 ///|
+/// Capture the current terminal state from the input side of this handle.
 pub fn Tty::get_state(self : Self) -> State raise @os_error.OSError {
   let state = State::new()
   let rc = tty_get_state(self.input.fd(), state)
@@ -13,6 +18,7 @@ pub fn Tty::get_state(self : Self) -> State raise @os_error.OSError {
 }
 
 ///|
+/// Apply a terminal state and return the previous state.
 pub fn Tty::set_state(
   self : Self,
   state : State,
@@ -26,6 +32,7 @@ pub fn Tty::set_state(
 }
 
 ///|
+/// Derive a raw-mode state from this captured terminal state.
 pub fn State::make_raw(self : Self) -> State {
   let raw = State::new()
   tty_make_raw_state(self, raw)
@@ -33,6 +40,7 @@ pub fn State::make_raw(self : Self) -> State {
 }
 
 ///|
+/// Enter raw mode and return the previous terminal state.
 pub fn Tty::enter_raw_mode(self : Self) -> State raise @os_error.OSError {
   let old_state = self.get_state()
   let raw_state = old_state.make_raw()
@@ -44,6 +52,7 @@ pub fn Tty::enter_raw_mode(self : Self) -> State raise @os_error.OSError {
 }
 
 ///|
+/// Restore a terminal state captured before or during raw mode.
 pub fn Tty::leave_raw_mode(
   self : Self,
   state : State,
@@ -55,6 +64,9 @@ pub fn Tty::leave_raw_mode(
 }
 
 ///|
+/// Run an async callback with raw mode enabled.
+///
+/// The captured terminal state is restored on success or error.
 pub async fn[T] Tty::with_raw_mode(self : Self, f : async () -> T) -> T {
   let state = self.enter_raw_mode()
   try f() catch {

@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "tonyfettes/tty/internal/vt"
+package "moonbit-community/tty/internal/vt"
 
 // Values
 pub let bold : Bytes

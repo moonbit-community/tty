@@ -5,7 +5,7 @@ const Esc : Byte = b'\x1b'
 fn count_decimal_digits(n : Int) -> Int {
   guard n >= 0 else {
     abort(
-      "@tonyfettes/tty/internal/vt.count_decimal_digits: n should be greater or equal to 0",
+      "@moonbit-community/tty/internal/vt.count_decimal_digits: n should be greater or equal to 0",
     )
   }
   for len = 1, val = n; val >= 10; val = val / 10, len = len + 1 {

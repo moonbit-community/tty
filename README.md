@@ -1,8 +1,8 @@
-# tonyfettes/tty
+# moonbit-community/tty
 
 Low-level terminal primitives for MoonBit.
 
-`tonyfettes/tty` provides a small foundation for programs that need to talk to a
+`moonbit-community/tty` provides a small foundation for programs that need to talk to a
 real terminal: tty detection, raw mode, terminal size queries, output
 commands, color values, and host input decoding. It is intentionally below a
 full TUI framework. It does not own a screen model, layout engine, widget tree,
@@ -15,7 +15,7 @@ shaped around small terminal programs and the examples in this repository.
 
 ## Packages
 
-### `tonyfettes/tty`
+### `moonbit-community/tty`
 
 The root package owns coordinated terminal handles and stateful terminal
 operations.
@@ -43,7 +43,7 @@ VT/ANSI byte construction is an internal implementation detail. Downstream calle
 should use root `Tty` output command methods instead of importing byte-sequence
 helpers directly.
 
-### `tonyfettes/tty/input`
+### `moonbit-community/tty/input`
 
 Terminal input byte decoding.
 
@@ -55,7 +55,7 @@ request/response traffic share the same coordinated terminal handle.
 When bracketed paste mode is enabled, complete valid UTF-8 paste payloads are
 reported as one paste input event.
 
-### `tonyfettes/tty/color`
+### `moonbit-community/tty/color`
 
 Semantic terminal color values.
 
@@ -68,9 +68,9 @@ Add the module and import the packages you need in `moon.pkg`:
 
 ```moonbit
 import {
-  "tonyfettes/tty"
-  "tonyfettes/tty/color" @tty/color
-  "tonyfettes/tty/input" @tty/input
+  "moonbit-community/tty"
+  "moonbit-community/tty/color" @tty/color
+  "moonbit-community/tty/input" @tty/input
 }
 ```
 

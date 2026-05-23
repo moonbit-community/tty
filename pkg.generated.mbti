@@ -1,14 +1,14 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "tonyfettes/tty"
+package "moonbit-community/tty"
 
 import {
+  "moonbit-community/tty/color",
+  "moonbit-community/tty/input",
   "moonbitlang/async/fs",
   "moonbitlang/async/io",
   "moonbitlang/async/os_error",
   "moonbitlang/async/pipe",
   "moonbitlang/async/stdio",
-  "tonyfettes/tty/color",
-  "tonyfettes/tty/input",
 }
 
 // Values

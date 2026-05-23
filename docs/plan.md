@@ -1,6 +1,6 @@
 # Execution Plan
 
-This board tracks implementation direction for `tonyfettes/tty`. Use
+This board tracks implementation direction for `moonbit-community/tty`. Use
 `docs/plans/*.md` for task-level notes when a row becomes active.
 
 ## Legend
@@ -45,6 +45,7 @@ This board tracks implementation direction for `tonyfettes/tty`. Use
 | TTY-13 | done | `isatty` OS error integration | `docs/plans/2026-05-21-isatty-os-error.md`, root package | `isatty` reports real OS errors through `@os_error.OSError` while valid non-terminal handles still return `false` | `moon fmt`, `moon test .`, `moon check`, `moon test`, `moon info`, `git diff --check` |
 | TTY-14 | done | SGR attribute command helpers | `docs/plans/2026-05-21-sgr-attributes.md`, `vt/`, root package, `examples/color` | common text attributes have low-level VT bytes and root `Tty` command methods without adding style state | `moon fmt`, `moon test vt`, `moon test .`, `moon check examples/color`, `moon test`, `moon check`, `moon info`, `git diff --check` |
 | TTY-15 | done | internal VT package | `docs/plans/2026-05-22-internal-vt.md`, `internal/vt/`, root package, examples, docs | downstream callers use root `Tty` command methods and the old public VT package is removed | `moon fmt`, `moon check`, `moon test internal/vt`, `moon check examples/input`, `moon check examples/pager`, `moon test .`, `moon test`, `moon info`, `git diff --check` |
+| TTY-16 | done | community module rename and publish CI | `docs/plans/2026-05-22-community-module-publish.md`, module manifests, CI workflows, docs | package paths use `moonbit-community/tty` and tag pushes can publish to Mooncakes | `moon fmt`, `moon check`, `moon test`, `moon info`, `git diff --check` |
 | MVP-2 | done | queued input and shell commands in agent demo | `docs/plans/2026-05-21-agent-queued-shell.md`, `examples/agent` | `Tab` queues input for delayed submission and `!cmd` runs through `moonbitlang/async/process` without background tasks writing directly to tty | `moon fmt`, `moon check examples/agent`, `moon test examples/agent`, `moon check`, `moon test`, `moon info`, `git diff --check` |
 
 ## Current Rules

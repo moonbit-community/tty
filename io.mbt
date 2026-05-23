@@ -17,31 +17,37 @@ pub(open) trait Writer: @async/io.Writer + Fd {
 }
 
 ///|
+/// Allow async files to serve as terminal input handles.
 pub impl Reader for @async/fs.File with fn close(self) {
   @async/fs.File::close(self)
 }
 
 ///|
+/// Allow async files to serve as terminal output handles.
 pub impl Writer for @async/fs.File with fn close(self) {
   @async/fs.File::close(self)
 }
 
 ///|
+/// Allow pipe readers to serve as terminal input handles.
 pub impl Reader for @async/pipe.PipeRead with fn close(self) {
   @async/pipe.PipeRead::close(self)
 }
 
 ///|
+/// Allow pipe writers to serve as terminal output handles.
 pub impl Writer for @async/pipe.PipeWrite with fn close(self) {
   @async/pipe.PipeWrite::close(self)
 }
 
 ///|
+/// Allow process stdin to serve as a terminal input handle.
 pub impl Reader for @async/stdio.Input with fn close(_) {
   ()
 }
 
 ///|
+/// Allow process output handles to serve as terminal output handles.
 pub impl Writer for @async/stdio.Output with fn close(_) {
   ()
 }

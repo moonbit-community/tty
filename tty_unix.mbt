@@ -71,16 +71,16 @@ impl Writer for ControllingTerminal with fn close(self) {
 }
 
 ///|
-#cfg(not(platform="windows"))
 /// Open the controlling terminal as one coordinated terminal handle.
+#cfg(not(platform="windows"))
 pub async fn Tty::open() -> Tty {
   let terminal = ControllingTerminal::open()
   Tty::new(terminal, terminal)
 }
 
 ///|
-#cfg(platform="windows")
 /// Open the controlling terminal as one coordinated terminal handle.
+#cfg(platform="windows")
 pub async fn Tty::open() -> Tty {
   let file = @async/fs.open("/dev/tty", mode=ReadWrite)
   Tty::new(file, file)

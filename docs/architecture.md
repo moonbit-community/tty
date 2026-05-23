@@ -1,6 +1,6 @@
 # Architecture
 
-This document records stable design boundaries for `tonyfettes/tty`. It is the
+This document records stable design boundaries for `moonbit-community/tty`. It is the
 place to preserve decisions that would otherwise be rediscovered in chat.
 
 ## Goals
@@ -23,7 +23,7 @@ place to preserve decisions that would otherwise be rediscovered in chat.
 
 ### Root Package
 
-The root `tonyfettes/tty` package owns platform tty handles and stateful terminal
+The root `moonbit-community/tty` package owns platform tty handles and stateful terminal
 operations:
 
 - `Tty`, a narrow handle that coordinates one terminal input stream and output
@@ -57,7 +57,7 @@ thin wrapper types.
 
 ### Internal VT Helpers
 
-`tonyfettes/tty/internal/vt` is a pure byte-sequence implementation package used
+`moonbit-community/tty/internal/vt` is a pure byte-sequence implementation package used
 by the root `Tty` command methods. It is not downstream API.
 
 It should:
@@ -83,7 +83,7 @@ builders stay inside `internal/vt` as implementation helpers.
 
 ### `color`
 
-`tonyfettes/tty/color` is a semantic color value package.
+`moonbit-community/tty/color` is a semantic color value package.
 
 It should:
 
@@ -113,7 +113,7 @@ because it combines tty state, environment policy, and terminal conventions.
 
 ### `input`
 
-`tonyfettes/tty/input` decodes host input bytes into terminal stream events.
+`moonbit-community/tty/input` decodes host input bytes into terminal stream events.
 
 Current shape:
 
@@ -162,7 +162,7 @@ into library packages.
 `examples/input` currently owns a demo-only grapheme-aware input buffer. It uses
 `kawaz/grapheme` for UAX #29 grapheme clusters and `rami3l/unicodewidth` for
 terminal display width. This validates Unicode editing behavior in a real
-terminal while keeping `tonyfettes/tty/input` below line-editor scope.
+terminal while keeping `moonbit-community/tty/input` below line-editor scope.
 
 ## Cross-Platform Model
 

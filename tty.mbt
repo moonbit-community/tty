@@ -46,12 +46,19 @@ pub fn Tty::stdio() -> Tty {
 }
 
 ///|
+/// Close the underlying input and output handles.
+///
+/// Closing stdio-backed handles is a no-op.
 pub fn Tty::close(self : Self) -> Unit {
   self.input.close()
   self.output.close()
 }
 
 ///|
+/// Read the next root terminal event.
+///
+/// `esc_timeout_ms` controls the short wait used to distinguish a standalone
+/// Escape key from the start of a longer escape sequence.
 pub async fn Tty::read_event(self : Self, esc_timeout_ms? : Int = 50) -> Event {
   if self.pending_input.length() > 0 {
     return Input(self.pending_input.remove(0))
@@ -73,16 +80,22 @@ async fn Tty::read_decoded_input_event(
 }
 
 ///|
+/// Write bytes to the terminal output handle.
 pub async fn Tty::write(self : Self, data : &@async/io.Data) -> Unit {
   self.output.write(data)
 }
 
 ///|
+/// Write a string to the terminal output handle.
 pub async fn Tty::write_string(self : Self, string : String) -> Unit {
   self.output.write(string)
 }
 
 ///|
+/// Query the terminal cursor position.
+///
+/// The returned row and column are 1-based. User input received while waiting
+/// for the terminal response is preserved for later `Tty::read_event` calls.
 pub async fn Tty::query_cursor_position(
   self : Self,
   timeout_ms? : Int = 50,

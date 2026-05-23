@@ -1,5 +1,8 @@
 ///|
 /// User input decoded from terminal bytes.
+///
+/// Unsupported, malformed, invalid UTF-8, or unclosed sequences are preserved
+/// as `Unknown` bytes instead of becoming decoder errors.
 pub(all) enum InputEvent {
   Key(KeyEvent)
   Paste(String)
@@ -8,12 +11,19 @@ pub(all) enum InputEvent {
 
 ///|
 /// Terminal stream event decoded from the input byte stream.
+///
+/// Cursor-position replies are part of the byte stream and may be interleaved
+/// with user input.
 pub(all) enum Event {
   Input(InputEvent)
   CursorPosition(row~ : Int, col~ : Int)
 } derive(Eq, Debug)
 
 ///|
+/// Decoded key event.
+///
+/// `text` is decoded terminal text when present. It is not a grapheme, display
+/// width, or cursor-motion contract.
 pub struct KeyEvent {
   code : KeyCode
   modifiers : KeyModifiers
@@ -21,6 +31,7 @@ pub struct KeyEvent {
 } derive(Eq, Debug)
 
 ///|
+/// Construct a key event with optional modifiers and text.
 pub fn KeyEvent::new(
   code : KeyCode,
   modifiers? : KeyModifiers = KeyModifiers::new(),
@@ -30,6 +41,7 @@ pub fn KeyEvent::new(
 }
 
 ///|
+/// Logical key code decoded from terminal input.
 pub(all) enum KeyCode {
   Char(Char)
   Text
@@ -62,6 +74,7 @@ pub(all) enum KeyCode {
 } derive(Eq, Debug)
 
 ///|
+/// A single key modifier.
 pub(all) enum KeyModifier {
   Shift
   Alt
@@ -70,9 +83,11 @@ pub(all) enum KeyModifier {
 } derive(Eq, Debug)
 
 ///|
+/// Opaque set of key modifiers.
 struct KeyModifiers(Int) derive(Eq, Debug)
 
 ///|
+/// Construct a modifier set.
 pub fn KeyModifiers::new(
   shift? : Bool = false,
   alt? : Bool = false,
@@ -96,21 +111,25 @@ pub fn KeyModifiers::new(
 }
 
 ///|
+/// Return whether the Shift modifier is set.
 pub fn KeyModifiers::shift(self : KeyModifiers) -> Bool {
   (self.0 & 1) != 0
 }
 
 ///|
+/// Return whether the Alt modifier is set.
 pub fn KeyModifiers::alt(self : KeyModifiers) -> Bool {
   (self.0 & 2) != 0
 }
 
 ///|
+/// Return whether the Ctrl modifier is set.
 pub fn KeyModifiers::ctrl(self : KeyModifiers) -> Bool {
   (self.0 & 4) != 0
 }
 
 ///|
+/// Return whether the Meta modifier is set.
 pub fn KeyModifiers::meta(self : KeyModifiers) -> Bool {
   (self.0 & 8) != 0
 }

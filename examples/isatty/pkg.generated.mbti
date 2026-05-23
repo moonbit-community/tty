@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "tonyfettes/tty/examples/isatty"
+package "moonbit-community/tty/examples/isatty"
 
 // Values
 
