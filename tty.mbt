@@ -10,7 +10,7 @@ pub struct CursorPosition {
 ///|
 /// Terminal event reported by the coordinated root `Tty` handle.
 pub(all) enum Event {
-  Input(@input.InputEvent)
+  Input(@public_input.InputEvent)
   Resize(WindowSize)
 } derive(Eq)
 
@@ -23,7 +23,7 @@ struct Tty {
   input : &Reader
   output : &Writer
   reader : @input.EventReader
-  pending_input : Array[@input.InputEvent]
+  pending_input : Array[@public_input.InputEvent]
 }
 
 ///|
@@ -75,6 +75,8 @@ async fn Tty::read_decoded_input_event(
     match self.reader.read_event(esc_timeout_ms~) {
       @input.Input(event) => return Input(event)
       @input.CursorPosition(..) => ()
+      @input.KeyboardEnhancementFlags(_) => ()
+      @input.PrimaryDeviceAttributes(_) => ()
     }
   }
 }
@@ -106,7 +108,36 @@ pub async fn Tty::query_cursor_position(
       match self.reader.read_event() {
         @input.CursorPosition(row~, col~) => return CursorPosition::{ row, col }
         @input.Input(event) => self.pending_input.push(event)
+        @input.KeyboardEnhancementFlags(_) => ()
+        @input.PrimaryDeviceAttributes(_) => ()
       }
     }
   })
+}
+
+///|
+/// Query whether the terminal supports the kitty keyboard protocol.
+///
+/// User input received while waiting for terminal responses is preserved for
+/// later `Tty::read_event` calls.
+pub async fn Tty::query_kitty_keyboard_support(
+  self : Self,
+  timeout_ms? : Int = 50,
+) -> Bool {
+  match
+    @async.with_timeout_opt(timeout_ms, () => {
+      self.write(@vt.query_keyboard_enhancement_flags)
+      self.write(@vt.request_primary_device_attributes)
+      for ;; {
+        match self.reader.read_event() {
+          @input.KeyboardEnhancementFlags(_) => return true
+          @input.PrimaryDeviceAttributes(_) => return false
+          @input.CursorPosition(..) => ()
+          @input.Input(event) => self.pending_input.push(event)
+        }
+      }
+    }) {
+    Some(supported) => supported
+    None => false
+  }
 }

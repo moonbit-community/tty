@@ -10,16 +10,6 @@ pub(all) enum InputEvent {
 } derive(Eq, Debug)
 
 ///|
-/// Terminal stream event decoded from the input byte stream.
-///
-/// Cursor-position replies are part of the byte stream and may be interleaved
-/// with user input.
-pub(all) enum Event {
-  Input(InputEvent)
-  CursorPosition(row~ : Int, col~ : Int)
-} derive(Eq, Debug)
-
-///|
 /// Decoded key event.
 ///
 /// `text` is decoded terminal text when present. It is not a grapheme, display

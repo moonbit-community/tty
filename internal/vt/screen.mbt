@@ -13,3 +13,11 @@ pub let enable_bracketed_paste : Bytes = b"\x1b[?2004h"
 ///|
 /// Disable bracketed paste mode, xterm private mode 2004.
 pub let disable_bracketed_paste : Bytes = b"\x1b[?2004l"
+
+///|
+/// Query kitty keyboard protocol progressive enhancement flags.
+pub let query_keyboard_enhancement_flags : Bytes = b"\x1b[?u"
+
+///|
+/// Primary Device Attributes (DA1) request.
+pub let request_primary_device_attributes : Bytes = b"\x1b[c"

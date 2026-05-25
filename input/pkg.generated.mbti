@@ -2,7 +2,6 @@
 package "moonbit-community/tty/input"
 
 import {
-  "moonbitlang/async/io",
   "moonbitlang/core/debug",
 }
 
@@ -11,15 +10,6 @@ import {
 // Errors
 
 // Types and methods
-pub(all) enum Event {
-  Input(InputEvent)
-  CursorPosition(row~ : Int, col~ : Int)
-} derive(Eq, @debug.Debug)
-
-type EventReader
-pub fn EventReader::new(&@io.Reader) -> Self
-pub async fn EventReader::read_event(Self, esc_timeout_ms? : Int) -> Event
-
 pub(all) enum InputEvent {
   Key(KeyEvent)
   Paste(String)

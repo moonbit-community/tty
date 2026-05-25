@@ -16,10 +16,15 @@ test "ensure capacity handles zero sized buffer" {
 
 ///|
 test "parse csi rejects malformed private input" {
-  @debug.assert_eq(parse_csi([]), Input(Unknown(b"")))
+  @debug.assert_eq(parse_csi([]), Input(@public_input.Unknown(b"")))
 }
 
 ///|
 test "text event preserves multi character text" {
-  @debug.assert_eq(text_event("ab"), Key(KeyEvent::new(Text, text="ab")))
+  @debug.assert_eq(
+    text_event("ab"),
+    @public_input.Key(
+      @public_input.KeyEvent::new(@public_input.Text, text="ab"),
+    ),
+  )
 }

@@ -121,7 +121,9 @@ async test "tty query cursor position coordinates input and output" {
       Input(event) =>
         @debug.assert_eq(
           event,
-          @input.Key(@input.KeyEvent::new(@input.Char('a'), text="a")),
+          @public_input.Key(
+            @public_input.KeyEvent::new(@public_input.Char('a'), text="a"),
+          ),
         )
       Resize(_) => fail("expected pending input")
     }
@@ -135,6 +137,40 @@ async test "pipe tty with alt screen restores on success" {
     tty.with_alt_screen(() => tty.write("body"))
   })
   inspect(output, content="\u{1B}[?1049hbody\u{1B}[?1049l")
+}
+
+///|
+async test "tty query kitty keyboard support returns true for flags reply" {
+  let output = with_pipe_tty(b"\x1b[?1u", tty => {
+    @debug.assert_eq(tty.query_kitty_keyboard_support(), true)
+  })
+  inspect(output, content="\u{1B}[?u\u{1B}[c")
+}
+
+///|
+async test "tty query kitty keyboard support returns false for da reply" {
+  let output = with_pipe_tty(b"\x1b[?1;2c", tty => {
+    @debug.assert_eq(tty.query_kitty_keyboard_support(), false)
+  })
+  inspect(output, content="\u{1B}[?u\u{1B}[c")
+}
+
+///|
+async test "tty query kitty keyboard support preserves interleaved input" {
+  let output = with_pipe_tty(b"a\x1b[?1u", tty => {
+    @debug.assert_eq(tty.query_kitty_keyboard_support(), true)
+    match tty.read_event() {
+      Input(event) =>
+        @debug.assert_eq(
+          event,
+          @public_input.Key(
+            @public_input.KeyEvent::new(@public_input.Char('a'), text="a"),
+          ),
+        )
+      Resize(_) => fail("expected pending input")
+    }
+  })
+  inspect(output, content="\u{1B}[?u\u{1B}[c")
 }
 
 ///|

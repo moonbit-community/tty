@@ -1,0 +1,28 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbit-community/tty/internal/input"
+
+import {
+  "moonbitlang/async/io",
+  "moonbitlang/core/debug",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub(all) enum Event {
+  Input(@moonbit-community/tty/input.InputEvent)
+  CursorPosition(row~ : Int, col~ : Int)
+  KeyboardEnhancementFlags(Int)
+  PrimaryDeviceAttributes(Bytes)
+} derive(Eq, @debug.Debug)
+
+type EventReader
+pub fn EventReader::new(&@io.Reader) -> Self
+pub async fn EventReader::read_event(Self, esc_timeout_ms? : Int) -> Event
+
+// Type aliases
+
+// Traits
+

@@ -49,6 +49,7 @@ pub fn Tty::leave_raw_mode(Self, State) -> Unit raise @os_error.OSError
 pub fn[I : Reader, O : Writer] Tty::new(I, O) -> Self
 pub async fn Tty::open() -> Self
 pub async fn Tty::query_cursor_position(Self, timeout_ms? : Int) -> CursorPosition?
+pub async fn Tty::query_kitty_keyboard_support(Self, timeout_ms? : Int) -> Bool
 pub async fn Tty::read_event(Self, esc_timeout_ms? : Int) -> Event
 pub async fn Tty::reset_background(Self) -> Unit
 pub async fn Tty::reset_bold(Self) -> Unit

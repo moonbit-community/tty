@@ -38,7 +38,11 @@ pub let italic : Bytes
 
 pub let leave_alt_screen : Bytes
 
+pub let query_keyboard_enhancement_flags : Bytes
+
 pub let request_cursor_position : Bytes
+
+pub let request_primary_device_attributes : Bytes
 
 pub let reset_bold : Bytes
 

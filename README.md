@@ -30,6 +30,7 @@ Use `Tty` when an operation needs a real terminal handle:
   `Tty::with_raw_mode`
 - terminal size: `Tty::window_size`
 - cursor position report: `Tty::query_cursor_position`
+- kitty keyboard protocol support query: `Tty::query_kitty_keyboard_support`
 - terminal events: `Tty::read_event`
 - output commands: cursor movement/visibility, line erase, scroll margins,
   reverse index, alternate screen, bracketed paste mode,
@@ -45,15 +46,15 @@ helpers directly.
 
 ### `moonbit-community/tty/input`
 
-Terminal input byte decoding.
+User input event values.
 
-`EventReader` decodes an `@io.Reader` into terminal stream events. Stream
-events wrap user input events and terminal responses such as cursor position
-reports. Root callers that are working with a terminal should normally use
-`Tty::read_event` so input, resize notifications, and terminal
-request/response traffic share the same coordinated terminal handle.
-When bracketed paste mode is enabled, complete valid UTF-8 paste payloads are
-reported as one paste input event.
+The package contains key, paste, modifier, and unknown-input values reported
+through root `Tty::read_event`. Terminal response traffic such as cursor
+position reports and kitty keyboard detection replies is consumed by root query
+methods and is not part of the public input event model. Root callers that are
+working with a terminal should use `Tty::read_event` so input, resize
+notifications, and terminal request/response traffic share the same coordinated
+terminal handle.
 
 ### `moonbit-community/tty/color`
 
@@ -140,7 +141,9 @@ The examples are manual validation tools, not framework APIs:
 - `tty` owns terminal handles, platform state, raw mode, terminal size, cursor
   position queries, and command-style terminal operations.
 - internal VT helpers only build byte sequences for root `Tty` methods.
-- `input` decodes host input bytes into events.
+- `input` contains user input event values.
+- internal input decoding turns host input bytes into root terminal events and
+  private terminal response events.
 - `color` only represents semantic color values.
 - Higher-level editing, layout, widgets, screen rendering, and terminal-emulator
   state belong outside this module unless the project plan changes.

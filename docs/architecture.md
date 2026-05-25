@@ -37,6 +37,7 @@ operations:
 - terminal window size queries through `Tty`
 - decoded root terminal events through `Tty`
 - coordinated cursor position report queries through `Tty`
+- kitty keyboard protocol support queries through `Tty`
 - command helpers for common screen, cursor, color, and style operations
   through `Tty`
 - bracketed paste mode helpers through `Tty`
@@ -105,27 +106,42 @@ terminal.
 
 Root callers that want decoded terminal events should use `Tty::read_event` so
 terminal request/response side channels, resize notifications, and normal input
-decoding share one coordinated handle. Direct `EventReader` construction belongs
-to the low-level `input` package for callers decoding an arbitrary `@io.Reader`.
+decoding share one coordinated handle. The byte-stream decoder is internal so
+terminal response events can stay out of the downstream public event API.
 
 Color capability detection belongs in a future higher-level package or plan
 because it combines tty state, environment policy, and terminal conventions.
 
 ### `input`
 
-`moonbit-community/tty/input` decodes host input bytes into terminal stream events.
+`moonbit-community/tty/input` contains public user input event values.
 
 Current shape:
 
-- `EventReader` reads from an `@io.Reader`
-- `EventReader::read_event` owns the ESC timeout boundary and returns terminal
-  stream events
-- `Event` contains `Input(InputEvent)` for user input and terminal responses
-  such as cursor-position reports
 - `InputEvent` contains key events, complete valid UTF-8 bracketed paste
-  payloads, and unknown byte sequences
-- unsupported or intentionally unmodeled sequences should become `Unknown`
-  input events rather than hard errors
+  payloads, and unknown byte sequences.
+- `KeyEvent` contains a logical key code, key modifiers, and optional decoded
+  text.
+- `KeyModifiers` is opaque and exposes accessors for Shift, Alt, Ctrl, and
+  Meta.
+- Unsupported or intentionally unmodeled user input sequences should become
+  `Unknown` input events rather than hard errors.
+
+### Internal Input Decoder
+
+`moonbit-community/tty/internal/input` decodes host input bytes into terminal
+stream events for the root package.
+
+Current shape:
+
+- `EventReader` reads from an `@io.Reader`.
+- `EventReader::read_event` owns the ESC timeout boundary and returns internal
+  terminal stream events.
+- Internal stream `Event` contains public user input events and terminal
+  responses such as cursor-position reports, kitty keyboard enhancement flags,
+  and primary device attributes replies.
+- Terminal response events are consumed by root request/response methods and do
+  not surface from root `Tty::read_event`.
 
 The decoder should stay focused on terminal input events. Higher-level line
 editing, Unicode grapheme management, completion queues, history, and prompt
@@ -218,8 +234,8 @@ Input decoding has three boundaries:
 
 The timeout boundary belongs close to byte acquisition because a standalone ESC
 cannot be distinguished from the start of a longer escape sequence without
-waiting. `EventReader` is the current boundary for that behavior inside the
-low-level `input` package. Root terminal callers should go through
+waiting. The internal `EventReader` is the current boundary for that behavior
+inside the low-level decoder package. Root terminal callers should go through
 `Tty::read_event`.
 
 Unsupported complete input sequences should produce `Input(Unknown(Bytes))`.
@@ -228,10 +244,12 @@ This keeps the public API usable before the decoder knows every terminal
 sequence.
 
 Terminal request/response reports such as Cursor Position Report (`CSI row ;
-col R`) are not user input events. They may appear as low-level stream events,
-but root `Tty::read_event` should not surface CPR as a public root event. Root
-request/response operations such as `Tty::query_cursor_position` should use the
-shared reader, consume the matching response, and preserve interleaved input
+col R`), kitty keyboard enhancement flags (`CSI ? flags u`), and Primary Device
+Attributes replies (`CSI ? ... c`) are not user input events. They may appear as
+low-level stream events, but root `Tty::read_event` should not surface them as
+public root events. Root request/response operations such as
+`Tty::query_cursor_position` and `Tty::query_kitty_keyboard_support` should use
+the shared reader, consume the matching response, and preserve interleaved input
 events for later `Tty::read_event` calls.
 
 ## Public API Rule
