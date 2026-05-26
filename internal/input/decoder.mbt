@@ -225,34 +225,12 @@ async fn read_x10_mouse_unknown(
   esc_timeout_ms~ : Int,
 ) -> Event {
   for _ in 0..<3 {
-    if !read_x10_mouse_field(reader, esc_timeout_ms~) {
+    guard @async.with_timeout_opt(esc_timeout_ms, () => reader.read_byte())
+      is Some(_) else {
       return Input(@public_input.Unknown(reader.view().to_owned()))
     }
   }
   Input(@public_input.Unknown(reader.view().to_owned()))
-}
-
-///|
-async fn read_x10_mouse_field(
-  reader : EventReader,
-  esc_timeout_ms~ : Int,
-) -> Bool {
-  guard @async.with_timeout_opt(esc_timeout_ms, () => reader.read_byte())
-    is Some(first) else {
-    return false
-  }
-  guard utf8_sequence_length(first) is Some(len) else { return true }
-  for _ in 1..<len {
-    guard @async.with_timeout_opt(esc_timeout_ms, () => reader.read_byte())
-      is Some(byte) else {
-      return false
-    }
-    if !is_utf8_continuation(byte) {
-      reader.unread_byte()
-      return false
-    }
-  }
-  true
 }
 
 ///|

@@ -92,10 +92,10 @@ without adding a screen model, widget layer, or terminal-emulator state.
 - Decoded SGR 1006 mouse reports into structured mouse input events.
 - Kept malformed SGR mouse reports, zero coordinates, unsupported additional
   buttons, and unmodeled encodings as `Unknown`.
-- Consumed legacy X10 mouse reports, including UTF-8-shaped 1005 fields, as one
-  `Unknown` event so unsupported coordinate bytes do not leak as key input.
-- Kept malformed UTF-8-shaped X10 fields from consuming the first byte of the
-  following input event.
+- Consumed legacy X10 mouse reports as fixed-width three-byte `Unknown` events
+  so unsupported coordinate bytes do not leak as key input.
+- Kept UTF-8 mouse mode 1005 unmodeled because it cannot be reliably
+  distinguished from fixed-width X10 without terminal mode state.
 - Added internal VT byte constants for SGR mouse encoding and click, drag, and
   motion tracking modes.
 - Added root `Tty` methods for enabling, disabling, and scoped SGR mouse
@@ -121,12 +121,12 @@ without adding a screen model, widget layer, or terminal-emulator state.
 ## Validation Results
 
 - `moon fmt`
-- `moon test internal/input` -> 53 passed
+- `moon test internal/input` -> 52 passed
 - `moon test internal/vt` -> 14 passed
 - `moon test .` -> 15 passed
 - `moon check examples/input`
 - `moon test examples/input` -> 6 passed
-- `moon test` -> 116 passed
+- `moon test` -> 115 passed
 - `moon check`
 - `moon info`
 - generated `.mbti` diff reviewed

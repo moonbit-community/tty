@@ -792,23 +792,9 @@ async test "decode x10 mouse report as one unknown event" {
 }
 
 ///|
-async test "decode utf8 x10 mouse report as one unknown event" {
-  with_input(b"\x1b[M0\xc2\xa0\xc3\x80a", events => {
-    @debug.assert_eq(
-      events.read_event(),
-      input_unknown(b"\x1b[M0\xc2\xa0\xc3\x80"),
-    )
-    @debug.assert_eq(
-      events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.Char('a'), text="a")),
-    )
-  })
-}
-
-///|
-async test "decode malformed utf8 x10 mouse report preserves next input" {
-  with_input(b"\x1b[M0\xc2a", events => {
-    @debug.assert_eq(events.read_event(), input_unknown(b"\x1b[M0\xc2"))
+async test "decode high-byte x10 mouse report as fixed width unknown event" {
+  with_input(b"\x1b[M0\xc2\x90a", events => {
+    @debug.assert_eq(events.read_event(), input_unknown(b"\x1b[M0\xc2\x90"))
     @debug.assert_eq(
       events.read_event(),
       input_key(@public_input.KeyEvent::new(@public_input.Char('a'), text="a")),
