@@ -33,7 +33,7 @@ Use `Tty` when an operation needs a real terminal handle:
 - kitty keyboard protocol support query: `Tty::query_kitty_keyboard_support`
 - terminal events: `Tty::read_event`
 - output commands: cursor movement/visibility, line erase, scroll margins,
-  reverse index, alternate screen, bracketed paste mode,
+  reverse index, alternate screen, bracketed paste mode, SGR mouse tracking,
   foreground/background colors, text attributes, and style reset
 
 Raw file and stdio byte I/O should use `moonbitlang/async/fs` and
@@ -48,13 +48,17 @@ helpers directly.
 
 User input event values.
 
-The package contains key, paste, modifier, and unknown-input values reported
-through root `Tty::read_event`. Terminal response traffic such as cursor
-position reports and kitty keyboard detection replies is consumed by root query
-methods and is not part of the public input event model. Root callers that are
-working with a terminal should use `Tty::read_event` so input, resize
+The package contains key, paste, mouse, modifier, and unknown-input values
+reported through root `Tty::read_event`. Terminal response traffic such as
+cursor position reports and kitty keyboard detection replies is consumed by root
+query methods and is not part of the public input event model. Root callers
+that are working with a terminal should use `Tty::read_event` so input, resize
 notifications, and terminal request/response traffic share the same coordinated
 terminal handle.
+
+When bracketed paste mode is enabled, complete valid UTF-8 paste payloads are
+reported as one paste input event. When SGR mouse tracking is enabled, 1006
+mouse reports are decoded as cell-coordinate mouse input events.
 
 ### `moonbit-community/tty/color`
 
@@ -105,6 +109,7 @@ async fn main {
             _ => ()
           }
         @tty.Input(@tty/input.Paste(_)) => ()
+        @tty.Input(@tty/input.Mouse(_)) => ()
         @tty.Input(@tty/input.Unknown(_)) => ()
         @tty.Resize(_) => ()
       }
@@ -129,7 +134,8 @@ moon run examples/agent
 The examples are manual validation tools, not framework APIs:
 
 - `examples/raw` checks raw mode behavior.
-- `examples/input` exercises decoded key input and grapheme-aware demo editing.
+- `examples/input` exercises decoded key, paste, and mouse input with
+  grapheme-aware demo editing.
 - `examples/color` prints a color specimen.
 - `examples/cursor` draws with cursor movement and erase sequences.
 - `examples/pager` demonstrates primary-screen paging with a fixed status row.

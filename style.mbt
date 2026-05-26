@@ -155,6 +155,58 @@ pub async fn[T] Tty::with_bracketed_paste(self : Self, f : async () -> T) -> T {
 }
 
 ///|
+/// Mouse tracking scope for SGR mouse reports.
+pub(all) enum MouseTrackingMode {
+  Click
+  Drag
+  Motion
+} derive(Eq)
+
+///|
+/// Enable SGR mouse tracking.
+pub async fn Tty::enable_mouse(self : Self, mode : MouseTrackingMode) -> Unit {
+  self.write(@vt.disable_mouse_motion)
+  self.write(@vt.disable_mouse_drag)
+  self.write(@vt.disable_mouse_click)
+  self.write(@vt.enable_sgr_mouse)
+  match mode {
+    Click => self.write(@vt.enable_mouse_click)
+    Drag => self.write(@vt.enable_mouse_drag)
+    Motion => self.write(@vt.enable_mouse_motion)
+  }
+}
+
+///|
+/// Disable SGR mouse tracking.
+pub async fn Tty::disable_mouse(self : Self) -> Unit {
+  self.write(@vt.disable_mouse_motion)
+  self.write(@vt.disable_mouse_drag)
+  self.write(@vt.disable_mouse_click)
+  self.write(@vt.disable_sgr_mouse)
+}
+
+///|
+/// Run `f` with SGR mouse tracking enabled.
+pub async fn[T] Tty::with_mouse(
+  self : Self,
+  mode : MouseTrackingMode,
+  f : async () -> T,
+) -> T {
+  self.enable_mouse(mode)
+  try f() catch {
+    error => {
+      self.disable_mouse()
+      raise error
+    }
+  } noraise {
+    value => {
+      self.disable_mouse()
+      value
+    }
+  }
+}
+
+///|
 /// Hide the terminal cursor.
 pub async fn Tty::hide_cursor(self : Self) -> Unit {
   self.write(@vt.hide_cursor)

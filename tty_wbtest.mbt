@@ -108,6 +108,33 @@ async test "pipe tty terminal commands write sequences" {
 }
 
 ///|
+async test "pipe tty mouse mode commands write sequences" {
+  let output = with_pipe_tty(b"", tty => {
+    tty.enable_mouse(Click)
+    tty.disable_mouse()
+    tty.enable_mouse(Drag)
+    tty.disable_mouse()
+    tty.enable_mouse(Motion)
+    tty.disable_mouse()
+  })
+  inspect(
+    output,
+    content="\u{1B}[?1003l\u{1B}[?1002l\u{1B}[?1000l\u{1B}[?1006h\u{1B}[?1000h\u{1B}[?1003l\u{1B}[?1002l\u{1B}[?1000l\u{1B}[?1006l\u{1B}[?1003l\u{1B}[?1002l\u{1B}[?1000l\u{1B}[?1006h\u{1B}[?1002h\u{1B}[?1003l\u{1B}[?1002l\u{1B}[?1000l\u{1B}[?1006l\u{1B}[?1003l\u{1B}[?1002l\u{1B}[?1000l\u{1B}[?1006h\u{1B}[?1003h\u{1B}[?1003l\u{1B}[?1002l\u{1B}[?1000l\u{1B}[?1006l",
+  )
+}
+
+///|
+async test "pipe tty with mouse restores on success" {
+  let output = with_pipe_tty(b"", tty => {
+    tty.with_mouse(Drag, () => tty.write("body"))
+  })
+  inspect(
+    output,
+    content="\u{1B}[?1003l\u{1B}[?1002l\u{1B}[?1000l\u{1B}[?1006h\u{1B}[?1002hbody\u{1B}[?1003l\u{1B}[?1002l\u{1B}[?1000l\u{1B}[?1006l",
+  )
+}
+
+///|
 async test "tty query cursor position coordinates input and output" {
   let output = with_pipe_tty(b"a\x1b[7;9R", tty => {
     match tty.query_cursor_position() {

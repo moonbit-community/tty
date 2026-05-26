@@ -1407,6 +1407,7 @@ async fn run_agent(tty : @tty.Tty) -> Unit {
                 tty, viewport_top, old_editor, editor, "", size,
               )
             }
+            @tty.Input(@tty/input.Mouse(_)) => ()
             @tty.Resize(_) =>
               viewport_top = redraw_input(
                 tty, viewport_top, editor, editor, "", size,

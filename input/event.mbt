@@ -5,6 +5,7 @@
 /// as `Unknown` bytes instead of becoming decoder errors.
 pub(all) enum InputEvent {
   Key(KeyEvent)
+  Mouse(MouseEvent)
   Paste(String)
   Unknown(Bytes)
 } derive(Eq, Debug)
@@ -123,3 +124,52 @@ pub fn KeyModifiers::ctrl(self : KeyModifiers) -> Bool {
 pub fn KeyModifiers::meta(self : KeyModifiers) -> Bool {
   (self.0 & 8) != 0
 }
+
+///|
+/// Decoded mouse event.
+///
+/// Rows and columns are 1-based terminal cell coordinates.
+pub struct MouseEvent {
+  kind : MouseEventKind
+  row : Int
+  col : Int
+  modifiers : KeyModifiers
+} derive(Eq, Debug)
+
+///|
+/// Construct a mouse event with optional key modifiers.
+pub fn MouseEvent::new(
+  kind : MouseEventKind,
+  row : Int,
+  col : Int,
+  modifiers? : KeyModifiers = KeyModifiers::new(),
+) -> MouseEvent {
+  MouseEvent::{ kind, row, col, modifiers }
+}
+
+///|
+/// Mouse input action decoded from an SGR mouse report.
+pub(all) enum MouseEventKind {
+  Press(MouseButton)
+  Release(MouseButton)
+  Drag(MouseButton)
+  Move
+  Scroll(MouseScroll)
+} derive(Eq, Debug)
+
+///|
+/// Supported mouse buttons.
+pub(all) enum MouseButton {
+  Left
+  Middle
+  Right
+} derive(Eq, Debug)
+
+///|
+/// Supported mouse scroll directions.
+pub(all) enum MouseScroll {
+  Up
+  Down
+  Left
+  Right
+} derive(Eq, Debug)

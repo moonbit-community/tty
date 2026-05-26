@@ -152,3 +152,42 @@ test "describe key names" {
     content="event: Key Ctrl+F12",
   )
 }
+
+///|
+test "describe mouse events" {
+  inspect(describe_mouse_button(@tty/input.Left), content="Left")
+  inspect(describe_mouse_button(@tty/input.Middle), content="Middle")
+  inspect(describe_mouse_button(@tty/input.Right), content="Right")
+  inspect(describe_mouse_scroll(@tty/input.Up), content="Up")
+  inspect(describe_mouse_scroll(@tty/input.Down), content="Down")
+  inspect(describe_mouse_scroll(@tty/input.Left), content="Left")
+  inspect(describe_mouse_scroll(@tty/input.Right), content="Right")
+  inspect(
+    describe_mouse_kind(@tty/input.Press(@tty/input.Left)),
+    content="Press Left",
+  )
+  inspect(
+    describe_mouse_kind(@tty/input.Release(@tty/input.Middle)),
+    content="Release Middle",
+  )
+  inspect(
+    describe_mouse_kind(@tty/input.Drag(@tty/input.Right)),
+    content="Drag Right",
+  )
+  inspect(describe_mouse_kind(@tty/input.Move), content="Move")
+  inspect(
+    describe_mouse_kind(@tty/input.Scroll(@tty/input.Down)),
+    content="Scroll Down",
+  )
+  inspect(
+    describe_mouse(
+      @tty/input.MouseEvent::new(
+        @tty/input.Press(@tty/input.Left),
+        10,
+        20,
+        modifiers=@tty/input.KeyModifiers::new(shift=true),
+      ),
+    ),
+    content="event: Mouse Shift+Press Left row=10 col=20",
+  )
+}

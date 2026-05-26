@@ -22,7 +22,23 @@ pub fn cursor_up(Int) -> Bytes
 
 pub let disable_bracketed_paste : Bytes
 
+pub let disable_mouse_click : Bytes
+
+pub let disable_mouse_drag : Bytes
+
+pub let disable_mouse_motion : Bytes
+
+pub let disable_sgr_mouse : Bytes
+
 pub let enable_bracketed_paste : Bytes
+
+pub let enable_mouse_click : Bytes
+
+pub let enable_mouse_drag : Bytes
+
+pub let enable_mouse_motion : Bytes
+
+pub let enable_sgr_mouse : Bytes
 
 pub let enter_alt_screen : Bytes
 

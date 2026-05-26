@@ -27,6 +27,12 @@ pub(all) enum Event {
   Resize(WindowSize)
 } derive(Eq)
 
+pub(all) enum MouseTrackingMode {
+  Click
+  Drag
+  Motion
+} derive(Eq)
+
 type State
 pub fn State::make_raw(Self) -> Self
 
@@ -37,7 +43,9 @@ pub async fn Tty::cursor_back(Self, Int) -> Unit
 pub async fn Tty::cursor_forward(Self, Int) -> Unit
 pub async fn Tty::cursor_up(Self, Int) -> Unit
 pub async fn Tty::disable_bracketed_paste(Self) -> Unit
+pub async fn Tty::disable_mouse(Self) -> Unit
 pub async fn Tty::enable_bracketed_paste(Self) -> Unit
+pub async fn Tty::enable_mouse(Self, MouseTrackingMode) -> Unit
 pub async fn Tty::enter_alt_screen(Self) -> Unit
 pub fn Tty::enter_raw_mode(Self) -> State raise @os_error.OSError
 pub async fn Tty::erase_line_all(Self) -> Unit
@@ -72,6 +80,7 @@ pub async fn Tty::underline(Self) -> Unit
 pub fn Tty::window_size(Self) -> WindowSize raise @os_error.OSError
 pub async fn[T] Tty::with_alt_screen(Self, async () -> T) -> T
 pub async fn[T] Tty::with_bracketed_paste(Self, async () -> T) -> T
+pub async fn[T] Tty::with_mouse(Self, MouseTrackingMode, async () -> T) -> T
 pub async fn[T] Tty::with_raw_mode(Self, async () -> T) -> T
 pub async fn Tty::write(Self, &@io.Data) -> Unit
 pub async fn Tty::write_string(Self, String) -> Unit

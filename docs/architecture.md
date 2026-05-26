@@ -119,7 +119,7 @@ because it combines tty state, environment policy, and terminal conventions.
 Current shape:
 
 - `InputEvent` contains key events, complete valid UTF-8 bracketed paste
-  payloads, and unknown byte sequences.
+  payloads, SGR mouse events, and unknown byte sequences.
 - `KeyEvent` contains a logical key code, key modifiers, and optional decoded
   text.
 - `KeyModifiers` is opaque and exposes accessors for Shift, Alt, Ctrl, and
@@ -154,6 +154,11 @@ must segment and measure that text at their own layer.
 Bracketed paste decoding treats payload bytes as text until the closing
 `CSI 201 ~` marker. Payloads that are invalid UTF-8 or unclosed are reported as
 `Unknown` rather than partial paste text.
+
+SGR mouse decoding supports xterm 1006 reports (`CSI < cb ; col ; row M/m`)
+with 1-based cell coordinates. SGR pixel coordinates, X10, UTF-8 mouse, and
+urxvt mouse encodings are intentionally unmodeled and should remain `Unknown`
+until a plan introduces them.
 
 ### `examples`
 
@@ -242,6 +247,9 @@ Unsupported complete input sequences should produce `Input(Unknown(Bytes))`.
 Incomplete ESC or CSI sequences can become `Input(Unknown(...))` after timeout.
 This keeps the public API usable before the decoder knows every terminal
 sequence.
+
+Mouse reports are user input events. Root `Tty::read_event` should surface them
+as `Input(Mouse(...))` rather than adding a separate root event variant.
 
 Terminal request/response reports such as Cursor Position Report (`CSI row ;
 col R`), kitty keyboard enhancement flags (`CSI ? flags u`), and Primary Device

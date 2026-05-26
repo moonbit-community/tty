@@ -123,12 +123,48 @@ fn describe_key(key : @tty/input.KeyEvent) -> String {
 }
 
 ///|
+fn describe_mouse_button(button : @tty/input.MouseButton) -> String {
+  match button {
+    @tty/input.Left => "Left"
+    @tty/input.Middle => "Middle"
+    @tty/input.Right => "Right"
+  }
+}
+
+///|
+fn describe_mouse_scroll(scroll : @tty/input.MouseScroll) -> String {
+  match scroll {
+    @tty/input.Up => "Up"
+    @tty/input.Down => "Down"
+    @tty/input.Left => "Left"
+    @tty/input.Right => "Right"
+  }
+}
+
+///|
+fn describe_mouse_kind(kind : @tty/input.MouseEventKind) -> String {
+  match kind {
+    @tty/input.Press(button) => "Press \{describe_mouse_button(button)}"
+    @tty/input.Release(button) => "Release \{describe_mouse_button(button)}"
+    @tty/input.Drag(button) => "Drag \{describe_mouse_button(button)}"
+    @tty/input.Move => "Move"
+    @tty/input.Scroll(scroll) => "Scroll \{describe_mouse_scroll(scroll)}"
+  }
+}
+
+///|
+fn describe_mouse(mouse : @tty/input.MouseEvent) -> String {
+  let modifier = describe_modifiers(mouse.modifiers)
+  "event: Mouse \{modifier}\{describe_mouse_kind(mouse.kind)} row=\{mouse.row} col=\{mouse.col}"
+}
+
+///|
 async fn run_input_buffer(tty : @tty.Tty) -> Unit {
   let mut buffer = ""
   writeln(tty, "input buffer demo")
   writeln(
     tty,
-    "Type text. Enter submits. Backspace deletes one grapheme. Esc uses a \{esc_timeout_ms}ms timeout. Ctrl-C exits.",
+    "Type text or use the mouse. Enter submits. Backspace deletes one grapheme. Esc uses a \{esc_timeout_ms}ms timeout. Ctrl-C exits.",
   )
   redraw_input(tty, buffer, "")
   while true {
@@ -187,6 +223,8 @@ async fn run_input_buffer(tty : @tty.Tty) -> Unit {
               "event: Paste \{display_width(text)} cols",
             )
           }
+          @tty/input.Mouse(mouse) =>
+            redraw_input(tty, buffer, describe_mouse(mouse))
         }
       @tty.Resize(_) => redraw_input(tty, buffer, "")
     }
@@ -196,5 +234,9 @@ async fn run_input_buffer(tty : @tty.Tty) -> Unit {
 ///|
 async fn main {
   let tty = @tty.Tty::stdio()
-  tty.with_raw_mode(() => tty.with_bracketed_paste(() => run_input_buffer(tty)))
+  tty.with_raw_mode(() => {
+    tty.with_bracketed_paste(() => {
+      tty.with_mouse(@tty.Motion, () => run_input_buffer(tty))
+    })
+  })
 }

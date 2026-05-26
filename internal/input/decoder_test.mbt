@@ -47,6 +47,11 @@ fn input_paste(text : String) -> @input.Event {
 }
 
 ///|
+fn input_mouse(mouse : @public_input.MouseEvent) -> @input.Event {
+  @input.Input(@public_input.Mouse(mouse))
+}
+
+///|
 test "key modifier accessors" {
   let modifiers = @public_input.KeyModifiers::new(
     shift=true,
@@ -593,6 +598,203 @@ async test "decode csi zero modifier as no modifiers" {
     @debug.assert_eq(
       events.read_event(),
       input_key(@public_input.KeyEvent::new(@public_input.Delete)),
+    )
+  })
+}
+
+///|
+async test "decode sgr mouse event kinds" {
+  with_input(
+    b"\x1b[<0;20;10M\x1b[<0;20;10m\x1b[<32;21;11M\x1b[<35;22;12M\x1b[<64;23;13M\x1b[<65;24;14M\x1b[<66;25;15M\x1b[<67;26;16M",
+    events => {
+      @debug.assert_eq(
+        events.read_event(),
+        input_mouse(
+          @public_input.MouseEvent::new(
+            @public_input.Press(@public_input.Left),
+            10,
+            20,
+          ),
+        ),
+      )
+      @debug.assert_eq(
+        events.read_event(),
+        input_mouse(
+          @public_input.MouseEvent::new(
+            @public_input.Release(@public_input.Left),
+            10,
+            20,
+          ),
+        ),
+      )
+      @debug.assert_eq(
+        events.read_event(),
+        input_mouse(
+          @public_input.MouseEvent::new(
+            @public_input.Drag(@public_input.Left),
+            11,
+            21,
+          ),
+        ),
+      )
+      @debug.assert_eq(
+        events.read_event(),
+        input_mouse(@public_input.MouseEvent::new(@public_input.Move, 12, 22)),
+      )
+      @debug.assert_eq(
+        events.read_event(),
+        input_mouse(
+          @public_input.MouseEvent::new(
+            @public_input.Scroll(@public_input.Up),
+            13,
+            23,
+          ),
+        ),
+      )
+      @debug.assert_eq(
+        events.read_event(),
+        input_mouse(
+          @public_input.MouseEvent::new(
+            @public_input.Scroll(@public_input.Down),
+            14,
+            24,
+          ),
+        ),
+      )
+      @debug.assert_eq(
+        events.read_event(),
+        input_mouse(
+          @public_input.MouseEvent::new(
+            @public_input.Scroll(@public_input.Left),
+            15,
+            25,
+          ),
+        ),
+      )
+      @debug.assert_eq(
+        events.read_event(),
+        input_mouse(
+          @public_input.MouseEvent::new(
+            @public_input.Scroll(@public_input.Right),
+            16,
+            26,
+          ),
+        ),
+      )
+    },
+  )
+}
+
+///|
+async test "decode sgr mouse buttons modifiers and optional trailing semicolon" {
+  with_input(
+    b"\x1b[<1;2;3M\x1b[<2;4;5M\x1b[<4;6;7M\x1b[<10;8;9M\x1b[<18;10;11M\x1b[<30;12;13;M",
+    events => {
+      @debug.assert_eq(
+        events.read_event(),
+        input_mouse(
+          @public_input.MouseEvent::new(
+            @public_input.Press(@public_input.Middle),
+            3,
+            2,
+          ),
+        ),
+      )
+      @debug.assert_eq(
+        events.read_event(),
+        input_mouse(
+          @public_input.MouseEvent::new(
+            @public_input.Press(@public_input.Right),
+            5,
+            4,
+          ),
+        ),
+      )
+      @debug.assert_eq(
+        events.read_event(),
+        input_mouse(
+          @public_input.MouseEvent::new(
+            @public_input.Press(@public_input.Left),
+            7,
+            6,
+            modifiers=@public_input.KeyModifiers::new(shift=true),
+          ),
+        ),
+      )
+      @debug.assert_eq(
+        events.read_event(),
+        input_mouse(
+          @public_input.MouseEvent::new(
+            @public_input.Press(@public_input.Right),
+            9,
+            8,
+            modifiers=@public_input.KeyModifiers::new(alt=true),
+          ),
+        ),
+      )
+      @debug.assert_eq(
+        events.read_event(),
+        input_mouse(
+          @public_input.MouseEvent::new(
+            @public_input.Press(@public_input.Right),
+            11,
+            10,
+            modifiers=@public_input.KeyModifiers::new(ctrl=true),
+          ),
+        ),
+      )
+      @debug.assert_eq(
+        events.read_event(),
+        input_mouse(
+          @public_input.MouseEvent::new(
+            @public_input.Press(@public_input.Right),
+            13,
+            12,
+            modifiers=@public_input.KeyModifiers::new(
+              shift=true,
+              alt=true,
+              ctrl=true,
+            ),
+          ),
+        ),
+      )
+    },
+  )
+}
+
+///|
+async test "decode invalid sgr mouse reports as unknown" {
+  with_input(
+    b"\x1b[<0;0;10M\x1b[<0;20;0M\x1b[<3;20;10M\x1b[<128;20;10M\x1b[<256;20;10M\x1b[<0;20M\x1b[<0;20;10;1M\x1b[<64;10;10m\x1b[<32;10;10m",
+    events => {
+      @debug.assert_eq(events.read_event(), input_unknown(b"\x1b[<0;0;10M"))
+      @debug.assert_eq(events.read_event(), input_unknown(b"\x1b[<0;20;0M"))
+      @debug.assert_eq(events.read_event(), input_unknown(b"\x1b[<3;20;10M"))
+      @debug.assert_eq(events.read_event(), input_unknown(b"\x1b[<128;20;10M"))
+      @debug.assert_eq(events.read_event(), input_unknown(b"\x1b[<256;20;10M"))
+      @debug.assert_eq(events.read_event(), input_unknown(b"\x1b[<0;20M"))
+      @debug.assert_eq(events.read_event(), input_unknown(b"\x1b[<0;20;10;1M"))
+      @debug.assert_eq(events.read_event(), input_unknown(b"\x1b[<64;10;10m"))
+      @debug.assert_eq(events.read_event(), input_unknown(b"\x1b[<32;10;10m"))
+    },
+  )
+}
+
+///|
+async test "decode csi m as unknown without consuming next input" {
+  with_input(b"\x1b[Mabc", events => {
+    @debug.assert_eq(events.read_event(), input_unknown(b"\x1b[M"))
+    @debug.assert_eq(
+      events.read_event(),
+      input_key(@public_input.KeyEvent::new(@public_input.Char('a'), text="a")),
+    )
+    @debug.assert_eq(
+      events.read_event(),
+      input_key(@public_input.KeyEvent::new(@public_input.Char('b'), text="b")),
+    )
+    @debug.assert_eq(
+      events.read_event(),
+      input_key(@public_input.KeyEvent::new(@public_input.Char('c'), text="c")),
     )
   })
 }

@@ -387,6 +387,7 @@ async fn run_pager(
               _ => ()
             }
           Paste(_) => ()
+          Mouse(_) => ()
           Unknown(_) => ()
         }
       @tty.Resize(_) => ()

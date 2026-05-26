@@ -12,6 +12,7 @@ import {
 // Types and methods
 pub(all) enum InputEvent {
   Key(KeyEvent)
+  Mouse(MouseEvent)
   Paste(String)
   Unknown(Bytes)
 } derive(Eq, @debug.Debug)
@@ -67,6 +68,35 @@ pub fn KeyModifiers::ctrl(Self) -> Bool
 pub fn KeyModifiers::meta(Self) -> Bool
 pub fn KeyModifiers::new(shift? : Bool, alt? : Bool, ctrl? : Bool, meta? : Bool) -> Self
 pub fn KeyModifiers::shift(Self) -> Bool
+
+pub(all) enum MouseButton {
+  Left
+  Middle
+  Right
+} derive(Eq, @debug.Debug)
+
+pub struct MouseEvent {
+  kind : MouseEventKind
+  row : Int
+  col : Int
+  modifiers : KeyModifiers
+} derive(Eq, @debug.Debug)
+pub fn MouseEvent::new(MouseEventKind, Int, Int, modifiers? : KeyModifiers) -> Self
+
+pub(all) enum MouseEventKind {
+  Press(MouseButton)
+  Release(MouseButton)
+  Drag(MouseButton)
+  Move
+  Scroll(MouseScroll)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum MouseScroll {
+  Up
+  Down
+  Left
+  Right
+} derive(Eq, @debug.Debug)
 
 // Type aliases
 
