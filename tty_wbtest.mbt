@@ -23,50 +23,32 @@ async fn with_pipe_tty(input_bytes : Bytes, f : async (Tty) -> Unit) -> String {
 
 ///|
 test "style color sequences encode semantic colors" {
-  @debug.assert_eq(foreground_sequence(@color.Default), b"\x1b[39m")
-  @debug.assert_eq(foreground_sequence(@color.Basic(@color.Black)), b"\x1b[30m")
-  @debug.assert_eq(foreground_sequence(@color.Basic(@color.Red)), b"\x1b[31m")
-  @debug.assert_eq(foreground_sequence(@color.Basic(@color.White)), b"\x1b[37m")
+  @debug.assert_eq(foreground_sequence(Default), b"\x1b[39m")
+  @debug.assert_eq(foreground_sequence(Basic(Black)), b"\x1b[30m")
+  @debug.assert_eq(foreground_sequence(Basic(Red)), b"\x1b[31m")
+  @debug.assert_eq(foreground_sequence(Basic(White)), b"\x1b[37m")
+  @debug.assert_eq(foreground_sequence(Basic(BrightBlack)), b"\x1b[90m")
+  @debug.assert_eq(foreground_sequence(Basic(BrightRed)), b"\x1b[91m")
+  @debug.assert_eq(foreground_sequence(Basic(BrightWhite)), b"\x1b[97m")
+  @debug.assert_eq(background_sequence(Default), b"\x1b[49m")
+  @debug.assert_eq(background_sequence(Basic(Black)), b"\x1b[40m")
+  @debug.assert_eq(background_sequence(Basic(Red)), b"\x1b[41m")
+  @debug.assert_eq(background_sequence(Basic(White)), b"\x1b[47m")
+  @debug.assert_eq(background_sequence(Basic(BrightBlack)), b"\x1b[100m")
+  @debug.assert_eq(background_sequence(Basic(BrightRed)), b"\x1b[101m")
+  @debug.assert_eq(background_sequence(Basic(BrightWhite)), b"\x1b[107m")
+  @debug.assert_eq(foreground_sequence(Indexed(-1)), b"\x1b[38;5;0m")
+  @debug.assert_eq(foreground_sequence(Indexed(42)), b"\x1b[38;5;42m")
+  @debug.assert_eq(foreground_sequence(Indexed(999)), b"\x1b[38;5;255m")
+  @debug.assert_eq(background_sequence(Indexed(-1)), b"\x1b[48;5;0m")
+  @debug.assert_eq(background_sequence(Indexed(42)), b"\x1b[48;5;42m")
+  @debug.assert_eq(background_sequence(Indexed(999)), b"\x1b[48;5;255m")
   @debug.assert_eq(
-    foreground_sequence(@color.Basic(@color.BrightBlack)),
-    b"\x1b[90m",
-  )
-  @debug.assert_eq(
-    foreground_sequence(@color.Basic(@color.BrightRed)),
-    b"\x1b[91m",
-  )
-  @debug.assert_eq(
-    foreground_sequence(@color.Basic(@color.BrightWhite)),
-    b"\x1b[97m",
-  )
-  @debug.assert_eq(background_sequence(@color.Default), b"\x1b[49m")
-  @debug.assert_eq(background_sequence(@color.Basic(@color.Black)), b"\x1b[40m")
-  @debug.assert_eq(background_sequence(@color.Basic(@color.Red)), b"\x1b[41m")
-  @debug.assert_eq(background_sequence(@color.Basic(@color.White)), b"\x1b[47m")
-  @debug.assert_eq(
-    background_sequence(@color.Basic(@color.BrightBlack)),
-    b"\x1b[100m",
-  )
-  @debug.assert_eq(
-    background_sequence(@color.Basic(@color.BrightRed)),
-    b"\x1b[101m",
-  )
-  @debug.assert_eq(
-    background_sequence(@color.Basic(@color.BrightWhite)),
-    b"\x1b[107m",
-  )
-  @debug.assert_eq(foreground_sequence(@color.Indexed(-1)), b"\x1b[38;5;0m")
-  @debug.assert_eq(foreground_sequence(@color.Indexed(42)), b"\x1b[38;5;42m")
-  @debug.assert_eq(foreground_sequence(@color.Indexed(999)), b"\x1b[38;5;255m")
-  @debug.assert_eq(background_sequence(@color.Indexed(-1)), b"\x1b[48;5;0m")
-  @debug.assert_eq(background_sequence(@color.Indexed(42)), b"\x1b[48;5;42m")
-  @debug.assert_eq(background_sequence(@color.Indexed(999)), b"\x1b[48;5;255m")
-  @debug.assert_eq(
-    foreground_sequence(@color.Rgb(-1, 127, 999)),
+    foreground_sequence(Rgb(-1, 127, 999)),
     b"\x1b[38;2;0;127;255m",
   )
   @debug.assert_eq(
-    background_sequence(@color.Rgb(-1, 127, 999)),
+    background_sequence(Rgb(-1, 127, 999)),
     b"\x1b[48;2;0;127;255m",
   )
 }
@@ -84,9 +66,9 @@ async test "pipe tty terminal commands write sequences" {
     tty.set_top_bottom_margins(1, 5)
     tty.reverse_index()
     tty.reset_top_bottom_margins()
-    tty.set_foreground(@color.Basic(@color.Red))
+    tty.set_foreground(Basic(Red))
     tty.reset_foreground()
-    tty.set_background(@color.Indexed(42))
+    tty.set_background(Indexed(42))
     tty.reset_background()
     tty.bold()
     tty.reset_bold()
@@ -148,9 +130,7 @@ async test "tty query cursor position coordinates input and output" {
       Input(event) =>
         @debug.assert_eq(
           event,
-          @public_input.Key(
-            @public_input.KeyEvent::new(@public_input.Char('a'), text="a"),
-          ),
+          Key(@public_input.KeyEvent::new(Char('a'), text="a")),
         )
       Resize(_) => fail("expected pending input")
     }
@@ -190,9 +170,7 @@ async test "tty query kitty keyboard support preserves interleaved input" {
       Input(event) =>
         @debug.assert_eq(
           event,
-          @public_input.Key(
-            @public_input.KeyEvent::new(@public_input.Char('a'), text="a"),
-          ),
+          Key(@public_input.KeyEvent::new(Char('a'), text="a")),
         )
       Resize(_) => fail("expected pending input")
     }

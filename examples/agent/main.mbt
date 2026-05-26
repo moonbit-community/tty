@@ -565,7 +565,7 @@ async fn write_colored_text(
   color : @color.BasicColor,
   text : String,
 ) -> Unit {
-  tty.set_foreground(@color.Basic(color))
+  tty.set_foreground(Basic(color))
   write(tty, text)
   tty.reset_foreground()
 }
@@ -579,7 +579,7 @@ async fn erase_current_line(tty : @tty.Tty) -> Unit {
 ///|
 async fn render_separator_current(tty : @tty.Tty, cols : Int) -> Unit {
   erase_current_line(tty)
-  tty.set_foreground(@color.Basic(@color.BrightBlack))
+  tty.set_foreground(Basic(BrightBlack))
   write(tty, String::make(cols, '-'))
   tty.reset_foreground()
 }
@@ -592,7 +592,7 @@ async fn render_prompt_current(
   cols : Int,
 ) -> Unit {
   erase_current_line(tty)
-  write_colored_text(tty, @color.BrightGreen, prefix)
+  write_colored_text(tty, BrightGreen, prefix)
   write(tty, fit_line(line, cols - display_width(prefix)))
 }
 
@@ -603,7 +603,7 @@ async fn render_status_current(
   cols : Int,
 ) -> Unit {
   erase_current_line(tty)
-  tty.set_foreground(@color.Basic(@color.BrightBlack))
+  tty.set_foreground(Basic(BrightBlack))
   let text = if status.length() == 0 {
     "Enter send  Tab queue  !cmd shell  Ctrl-J newline  Arrows move  Ctrl-C quit"
   } else {
@@ -792,7 +792,7 @@ async fn append_user(
     tty,
     cursor_editor,
     "user",
-    @color.BrightCyan,
+    BrightCyan,
     text,
     editor,
     status,
@@ -813,7 +813,7 @@ async fn append_agent(
     tty,
     cursor_editor,
     "agent",
-    @color.BrightMagenta,
+    BrightMagenta,
     text,
     editor,
     status,
@@ -834,7 +834,7 @@ async fn append_shell(
     tty,
     cursor_editor,
     "shell",
-    @color.BrightYellow,
+    BrightYellow,
     text,
     editor,
     status,
@@ -929,7 +929,7 @@ async fn append_user_above_viewport(
     tty,
     top,
     "user",
-    @color.BrightCyan,
+    BrightCyan,
     text,
     editor,
     status,
@@ -950,7 +950,7 @@ async fn append_agent_above_viewport(
     tty,
     top,
     "agent",
-    @color.BrightMagenta,
+    BrightMagenta,
     text,
     editor,
     status,
@@ -971,7 +971,7 @@ async fn append_shell_above_viewport(
     tty,
     top,
     "shell",
-    @color.BrightYellow,
+    BrightYellow,
     text,
     editor,
     status,
@@ -1013,8 +1013,8 @@ async fn leave_agent(
 ///|
 fn text_from_key(key : @tty/input.KeyEvent) -> String? {
   match key.code {
-    @tty/input.Text => key.text
-    @tty/input.Char(ch) if !key.modifiers.ctrl() && !key.modifiers.alt() =>
+    Text => key.text
+    Char(ch) if !key.modifiers.ctrl() && !key.modifiers.alt() =>
       match key.text {
         Some(text) => Some(text)
         None => Some([ch])
@@ -1026,7 +1026,7 @@ fn text_from_key(key : @tty/input.KeyEvent) -> String? {
 ///|
 fn is_newline_key(key : @tty/input.KeyEvent) -> Bool {
   match key.code {
-    @tty/input.Char('j') if key.modifiers.ctrl() => true
+    Char('j') if key.modifiers.ctrl() => true
     _ => false
   }
 }
@@ -1235,23 +1235,21 @@ async fn submit_text(
 ///|
 async fn run_agent(tty : @tty.Tty) -> Unit {
   @async.with_task_group() <| group => {
-    let events : @aqueue.Queue[AgentEvent] = @aqueue.Queue(
-      kind=@aqueue.Unbounded,
-    )
+    let events : @aqueue.Queue[AgentEvent] = Queue(kind=Unbounded)
     let mut editor = Editor::new()
     let mut size = terminal_size(tty)
     tty.show_cursor()
     render_transcript_at_cursor(
       tty,
       "system",
-      @color.BrightBlack,
+      BrightBlack,
       "primary-screen agent demo",
       size,
     )
     render_transcript_at_cursor(
       tty,
       "system",
-      @color.BrightBlack,
+      BrightBlack,
       "Enter send  Tab queue  !cmd shell",
       size,
     )
@@ -1279,12 +1277,12 @@ async fn run_agent(tty : @tty.Tty) -> Unit {
           )
         Terminal(event) =>
           match event {
-            @tty.Input(@tty/input.Key(key)) =>
+            Input(Key(key)) =>
               match key.code {
-                @tty/input.Char('c') if key.modifiers.ctrl() => done = true
-                @tty/input.Char('d') if key.modifiers.ctrl() &&
-                  editor.text.length() == 0 => done = true
-                @tty/input.Enter =>
+                Char('c') if key.modifiers.ctrl() => done = true
+                Char('d') if key.modifiers.ctrl() && editor.text.length() == 0 =>
+                  done = true
+                Enter =>
                   if editor.text.length() > 0 || editor.shell_mode {
                     let old_editor = editor
                     let text = editor.text
@@ -1298,7 +1296,7 @@ async fn run_agent(tty : @tty.Tty) -> Unit {
                       tty, viewport_top, editor, editor, "empty input", size,
                     )
                   }
-                @tty/input.Tab =>
+                Tab =>
                   if editor.text.length() > 0 || editor.shell_mode {
                     let old_editor = editor
                     let text = editor.text
@@ -1313,42 +1311,42 @@ async fn run_agent(tty : @tty.Tty) -> Unit {
                       tty, viewport_top, editor, editor, "empty input", size,
                     )
                   }
-                @tty/input.Up => {
+                Up => {
                   let old_editor = editor
                   editor = editor.move_vertical(-1)
                   viewport_top = redraw_input(
                     tty, viewport_top, old_editor, editor, "", size,
                   )
                 }
-                @tty/input.Down => {
+                Down => {
                   let old_editor = editor
                   editor = editor.move_vertical(1)
                   viewport_top = redraw_input(
                     tty, viewport_top, old_editor, editor, "", size,
                   )
                 }
-                @tty/input.Left => {
+                Left => {
                   let old_editor = editor
                   editor = editor.move_left()
                   viewport_top = redraw_input(
                     tty, viewport_top, old_editor, editor, "", size,
                   )
                 }
-                @tty/input.Right => {
+                Right => {
                   let old_editor = editor
                   editor = editor.move_right()
                   viewport_top = redraw_input(
                     tty, viewport_top, old_editor, editor, "", size,
                   )
                 }
-                @tty/input.Home => {
+                Home => {
                   let old_editor = editor
                   editor = editor.move_home()
                   viewport_top = redraw_input(
                     tty, viewport_top, old_editor, editor, "", size,
                   )
                 }
-                @tty/input.End => {
+                End => {
                   let old_editor = editor
                   editor = editor.move_end()
                   viewport_top = redraw_input(
@@ -1362,14 +1360,14 @@ async fn run_agent(tty : @tty.Tty) -> Unit {
                     tty, viewport_top, old_editor, editor, "", size,
                   )
                 }
-                @tty/input.Backspace => {
+                Backspace => {
                   let old_editor = editor
                   editor = editor.delete_before()
                   viewport_top = redraw_input(
                     tty, viewport_top, old_editor, editor, "", size,
                   )
                 }
-                @tty/input.Delete => {
+                Delete => {
                   let old_editor = editor
                   editor = editor.delete_after()
                   viewport_top = redraw_input(
@@ -1391,7 +1389,7 @@ async fn run_agent(tty : @tty.Tty) -> Unit {
                       )
                   }
               }
-            @tty.Input(@tty/input.Unknown(bytes)) =>
+            Input(Unknown(bytes)) =>
               viewport_top = redraw_input(
                 tty,
                 viewport_top,
@@ -1400,15 +1398,15 @@ async fn run_agent(tty : @tty.Tty) -> Unit {
                 "unknown input: \{bytes.length()} bytes",
                 size,
               )
-            @tty.Input(@tty/input.Paste(text)) => {
+            Input(Paste(text)) => {
               let old_editor = editor
               editor = editor.insert_user_text(text)
               viewport_top = redraw_input(
                 tty, viewport_top, old_editor, editor, "", size,
               )
             }
-            @tty.Input(@tty/input.Mouse(_)) => ()
-            @tty.Resize(_) =>
+            Input(Mouse(_)) => ()
+            Resize(_) =>
               viewport_top = redraw_input(
                 tty, viewport_top, editor, editor, "", size,
               )

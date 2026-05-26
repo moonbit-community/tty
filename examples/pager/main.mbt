@@ -14,18 +14,14 @@ priv struct PagerArgs {
 
 ///|
 fn pager_command() -> @argparse.Command {
-  @argparse.Command(
-    "pager",
-    about="Page a text file in the terminal primary screen.",
-    positionals=[
-      @argparse.PositionArg(
-        "file",
-        about="File to page.",
-        num_args=@argparse.ValueRange::single(),
-        allow_hyphen_values=true,
-      ),
-    ],
-  )
+  Command("pager", about="Page a text file in the terminal primary screen.", positionals=[
+    PositionArg(
+      "file",
+      about="File to page.",
+      num_args=@argparse.ValueRange::single(),
+      allow_hyphen_values=true,
+    ),
+  ])
 }
 
 ///|
@@ -371,9 +367,9 @@ async fn run_pager(
     let mut next_offset = offset
     let mut quit = false
     match event {
-      @tty.Input(input) =>
+      Input(input) =>
         match input {
-          @tty/input.Key(key) =>
+          Key(key) =>
             match key.code {
               Char('q') => quit = true
               Char('c') if key.modifiers.ctrl() => quit = true
@@ -390,7 +386,7 @@ async fn run_pager(
           Mouse(_) => ()
           Unknown(_) => ()
         }
-      @tty.Resize(_) => ()
+      Resize(_) => ()
     }
     if quit {
       break

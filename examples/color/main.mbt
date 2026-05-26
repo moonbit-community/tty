@@ -21,22 +21,22 @@ fn pad_right(text : String, width : Int) -> String {
 ///|
 fn basic_color(index : Int) -> @tty_color.BasicColor {
   match index {
-    0 => @tty_color.Black
-    1 => @tty_color.Red
-    2 => @tty_color.Green
-    3 => @tty_color.Yellow
-    4 => @tty_color.Blue
-    5 => @tty_color.Magenta
-    6 => @tty_color.Cyan
-    7 => @tty_color.White
-    8 => @tty_color.BrightBlack
-    9 => @tty_color.BrightRed
-    10 => @tty_color.BrightGreen
-    11 => @tty_color.BrightYellow
-    12 => @tty_color.BrightBlue
-    13 => @tty_color.BrightMagenta
-    14 => @tty_color.BrightCyan
-    _ => @tty_color.BrightWhite
+    0 => Black
+    1 => Red
+    2 => Green
+    3 => Yellow
+    4 => Blue
+    5 => Magenta
+    6 => Cyan
+    7 => White
+    8 => BrightBlack
+    9 => BrightRed
+    10 => BrightGreen
+    11 => BrightYellow
+    12 => BrightBlue
+    13 => BrightMagenta
+    14 => BrightCyan
+    _ => BrightWhite
   }
 }
 
@@ -77,7 +77,7 @@ fn light_basic_background(index : Int) -> Bool {
 async fn write_basic_foregrounds(tty : @tty.Tty) -> Unit {
   writeln(tty, "ANSI 16 foreground")
   for i in 0..<16 {
-    tty.set_foreground(@tty_color.Basic(basic_color(i)))
+    tty.set_foreground(Basic(basic_color(i)))
     write(tty, pad_right(basic_name(i), 15))
     tty.reset_foreground()
     if i == 7 || i == 15 {
@@ -93,11 +93,11 @@ async fn write_basic_backgrounds(tty : @tty.Tty) -> Unit {
   writeln(tty, "ANSI 16 background")
   for i in 0..<16 {
     let foreground = if light_basic_background(i) {
-      @tty_color.Basic(@tty_color.Black)
+      @tty_color.Basic(Black)
     } else {
-      @tty_color.Basic(@tty_color.White)
+      Basic(White)
     }
-    tty.set_background(@tty_color.Basic(basic_color(i)))
+    tty.set_background(Basic(basic_color(i)))
     tty.set_foreground(foreground)
     write(tty, " " + pad_right(basic_name(i), 14))
     tty.reset_style()
@@ -111,7 +111,7 @@ async fn write_basic_backgrounds(tty : @tty.Tty) -> Unit {
 
 ///|
 async fn write_index_swatch(tty : @tty.Tty, index : Int) -> Unit {
-  tty.set_background(@tty_color.Indexed(index))
+  tty.set_background(Indexed(index))
   write(tty, "  ")
   tty.reset_style()
 }
@@ -148,8 +148,8 @@ async fn write_truecolor_gradient(tty : @tty.Tty) -> Unit {
       let value = col * 255 / 63
       let color = match row {
         0 => @tty_color.Rgb(value, 48, 255 - value)
-        1 => @tty_color.Rgb(255 - value, value, 64)
-        _ => @tty_color.Rgb(64, 255 - value, value)
+        1 => Rgb(255 - value, value, 64)
+        _ => Rgb(64, 255 - value, value)
       }
       tty.set_background(color)
       write(tty, " ")

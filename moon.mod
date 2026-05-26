@@ -17,3 +17,5 @@ keywords = [ "tty", "terminal", "ansi", "vt", "async", "native" ]
 description = "Low-level terminal primitives for MoonBit native targets, including tty state, platform stdio handles, VT command output, and host input decoding."
 
 preferred_target = "native"
+
+warnings = "+unnecessary_annotation"

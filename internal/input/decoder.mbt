@@ -20,7 +20,7 @@ struct EventReader {
 ///|
 /// Create an event reader over an async byte reader.
 pub fn EventReader::new(reader : &@io.Reader) -> EventReader {
-  EventReader::{
+  {
     reader,
     data: FixedArray::make(EventReaderInitialBufferCapacity, b'\x00'),
     head: 0,
@@ -134,27 +134,25 @@ fn EventReader::commit(self : EventReader) -> Unit {
 async fn read_escape(reader : EventReader, esc_timeout_ms : Int) -> Event {
   guard @async.with_timeout_opt(esc_timeout_ms, () => reader.read_byte())
     is Some(byte) else {
-    Input(@public_input.Key(@public_input.KeyEvent::new(@public_input.Escape)))
+    Input(Key(@public_input.KeyEvent::new(Escape)))
   }
   match byte {
     Esc => {
       reader.unread_byte()
-      Input(
-        @public_input.Key(@public_input.KeyEvent::new(@public_input.Escape)),
-      )
+      Input(Key(@public_input.KeyEvent::new(Escape)))
     }
     b'[' => read_csi(reader, esc_timeout_ms~)
     b'O' => Input(read_ss3(reader, esc_timeout_ms~))
     0x20..<0x7f as byte =>
       Input(
-        @public_input.Key(
+        Key(
           @public_input.KeyEvent::new(
-            @public_input.Char(byte.to_char()),
+            Char(byte.to_char()),
             modifiers=@public_input.KeyModifiers::new(alt=true),
           ),
         ),
       )
-    _ => Input(@public_input.Unknown(reader.view().to_owned()))
+    _ => Input(Unknown(reader.view().to_owned()))
   }
 }
 
@@ -165,11 +163,11 @@ async fn read_ss3(
 ) -> @public_input.InputEvent {
   guard @async.with_timeout_opt(esc_timeout_ms, () => reader.read_byte())
     is Some(byte) else {
-    return @public_input.Unknown(reader.view().to_owned())
+    return Unknown(reader.view().to_owned())
   }
   if byte == Esc {
     reader.unread_byte()
-    return @public_input.Unknown(reader.view().to_owned())
+    return Unknown(reader.view().to_owned())
   }
   ss3_event(reader.view())
 }
@@ -183,19 +181,19 @@ async fn read_csi(reader : EventReader, esc_timeout_ms~ : Int) -> Event {
       return match reader.view() {
         [Esc, b'['] =>
           Input(
-            @public_input.Key(
+            Key(
               @public_input.KeyEvent::new(
-                @public_input.Char('['),
+                Char('['),
                 modifiers=@public_input.KeyModifiers::new(alt=true),
               ),
             ),
           )
-        _ => Input(@public_input.Unknown(reader.view().to_owned()))
+        _ => Input(Unknown(reader.view().to_owned()))
       }
     }
     match byte {
       0x30..<0x40 if seen_intermediate =>
-        break Input(@public_input.Unknown(reader.view().to_owned()))
+        break Input(Unknown(reader.view().to_owned()))
       0x30..<0x40 => ()
       0x20..<0x30 => seen_intermediate = true
       0x40..<0x7f =>
@@ -204,7 +202,7 @@ async fn read_csi(reader : EventReader, esc_timeout_ms~ : Int) -> Event {
         } else {
           parse_csi(reader.view())
         }
-      _ => break Input(@public_input.Unknown(reader.view().to_owned()))
+      _ => break Input(Unknown(reader.view().to_owned()))
     }
   }
 }
@@ -225,7 +223,7 @@ async fn read_bracketed_paste(
   for ;; {
     guard @async.with_timeout_opt(esc_timeout_ms, () => reader.read_byte())
       is Some(_) else {
-      return Input(@public_input.Unknown(reader.view().to_owned()))
+      return Input(Unknown(reader.view().to_owned()))
     }
     let view = reader.view()
     if parse_bracketed_paste(view) is Some(event) {
@@ -240,9 +238,9 @@ fn parse_bracketed_paste(paste : BytesView) -> Event? {
     [Esc, .. b"[200~", .. payload, Esc, .. b"[201~"] =>
       Some(
         try @utf8.decode(payload) catch {
-          _ => Input(@public_input.Unknown(paste.to_owned()))
+          _ => Input(Unknown(paste.to_owned()))
         } noraise {
-          text => Input(@public_input.Paste(text))
+          text => Input(Paste(text))
         },
       )
     _ => None
@@ -252,27 +250,17 @@ fn parse_bracketed_paste(paste : BytesView) -> Event? {
 ///|
 fn ss3_event(ss3 : BytesView) -> @public_input.InputEvent {
   match ss3 {
-    [Esc, b'O', b'A'] =>
-      @public_input.Key(@public_input.KeyEvent::new(@public_input.Up))
-    [Esc, b'O', b'B'] =>
-      @public_input.Key(@public_input.KeyEvent::new(@public_input.Down))
-    [Esc, b'O', b'C'] =>
-      @public_input.Key(@public_input.KeyEvent::new(@public_input.Right))
-    [Esc, b'O', b'D'] =>
-      @public_input.Key(@public_input.KeyEvent::new(@public_input.Left))
-    [Esc, b'O', b'H'] =>
-      @public_input.Key(@public_input.KeyEvent::new(@public_input.Home))
-    [Esc, b'O', b'F'] =>
-      @public_input.Key(@public_input.KeyEvent::new(@public_input.End))
-    [Esc, b'O', b'P'] =>
-      @public_input.Key(@public_input.KeyEvent::new(@public_input.F1))
-    [Esc, b'O', b'Q'] =>
-      @public_input.Key(@public_input.KeyEvent::new(@public_input.F2))
-    [Esc, b'O', b'R'] =>
-      @public_input.Key(@public_input.KeyEvent::new(@public_input.F3))
-    [Esc, b'O', b'S'] =>
-      @public_input.Key(@public_input.KeyEvent::new(@public_input.F4))
-    _ => @public_input.Unknown(ss3.to_owned())
+    [Esc, b'O', b'A'] => Key(@public_input.KeyEvent::new(Up))
+    [Esc, b'O', b'B'] => Key(@public_input.KeyEvent::new(Down))
+    [Esc, b'O', b'C'] => Key(@public_input.KeyEvent::new(Right))
+    [Esc, b'O', b'D'] => Key(@public_input.KeyEvent::new(Left))
+    [Esc, b'O', b'H'] => Key(@public_input.KeyEvent::new(Home))
+    [Esc, b'O', b'F'] => Key(@public_input.KeyEvent::new(End))
+    [Esc, b'O', b'P'] => Key(@public_input.KeyEvent::new(F1))
+    [Esc, b'O', b'Q'] => Key(@public_input.KeyEvent::new(F2))
+    [Esc, b'O', b'R'] => Key(@public_input.KeyEvent::new(F3))
+    [Esc, b'O', b'S'] => Key(@public_input.KeyEvent::new(F4))
+    _ => Unknown(ss3.to_owned())
   }
 }
 
@@ -285,9 +273,9 @@ fn parse_csi(csi : BytesView) -> Event {
       parse_primary_device_attributes(csi, params)
     [Esc, b'[', b'Z'] =>
       Input(
-        @public_input.Key(
+        Key(
           @public_input.KeyEvent::new(
-            @public_input.Tab,
+            Tab,
             modifiers=@public_input.KeyModifiers::new(shift=true),
           ),
         ),
@@ -298,31 +286,31 @@ fn parse_csi(csi : BytesView) -> Event {
       Input(parse_sgr_mouse(csi, params, true))
     [Esc, b'[', .. params, b'~'] => {
       guard parse_csi_params(params) is Some(params) else {
-        return Input(@public_input.Unknown(csi.to_owned()))
+        return Input(Unknown(csi.to_owned()))
       }
       Input(parse_csi_tilde_key(csi, params))
     }
     [Esc, b'[', .. params, final_byte] => {
       guard parse_csi_params(params) is Some(params) else {
-        return Input(@public_input.Unknown(csi.to_owned()))
+        return Input(Unknown(csi.to_owned()))
       }
       match final_byte {
-        b'A' => Input(parse_csi_key(csi, params, @public_input.Up))
-        b'B' => Input(parse_csi_key(csi, params, @public_input.Down))
-        b'C' => Input(parse_csi_key(csi, params, @public_input.Right))
-        b'D' => Input(parse_csi_key(csi, params, @public_input.Left))
-        b'H' => Input(parse_csi_key(csi, params, @public_input.Home))
-        b'F' => Input(parse_csi_key(csi, params, @public_input.End))
-        b'P' => Input(parse_csi_key(csi, params, @public_input.F1))
-        b'Q' => Input(parse_csi_key(csi, params, @public_input.F2))
+        b'A' => Input(parse_csi_key(csi, params, Up))
+        b'B' => Input(parse_csi_key(csi, params, Down))
+        b'C' => Input(parse_csi_key(csi, params, Right))
+        b'D' => Input(parse_csi_key(csi, params, Left))
+        b'H' => Input(parse_csi_key(csi, params, Home))
+        b'F' => Input(parse_csi_key(csi, params, End))
+        b'P' => Input(parse_csi_key(csi, params, F1))
+        b'Q' => Input(parse_csi_key(csi, params, F2))
         b'R' if parse_cursor_position_params(params) is Some((row, col)) =>
           CursorPosition(row~, col~)
-        b'R' => Input(parse_csi_key(csi, params, @public_input.F3))
-        b'S' => Input(parse_csi_key(csi, params, @public_input.F4))
-        _ => Input(@public_input.Unknown(csi.to_owned()))
+        b'R' => Input(parse_csi_key(csi, params, F3))
+        b'S' => Input(parse_csi_key(csi, params, F4))
+        _ => Input(Unknown(csi.to_owned()))
       }
     }
-    _ => Input(@public_input.Unknown(csi.to_owned()))
+    _ => Input(Unknown(csi.to_owned()))
   }
 }
 
@@ -332,7 +320,7 @@ fn parse_keyboard_enhancement_flags(
   params : BytesView,
 ) -> Event {
   guard parse_decimal_param(params) is Some(flags) else {
-    return Input(@public_input.Unknown(csi.to_owned()))
+    return Input(Unknown(csi.to_owned()))
   }
   KeyboardEnhancementFlags(flags)
 }
@@ -345,7 +333,7 @@ fn parse_primary_device_attributes(
   if is_primary_device_attributes_params(params) {
     PrimaryDeviceAttributes(csi.to_owned())
   } else {
-    Input(@public_input.Unknown(csi.to_owned()))
+    Input(Unknown(csi.to_owned()))
   }
 }
 
@@ -402,23 +390,19 @@ fn parse_sgr_mouse(
   release : Bool,
 ) -> @public_input.InputEvent {
   guard parse_csi_params(params_bytes) is Some(params) else {
-    return @public_input.Unknown(csi.to_owned())
+    return Unknown(csi.to_owned())
   }
   let parsed = match params {
     [Some(cb), Some(col), Some(row)] => Some((cb, col, row))
     [Some(cb), Some(col), Some(row), None] => Some((cb, col, row))
     _ => None
   }
-  guard parsed is Some((cb, col, row)) else {
-    return @public_input.Unknown(csi.to_owned())
-  }
-  guard cb >= 0 && row >= 1 && col >= 1 else {
-    return @public_input.Unknown(csi.to_owned())
-  }
+  guard parsed is Some((cb, col, row)) else { return Unknown(csi.to_owned()) }
+  guard cb >= 0 && row >= 1 && col >= 1 else { return Unknown(csi.to_owned()) }
   guard mouse_event_kind_from_cb(cb, release~) is Some(kind) else {
-    return @public_input.Unknown(csi.to_owned())
+    return Unknown(csi.to_owned())
   }
-  @public_input.Mouse(
+  Mouse(
     @public_input.MouseEvent::new(
       kind,
       row,
@@ -444,32 +428,32 @@ fn mouse_event_kind_from_cb(
       return None
     }
     match button {
-      0 => Some(@public_input.Release(@public_input.Left))
-      1 => Some(@public_input.Release(@public_input.Middle))
-      2 => Some(@public_input.Release(@public_input.Right))
+      0 => Some(Release(Left))
+      1 => Some(Release(Middle))
+      2 => Some(Release(Right))
       _ => None
     }
   } else if wheel {
     match button {
-      0 => Some(@public_input.Scroll(@public_input.Up))
-      1 => Some(@public_input.Scroll(@public_input.Down))
-      2 => Some(@public_input.Scroll(@public_input.Left))
-      3 => Some(@public_input.Scroll(@public_input.Right))
+      0 => Some(Scroll(Up))
+      1 => Some(Scroll(Down))
+      2 => Some(Scroll(Left))
+      3 => Some(Scroll(Right))
       _ => None
     }
   } else if dragging {
     match button {
-      0 => Some(@public_input.Drag(@public_input.Left))
-      1 => Some(@public_input.Drag(@public_input.Middle))
-      2 => Some(@public_input.Drag(@public_input.Right))
-      3 => Some(@public_input.Move)
+      0 => Some(Drag(Left))
+      1 => Some(Drag(Middle))
+      2 => Some(Drag(Right))
+      3 => Some(Move)
       _ => None
     }
   } else {
     match button {
-      0 => Some(@public_input.Press(@public_input.Left))
-      1 => Some(@public_input.Press(@public_input.Middle))
-      2 => Some(@public_input.Press(@public_input.Right))
+      0 => Some(Press(Left))
+      1 => Some(Press(Middle))
+      2 => Some(Press(Right))
       _ => None
     }
   }
@@ -491,9 +475,9 @@ fn parse_csi_key(
   code : @public_input.KeyCode,
 ) -> @public_input.InputEvent {
   guard parse_csi_key_modifiers(params) is Some(modifiers) else {
-    return @public_input.Unknown(csi.to_owned())
+    return Unknown(csi.to_owned())
   }
-  @public_input.Key(@public_input.KeyEvent::new(code, modifiers~))
+  Key(@public_input.KeyEvent::new(code, modifiers~))
 }
 
 ///|
@@ -544,35 +528,35 @@ fn parse_csi_tilde_key(
     [Some(code)] => (code, @public_input.KeyModifiers::new())
     [Some(code), None] => (code, @public_input.KeyModifiers::new())
     [Some(code), Some(modifier)] => (code, modifiers_from_param(modifier))
-    _ => return @public_input.Unknown(csi.to_owned())
+    _ => return Unknown(csi.to_owned())
   }
   guard tilde_key_code(code) is Some(key_code) else {
-    return @public_input.Unknown(csi.to_owned())
+    return Unknown(csi.to_owned())
   }
-  @public_input.Key(@public_input.KeyEvent::new(key_code, modifiers~))
+  Key(@public_input.KeyEvent::new(key_code, modifiers~))
 }
 
 ///|
 fn tilde_key_code(code : Int) -> @public_input.KeyCode? {
   match code {
-    1 | 7 => Some(@public_input.Home)
-    2 => Some(@public_input.Insert)
-    3 => Some(@public_input.Delete)
-    4 | 8 => Some(@public_input.End)
-    5 => Some(@public_input.PageUp)
-    6 => Some(@public_input.PageDown)
-    11 => Some(@public_input.F1)
-    12 => Some(@public_input.F2)
-    13 => Some(@public_input.F3)
-    14 => Some(@public_input.F4)
-    15 => Some(@public_input.F5)
-    17 => Some(@public_input.F6)
-    18 => Some(@public_input.F7)
-    19 => Some(@public_input.F8)
-    20 => Some(@public_input.F9)
-    21 => Some(@public_input.F10)
-    23 => Some(@public_input.F11)
-    24 => Some(@public_input.F12)
+    1 | 7 => Some(Home)
+    2 => Some(Insert)
+    3 => Some(Delete)
+    4 | 8 => Some(End)
+    5 => Some(PageUp)
+    6 => Some(PageDown)
+    11 => Some(F1)
+    12 => Some(F2)
+    13 => Some(F3)
+    14 => Some(F4)
+    15 => Some(F5)
+    17 => Some(F6)
+    18 => Some(F7)
+    19 => Some(F8)
+    20 => Some(F9)
+    21 => Some(F10)
+    23 => Some(F11)
+    24 => Some(F12)
     _ => None
   }
 }
@@ -599,47 +583,40 @@ async fn read_byte_event(
   esc_timeout_ms : Int,
 ) -> @public_input.InputEvent {
   match byte {
-    b'\r' => @public_input.Key(@public_input.KeyEvent::new(@public_input.Enter))
+    b'\r' => Key(@public_input.KeyEvent::new(Enter))
     b'\n' =>
-      @public_input.Key(
+      Key(
         @public_input.KeyEvent::new(
-          @public_input.Char('j'),
+          Char('j'),
           modifiers=@public_input.KeyModifiers::new(ctrl=true),
         ),
       )
-    b'\t' => @public_input.Key(@public_input.KeyEvent::new(@public_input.Tab))
-    b'\x7f' | b'\x08' =>
-      @public_input.Key(@public_input.KeyEvent::new(@public_input.Backspace))
+    b'\t' => Key(@public_input.KeyEvent::new(Tab))
+    b'\x7f' | b'\x08' => Key(@public_input.KeyEvent::new(Backspace))
     b'\x00' =>
-      @public_input.Key(
+      Key(
         @public_input.KeyEvent::new(
-          @public_input.Char(' '),
+          Char(' '),
           modifiers=@public_input.KeyModifiers::new(ctrl=true),
         ),
       )
     0x01..=0x1a =>
-      @public_input.Key(
+      Key(
         @public_input.KeyEvent::new(
-          @public_input.Char(
-            (byte.to_int() - 1 + 'a'.to_int()).unsafe_to_char(),
-          ),
+          Char((byte.to_int() - 1 + 'a'.to_int()).unsafe_to_char()),
           modifiers=@public_input.KeyModifiers::new(ctrl=true),
         ),
       )
     0x1c..=0x1f =>
-      @public_input.Key(
+      Key(
         @public_input.KeyEvent::new(
-          @public_input.Char(
-            (byte.to_int() - 0x1c + '4'.to_int()).unsafe_to_char(),
-          ),
+          Char((byte.to_int() - 0x1c + '4'.to_int()).unsafe_to_char()),
           modifiers=@public_input.KeyModifiers::new(ctrl=true),
         ),
       )
     0x20..<0x7f => {
       let char = byte.to_char()
-      @public_input.Key(
-        @public_input.KeyEvent::new(@public_input.Char(char), text=[char]),
-      )
+      Key(@public_input.KeyEvent::new(Char(char), text=[char]))
     }
     _ => read_utf8_text(reader, byte, esc_timeout_ms~)
   }
@@ -652,21 +629,21 @@ async fn read_utf8_text(
   esc_timeout_ms~ : Int,
 ) -> @public_input.InputEvent {
   guard utf8_sequence_length(first) is Some(len) else {
-    return @public_input.Unknown([first])
+    return Unknown([first])
   }
   for _ in 1..<len {
     guard @async.with_timeout_opt(esc_timeout_ms, () => reader.read_byte())
       is Some(byte) else {
-      return @public_input.Unknown(reader.view().to_owned())
+      return Unknown(reader.view().to_owned())
     }
     if !is_utf8_continuation(byte) {
       reader.unread_byte()
-      return @public_input.Unknown(reader.view().to_owned())
+      return Unknown(reader.view().to_owned())
     }
   }
   let bytes = reader.view().to_owned()
   try @utf8.decode(bytes) catch {
-    _ => @public_input.Unknown(bytes)
+    _ => Unknown(bytes)
   } noraise {
     text => text_event(text)
   }
@@ -683,11 +660,9 @@ fn text_event(text : String) -> @public_input.InputEvent {
     count += 1
   }
   if count == 1 {
-    @public_input.Key(
-      @public_input.KeyEvent::new(@public_input.Char(first), text~),
-    )
+    Key(@public_input.KeyEvent::new(Char(first), text~))
   } else {
-    @public_input.Key(@public_input.KeyEvent::new(@public_input.Text, text~))
+    Key(@public_input.KeyEvent::new(Text, text~))
   }
 }
 

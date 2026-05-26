@@ -35,117 +35,75 @@ test "describe modifiers" {
 ///|
 test "describe key names" {
   inspect(
-    describe_key(@tty/input.KeyEvent::new(@tty/input.Char('x'))),
+    describe_key(@tty/input.KeyEvent::new(Char('x'))),
     content="event: Key x",
   )
   inspect(
-    describe_key(@tty/input.KeyEvent::new(@tty/input.Text)),
+    describe_key(@tty/input.KeyEvent::new(Text)),
     content="event: Key Text",
   )
   inspect(
-    describe_key(@tty/input.KeyEvent::new(@tty/input.Enter)),
+    describe_key(@tty/input.KeyEvent::new(Enter)),
     content="event: Key Enter",
   )
+  inspect(describe_key(@tty/input.KeyEvent::new(Tab)), content="event: Key Tab")
   inspect(
-    describe_key(@tty/input.KeyEvent::new(@tty/input.Tab)),
-    content="event: Key Tab",
-  )
-  inspect(
-    describe_key(@tty/input.KeyEvent::new(@tty/input.Backspace)),
+    describe_key(@tty/input.KeyEvent::new(Backspace)),
     content="event: Key Backspace",
   )
   inspect(
-    describe_key(@tty/input.KeyEvent::new(@tty/input.Delete)),
+    describe_key(@tty/input.KeyEvent::new(Delete)),
     content="event: Key Delete",
   )
   inspect(
-    describe_key(@tty/input.KeyEvent::new(@tty/input.Escape)),
+    describe_key(@tty/input.KeyEvent::new(Escape)),
     content="event: Key Escape",
   )
+  inspect(describe_key(@tty/input.KeyEvent::new(Up)), content="event: Key Up")
   inspect(
-    describe_key(@tty/input.KeyEvent::new(@tty/input.Up)),
-    content="event: Key Up",
-  )
-  inspect(
-    describe_key(@tty/input.KeyEvent::new(@tty/input.Down)),
+    describe_key(@tty/input.KeyEvent::new(Down)),
     content="event: Key Down",
   )
   inspect(
-    describe_key(@tty/input.KeyEvent::new(@tty/input.Left)),
+    describe_key(@tty/input.KeyEvent::new(Left)),
     content="event: Key Left",
   )
   inspect(
-    describe_key(@tty/input.KeyEvent::new(@tty/input.Right)),
+    describe_key(@tty/input.KeyEvent::new(Right)),
     content="event: Key Right",
   )
   inspect(
-    describe_key(@tty/input.KeyEvent::new(@tty/input.Home)),
+    describe_key(@tty/input.KeyEvent::new(Home)),
     content="event: Key Home",
   )
+  inspect(describe_key(@tty/input.KeyEvent::new(End)), content="event: Key End")
   inspect(
-    describe_key(@tty/input.KeyEvent::new(@tty/input.End)),
-    content="event: Key End",
-  )
-  inspect(
-    describe_key(@tty/input.KeyEvent::new(@tty/input.PageUp)),
+    describe_key(@tty/input.KeyEvent::new(PageUp)),
     content="event: Key PageUp",
   )
   inspect(
-    describe_key(@tty/input.KeyEvent::new(@tty/input.PageDown)),
+    describe_key(@tty/input.KeyEvent::new(PageDown)),
     content="event: Key PageDown",
   )
   inspect(
-    describe_key(@tty/input.KeyEvent::new(@tty/input.Insert)),
+    describe_key(@tty/input.KeyEvent::new(Insert)),
     content="event: Key Insert",
   )
-  inspect(
-    describe_key(@tty/input.KeyEvent::new(@tty/input.F1)),
-    content="event: Key F1",
-  )
-  inspect(
-    describe_key(@tty/input.KeyEvent::new(@tty/input.F2)),
-    content="event: Key F2",
-  )
-  inspect(
-    describe_key(@tty/input.KeyEvent::new(@tty/input.F3)),
-    content="event: Key F3",
-  )
-  inspect(
-    describe_key(@tty/input.KeyEvent::new(@tty/input.F4)),
-    content="event: Key F4",
-  )
-  inspect(
-    describe_key(@tty/input.KeyEvent::new(@tty/input.F5)),
-    content="event: Key F5",
-  )
-  inspect(
-    describe_key(@tty/input.KeyEvent::new(@tty/input.F6)),
-    content="event: Key F6",
-  )
-  inspect(
-    describe_key(@tty/input.KeyEvent::new(@tty/input.F7)),
-    content="event: Key F7",
-  )
-  inspect(
-    describe_key(@tty/input.KeyEvent::new(@tty/input.F8)),
-    content="event: Key F8",
-  )
-  inspect(
-    describe_key(@tty/input.KeyEvent::new(@tty/input.F9)),
-    content="event: Key F9",
-  )
-  inspect(
-    describe_key(@tty/input.KeyEvent::new(@tty/input.F10)),
-    content="event: Key F10",
-  )
-  inspect(
-    describe_key(@tty/input.KeyEvent::new(@tty/input.F11)),
-    content="event: Key F11",
-  )
+  inspect(describe_key(@tty/input.KeyEvent::new(F1)), content="event: Key F1")
+  inspect(describe_key(@tty/input.KeyEvent::new(F2)), content="event: Key F2")
+  inspect(describe_key(@tty/input.KeyEvent::new(F3)), content="event: Key F3")
+  inspect(describe_key(@tty/input.KeyEvent::new(F4)), content="event: Key F4")
+  inspect(describe_key(@tty/input.KeyEvent::new(F5)), content="event: Key F5")
+  inspect(describe_key(@tty/input.KeyEvent::new(F6)), content="event: Key F6")
+  inspect(describe_key(@tty/input.KeyEvent::new(F7)), content="event: Key F7")
+  inspect(describe_key(@tty/input.KeyEvent::new(F8)), content="event: Key F8")
+  inspect(describe_key(@tty/input.KeyEvent::new(F9)), content="event: Key F9")
+  inspect(describe_key(@tty/input.KeyEvent::new(F10)), content="event: Key F10")
+  inspect(describe_key(@tty/input.KeyEvent::new(F11)), content="event: Key F11")
   inspect(
     describe_key(
       @tty/input.KeyEvent::new(
-        @tty/input.F12,
+        F12,
         modifiers=@tty/input.KeyModifiers::new(ctrl=true),
       ),
     ),
@@ -155,34 +113,22 @@ test "describe key names" {
 
 ///|
 test "describe mouse events" {
-  inspect(describe_mouse_button(@tty/input.Left), content="Left")
-  inspect(describe_mouse_button(@tty/input.Middle), content="Middle")
-  inspect(describe_mouse_button(@tty/input.Right), content="Right")
-  inspect(describe_mouse_scroll(@tty/input.Up), content="Up")
-  inspect(describe_mouse_scroll(@tty/input.Down), content="Down")
-  inspect(describe_mouse_scroll(@tty/input.Left), content="Left")
-  inspect(describe_mouse_scroll(@tty/input.Right), content="Right")
-  inspect(
-    describe_mouse_kind(@tty/input.Press(@tty/input.Left)),
-    content="Press Left",
-  )
-  inspect(
-    describe_mouse_kind(@tty/input.Release(@tty/input.Middle)),
-    content="Release Middle",
-  )
-  inspect(
-    describe_mouse_kind(@tty/input.Drag(@tty/input.Right)),
-    content="Drag Right",
-  )
-  inspect(describe_mouse_kind(@tty/input.Move), content="Move")
-  inspect(
-    describe_mouse_kind(@tty/input.Scroll(@tty/input.Down)),
-    content="Scroll Down",
-  )
+  inspect(describe_mouse_button(Left), content="Left")
+  inspect(describe_mouse_button(Middle), content="Middle")
+  inspect(describe_mouse_button(Right), content="Right")
+  inspect(describe_mouse_scroll(Up), content="Up")
+  inspect(describe_mouse_scroll(Down), content="Down")
+  inspect(describe_mouse_scroll(Left), content="Left")
+  inspect(describe_mouse_scroll(Right), content="Right")
+  inspect(describe_mouse_kind(Press(Left)), content="Press Left")
+  inspect(describe_mouse_kind(Release(Middle)), content="Release Middle")
+  inspect(describe_mouse_kind(Drag(Right)), content="Drag Right")
+  inspect(describe_mouse_kind(Move), content="Move")
+  inspect(describe_mouse_kind(Scroll(Down)), content="Scroll Down")
   inspect(
     describe_mouse(
       @tty/input.MouseEvent::new(
-        @tty/input.Press(@tty/input.Left),
+        Press(Left),
         10,
         20,
         modifiers=@tty/input.KeyModifiers::new(shift=true),

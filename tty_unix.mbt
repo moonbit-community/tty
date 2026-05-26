@@ -18,10 +18,7 @@ async fn ControllingTerminal::open() -> ControllingTerminal {
   if fd < 0 {
     @os_error.check_errno("Tty::open")
   }
-  ControllingTerminal::{
-    raw: @async/raw_fd.RawFd::RawFd(fd),
-    read_buf: @async/io.ReaderBuffer::new(),
-  }
+  { raw: RawFd(fd), read_buf: @async/io.ReaderBuffer::new() }
 }
 
 ///|

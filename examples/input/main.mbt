@@ -90,34 +90,34 @@ fn describe_modifiers(modifiers : @tty/input.KeyModifiers) -> String {
 fn describe_key(key : @tty/input.KeyEvent) -> String {
   let modifier = describe_modifiers(key.modifiers)
   let name = match key.code {
-    @tty/input.Char(ch) => "\{ch}"
-    @tty/input.Text => "Text"
-    @tty/input.Enter => "Enter"
-    @tty/input.Tab => "Tab"
-    @tty/input.Backspace => "Backspace"
-    @tty/input.Delete => "Delete"
-    @tty/input.Escape => "Escape"
-    @tty/input.Up => "Up"
-    @tty/input.Down => "Down"
-    @tty/input.Left => "Left"
-    @tty/input.Right => "Right"
-    @tty/input.Home => "Home"
-    @tty/input.End => "End"
-    @tty/input.PageUp => "PageUp"
-    @tty/input.PageDown => "PageDown"
-    @tty/input.Insert => "Insert"
-    @tty/input.F1 => "F1"
-    @tty/input.F2 => "F2"
-    @tty/input.F3 => "F3"
-    @tty/input.F4 => "F4"
-    @tty/input.F5 => "F5"
-    @tty/input.F6 => "F6"
-    @tty/input.F7 => "F7"
-    @tty/input.F8 => "F8"
-    @tty/input.F9 => "F9"
-    @tty/input.F10 => "F10"
-    @tty/input.F11 => "F11"
-    @tty/input.F12 => "F12"
+    Char(ch) => "\{ch}"
+    Text => "Text"
+    Enter => "Enter"
+    Tab => "Tab"
+    Backspace => "Backspace"
+    Delete => "Delete"
+    Escape => "Escape"
+    Up => "Up"
+    Down => "Down"
+    Left => "Left"
+    Right => "Right"
+    Home => "Home"
+    End => "End"
+    PageUp => "PageUp"
+    PageDown => "PageDown"
+    Insert => "Insert"
+    F1 => "F1"
+    F2 => "F2"
+    F3 => "F3"
+    F4 => "F4"
+    F5 => "F5"
+    F6 => "F6"
+    F7 => "F7"
+    F8 => "F8"
+    F9 => "F9"
+    F10 => "F10"
+    F11 => "F11"
+    F12 => "F12"
   }
   "event: Key \{modifier}\{name}"
 }
@@ -125,30 +125,30 @@ fn describe_key(key : @tty/input.KeyEvent) -> String {
 ///|
 fn describe_mouse_button(button : @tty/input.MouseButton) -> String {
   match button {
-    @tty/input.Left => "Left"
-    @tty/input.Middle => "Middle"
-    @tty/input.Right => "Right"
+    Left => "Left"
+    Middle => "Middle"
+    Right => "Right"
   }
 }
 
 ///|
 fn describe_mouse_scroll(scroll : @tty/input.MouseScroll) -> String {
   match scroll {
-    @tty/input.Up => "Up"
-    @tty/input.Down => "Down"
-    @tty/input.Left => "Left"
-    @tty/input.Right => "Right"
+    Up => "Up"
+    Down => "Down"
+    Left => "Left"
+    Right => "Right"
   }
 }
 
 ///|
 fn describe_mouse_kind(kind : @tty/input.MouseEventKind) -> String {
   match kind {
-    @tty/input.Press(button) => "Press \{describe_mouse_button(button)}"
-    @tty/input.Release(button) => "Release \{describe_mouse_button(button)}"
-    @tty/input.Drag(button) => "Drag \{describe_mouse_button(button)}"
-    @tty/input.Move => "Move"
-    @tty/input.Scroll(scroll) => "Scroll \{describe_mouse_scroll(scroll)}"
+    Press(button) => "Press \{describe_mouse_button(button)}"
+    Release(button) => "Release \{describe_mouse_button(button)}"
+    Drag(button) => "Drag \{describe_mouse_button(button)}"
+    Move => "Move"
+    Scroll(scroll) => "Scroll \{describe_mouse_scroll(scroll)}"
   }
 }
 
@@ -173,7 +173,7 @@ async fn run_input_buffer(tty : @tty.Tty) -> Unit {
       error => raise error
     }
     match event {
-      @tty.Input(input) =>
+      Input(input) =>
         match input {
           Key(key) =>
             match key.code {
@@ -209,13 +209,13 @@ async fn run_input_buffer(tty : @tty.Tty) -> Unit {
               }
               _ => redraw_input(tty, buffer, describe_key(key))
             }
-          @tty/input.Unknown(bytes) =>
+          Unknown(bytes) =>
             redraw_input(
               tty,
               buffer,
               "event: Unknown \{bytes.length()} bytes [\{describe_bytes(bytes)}]",
             )
-          @tty/input.Paste(text) => {
+          Paste(text) => {
             buffer = buffer + text
             redraw_input(
               tty,
@@ -223,10 +223,9 @@ async fn run_input_buffer(tty : @tty.Tty) -> Unit {
               "event: Paste \{display_width(text)} cols",
             )
           }
-          @tty/input.Mouse(mouse) =>
-            redraw_input(tty, buffer, describe_mouse(mouse))
+          Mouse(mouse) => redraw_input(tty, buffer, describe_mouse(mouse))
         }
-      @tty.Resize(_) => redraw_input(tty, buffer, "")
+      Resize(_) => redraw_input(tty, buffer, "")
     }
   }
 }
@@ -236,7 +235,7 @@ async fn main {
   let tty = @tty.Tty::stdio()
   tty.with_raw_mode(() => {
     tty.with_bracketed_paste(() => {
-      tty.with_mouse(@tty.Motion, () => run_input_buffer(tty))
+      tty.with_mouse(Motion, () => run_input_buffer(tty))
     })
   })
 }
