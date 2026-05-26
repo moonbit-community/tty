@@ -23,6 +23,24 @@ pub let query_keyboard_enhancement_flags : Bytes = b"\x1b[?u"
 pub let request_primary_device_attributes : Bytes = b"\x1b[c"
 
 ///|
+/// Push kitty keyboard protocol progressive enhancement flags.
+pub fn push_keyboard_enhancement_flags(flags : Int) -> Bytes {
+  let flags = if flags < 0 { 0 } else { flags }
+  let len = count_decimal_digits(flags)
+  let buf : FixedArray[Byte] = FixedArray::make(4 + len, 0)
+  buf[0] = b'\x1b'
+  buf[1] = b'['
+  buf[2] = b'>'
+  let offset = write_decimal_digits(buf, flags, offset=3, length=len)
+  buf[offset] = b'u'
+  buf.unsafe_reinterpret_as_bytes()
+}
+
+///|
+/// Pop one kitty keyboard protocol progressive enhancement flag stack entry.
+pub let pop_keyboard_enhancement_flags : Bytes = b"\x1b[<1u"
+
+///|
 /// Enable normal mouse tracking, xterm private mode 1000.
 pub let enable_mouse_click : Bytes = b"\x1b[?1000h"
 

@@ -17,6 +17,14 @@ test "terminal response query sequences" {
 }
 
 ///|
+test "kitty keyboard enhancement sequences" {
+  @debug.assert_eq(@vt.push_keyboard_enhancement_flags(1), b"\x1b[>1u")
+  @debug.assert_eq(@vt.push_keyboard_enhancement_flags(31), b"\x1b[>31u")
+  @debug.assert_eq(@vt.push_keyboard_enhancement_flags(-1), b"\x1b[>0u")
+  @debug.assert_eq(@vt.pop_keyboard_enhancement_flags, b"\x1b[<1u")
+}
+
+///|
 test "mouse mode sequences" {
   @debug.assert_eq(@vt.enable_mouse_click, b"\x1b[?1000h")
   @debug.assert_eq(@vt.disable_mouse_click, b"\x1b[?1000l")

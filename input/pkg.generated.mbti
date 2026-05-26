@@ -46,28 +46,122 @@ pub(all) enum KeyCode {
   F10
   F11
   F12
+  F13
+  F14
+  F15
+  F16
+  F17
+  F18
+  F19
+  F20
+  F21
+  F22
+  F23
+  F24
+  F25
+  F26
+  F27
+  F28
+  F29
+  F30
+  F31
+  F32
+  F33
+  F34
+  F35
+  CapsLock
+  ScrollLock
+  NumLock
+  PrintScreen
+  Pause
+  Menu
+  KeypadBegin
+  Keypad0
+  Keypad1
+  Keypad2
+  Keypad3
+  Keypad4
+  Keypad5
+  Keypad6
+  Keypad7
+  Keypad8
+  Keypad9
+  KeypadDecimal
+  KeypadDivide
+  KeypadMultiply
+  KeypadMinus
+  KeypadPlus
+  KeypadEnter
+  KeypadEqual
+  KeypadSeparator
+  Media(MediaKeyCode)
+  Modifier(ModifierKeyCode)
 } derive(Eq, @debug.Debug)
 
 pub struct KeyEvent {
   code : KeyCode
   modifiers : KeyModifiers
+  kind : KeyEventKind
+  state : KeyEventState
   text : String?
+  shifted_code : KeyCode?
+  base_code : KeyCode?
 } derive(Eq, @debug.Debug)
-pub fn KeyEvent::new(KeyCode, modifiers? : KeyModifiers, text? : String) -> Self
+pub fn KeyEvent::new(KeyCode, modifiers? : KeyModifiers, text? : String, kind? : KeyEventKind, state? : KeyEventState, shifted_code? : KeyCode, base_code? : KeyCode) -> Self
 
-pub(all) enum KeyModifier {
-  Shift
-  Alt
-  Ctrl
-  Meta
+pub(all) enum KeyEventKind {
+  Press
+  Repeat
+  Release
 } derive(Eq, @debug.Debug)
+
+type KeyEventState derive(Eq, @debug.Debug)
+pub fn KeyEventState::caps_lock(Self) -> Bool
+pub fn KeyEventState::keypad(Self) -> Bool
+pub fn KeyEventState::new(keypad? : Bool, caps_lock? : Bool, num_lock? : Bool) -> Self
+pub fn KeyEventState::num_lock(Self) -> Bool
 
 type KeyModifiers derive(Eq, @debug.Debug)
 pub fn KeyModifiers::alt(Self) -> Bool
 pub fn KeyModifiers::ctrl(Self) -> Bool
+pub fn KeyModifiers::hyper(Self) -> Bool
 pub fn KeyModifiers::meta(Self) -> Bool
-pub fn KeyModifiers::new(shift? : Bool, alt? : Bool, ctrl? : Bool, meta? : Bool) -> Self
+pub fn KeyModifiers::new(shift? : Bool, alt? : Bool, ctrl? : Bool, meta? : Bool, super_? : Bool, hyper? : Bool) -> Self
 pub fn KeyModifiers::shift(Self) -> Bool
+pub fn KeyModifiers::super_(Self) -> Bool
+
+pub(all) enum MediaKeyCode {
+  Play
+  Pause
+  PlayPause
+  Reverse
+  Stop
+  FastForward
+  Rewind
+  TrackNext
+  TrackPrevious
+  Record
+  LowerVolume
+  RaiseVolume
+  MuteVolume
+} derive(Eq, @debug.Debug)
+
+pub(all) enum ModifierKeyCode {
+  LeftShift
+  LeftControl
+  LeftAlt
+  LeftSuper
+  LeftHyper
+  LeftMeta
+  RightShift
+  RightControl
+  RightAlt
+  RightSuper
+  RightHyper
+  RightMeta
+  IsoLevel3Shift
+  IsoLevel5Shift
+} derive(Eq, @debug.Debug)
 
 pub(all) enum MouseButton {
   Left

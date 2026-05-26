@@ -271,6 +271,7 @@ fn parse_csi(csi : BytesView) -> Event {
       parse_keyboard_enhancement_flags(csi, params)
     [Esc, b'[', b'?', .. params, b'c'] =>
       parse_primary_device_attributes(csi, params)
+    [Esc, b'[', .. params, b'u'] => Input(parse_kitty_key(csi, params))
     [Esc, b'[', b'Z'] =>
       Input(
         Key(
@@ -284,16 +285,8 @@ fn parse_csi(csi : BytesView) -> Event {
       Input(parse_sgr_mouse(csi, params, false))
     [Esc, b'[', b'<', .. params, b'm'] =>
       Input(parse_sgr_mouse(csi, params, true))
-    [Esc, b'[', .. params, b'~'] => {
-      guard parse_csi_params(params) is Some(params) else {
-        return Input(Unknown(csi.to_owned()))
-      }
-      Input(parse_csi_tilde_key(csi, params))
-    }
-    [Esc, b'[', .. params, final_byte] => {
-      guard parse_csi_params(params) is Some(params) else {
-        return Input(Unknown(csi.to_owned()))
-      }
+    [Esc, b'[', .. params, b'~'] => Input(parse_csi_tilde_key(csi, params))
+    [Esc, b'[', .. params, final_byte] =>
       match final_byte {
         b'A' => Input(parse_csi_key(csi, params, Up))
         b'B' => Input(parse_csi_key(csi, params, Down))
@@ -303,13 +296,15 @@ fn parse_csi(csi : BytesView) -> Event {
         b'F' => Input(parse_csi_key(csi, params, End))
         b'P' => Input(parse_csi_key(csi, params, F1))
         b'Q' => Input(parse_csi_key(csi, params, F2))
-        b'R' if parse_cursor_position_params(params) is Some((row, col)) =>
-          CursorPosition(row~, col~)
-        b'R' => Input(parse_csi_key(csi, params, F3))
+        b'R' =>
+          match @csi.parse_params(params) {
+            Some(parsed) if parse_cursor_position_params(parsed)
+              is Some((row, col)) => CursorPosition(row~, col~)
+            _ => Input(parse_csi_key(csi, params, F3))
+          }
         b'S' => Input(parse_csi_key(csi, params, F4))
         _ => Input(Unknown(csi.to_owned()))
       }
-    }
     _ => Input(Unknown(csi.to_owned()))
   }
 }
@@ -319,7 +314,7 @@ fn parse_keyboard_enhancement_flags(
   csi : BytesView,
   params : BytesView,
 ) -> Event {
-  guard parse_decimal_param(params) is Some(flags) else {
+  guard @csi.parse_decimal(params) is Some(flags) else {
     return Input(Unknown(csi.to_owned()))
   }
   KeyboardEnhancementFlags(flags)
@@ -330,49 +325,11 @@ fn parse_primary_device_attributes(
   csi : BytesView,
   params : BytesView,
 ) -> Event {
-  if is_primary_device_attributes_params(params) {
+  if @csi.is_primary_device_attributes_params(params) {
     PrimaryDeviceAttributes(csi.to_owned())
   } else {
     Input(Unknown(csi.to_owned()))
   }
-}
-
-///|
-fn parse_decimal_param(params : BytesView) -> Int? {
-  guard params.length() > 0 else { return None }
-  let mut value = 0
-  for i = 0; i < params.length(); {
-    let byte = params[i]
-    match byte {
-      b'0'..=b'9' => {
-        value = value * 10 + byte.to_int() - b'0'.to_int()
-        continue i + 1
-      }
-      _ => return None
-    }
-  }
-  Some(value)
-}
-
-///|
-fn is_primary_device_attributes_params(params : BytesView) -> Bool {
-  guard params.length() > 0 else { return false }
-  let mut part_has_digit = false
-  for i = 0; i < params.length(); {
-    let byte = params[i]
-    match byte {
-      b'0'..=b'9' => {
-        part_has_digit = true
-        continue i + 1
-      }
-      b';' if part_has_digit => {
-        part_has_digit = false
-        continue i + 1
-      }
-      _ => return false
-    }
-  }
-  part_has_digit
 }
 
 ///|
@@ -389,7 +346,7 @@ fn parse_sgr_mouse(
   params_bytes : BytesView,
   release : Bool,
 ) -> @public_input.InputEvent {
-  guard parse_csi_params(params_bytes) is Some(params) else {
+  guard @csi.parse_params(params_bytes) is Some(params) else {
     return Unknown(csi.to_owned())
   }
   let parsed = match params {
@@ -471,50 +428,38 @@ fn mouse_modifiers_from_cb(cb : Int) -> @public_input.KeyModifiers {
 ///|
 fn parse_csi_key(
   csi : BytesView,
-  params : Array[Int?],
+  params_bytes : BytesView,
   code : @public_input.KeyCode,
 ) -> @public_input.InputEvent {
-  guard parse_csi_key_modifiers(params) is Some(modifiers) else {
+  guard @csi.parse_subparams(params_bytes) is Some(params) else {
     return Unknown(csi.to_owned())
   }
-  Key(@public_input.KeyEvent::new(code, modifiers~))
+  guard parse_csi_key_event(params, code) is Some(key) else {
+    return Unknown(csi.to_owned())
+  }
+  Key(key)
 }
 
 ///|
-fn parse_csi_params(params_bytes : BytesView) -> Array[Int?]? {
-  let params : Array[Int?] = []
-  if params_bytes.length() == 0 {
-    return Some(params)
-  }
-  let mut value = 0
-  let mut seen = false
-  for i = 0; i < params_bytes.length(); {
-    let byte = params_bytes[i]
-    match byte {
-      b'0'..=b'9' => {
-        seen = true
-        value = value * 10 + byte.to_int() - b'0'.to_int()
-        continue i + 1
-      }
-      b';' => {
-        params.push(if seen { Some(value) } else { None })
-        value = 0
-        seen = false
-        continue i + 1
-      }
-      _ => return None
-    }
-  }
-  params.push(if seen { Some(value) } else { None })
-  Some(params)
-}
-
-///|
-fn parse_csi_key_modifiers(params : Array[Int?]) -> @public_input.KeyModifiers? {
+fn parse_csi_key_event(
+  params : Array[Array[Int?]],
+  code : @public_input.KeyCode,
+) -> @public_input.KeyEvent? {
   match params {
-    [] | [None | Some(1)] | [None | Some(1), None] =>
-      Some(@public_input.KeyModifiers::new())
-    [None | Some(1), Some(modifier)] => Some(modifiers_from_param(modifier))
+    [] | [[None | Some(1)]] | [[None | Some(1)], [None]] =>
+      Some(@public_input.KeyEvent::new(code))
+    [[None | Some(1)], [Some(modifier)]] =>
+      Some(
+        @public_input.KeyEvent::new(
+          code,
+          modifiers=legacy_modifiers_from_param(modifier),
+        ),
+      )
+    [[None | Some(1)], modifier_event] =>
+      match @kitty.parse_modifier_report(modifier_event) {
+        Some(report) => Some(report.key_event(code))
+        None => None
+      }
     _ => None
   }
 }
@@ -522,18 +467,43 @@ fn parse_csi_key_modifiers(params : Array[Int?]) -> @public_input.KeyModifiers? 
 ///|
 fn parse_csi_tilde_key(
   csi : BytesView,
-  params : Array[Int?],
+  params_bytes : BytesView,
 ) -> @public_input.InputEvent {
-  let (code, modifiers) = match params {
-    [Some(code)] => (code, @public_input.KeyModifiers::new())
-    [Some(code), None] => (code, @public_input.KeyModifiers::new())
-    [Some(code), Some(modifier)] => (code, modifiers_from_param(modifier))
-    _ => return Unknown(csi.to_owned())
-  }
-  guard tilde_key_code(code) is Some(key_code) else {
+  guard @csi.parse_subparams(params_bytes) is Some(params) else {
     return Unknown(csi.to_owned())
   }
-  Key(@public_input.KeyEvent::new(key_code, modifiers~))
+  let key = match params {
+    [[Some(code)]] =>
+      match tilde_key_code(code) {
+        Some(key_code) => @public_input.KeyEvent::new(key_code)
+        None => return Unknown(csi.to_owned())
+      }
+    [[Some(code)], [None]] =>
+      match tilde_key_code(code) {
+        Some(key_code) => @public_input.KeyEvent::new(key_code)
+        None => return Unknown(csi.to_owned())
+      }
+    [[Some(code)], [Some(modifier)]] =>
+      match tilde_key_code(code) {
+        Some(key_code) =>
+          @public_input.KeyEvent::new(
+            key_code,
+            modifiers=legacy_modifiers_from_param(modifier),
+          )
+        None => return Unknown(csi.to_owned())
+      }
+    [[Some(code)], modifier_event] =>
+      match @kitty.parse_modifier_report(modifier_event) {
+        Some(report) =>
+          match tilde_key_code(code) {
+            Some(key_code) => report.key_event(key_code)
+            None => return Unknown(csi.to_owned())
+          }
+        None => return Unknown(csi.to_owned())
+      }
+    _ => return Unknown(csi.to_owned())
+  }
+  Key(key)
 }
 
 ///|
@@ -562,7 +532,7 @@ fn tilde_key_code(code : Int) -> @public_input.KeyCode? {
 }
 
 ///|
-fn modifiers_from_param(param : Int) -> @public_input.KeyModifiers {
+fn legacy_modifiers_from_param(param : Int) -> @public_input.KeyModifiers {
   let bits = param - 1
   if bits <= 0 {
     @public_input.KeyModifiers::new()
@@ -573,6 +543,20 @@ fn modifiers_from_param(param : Int) -> @public_input.KeyModifiers {
       ctrl=(bits & 4) != 0,
       meta=(bits & 8) != 0,
     )
+  }
+}
+
+///|
+fn parse_kitty_key(
+  csi : BytesView,
+  params_bytes : BytesView,
+) -> @public_input.InputEvent {
+  guard @csi.parse_subparams(params_bytes) is Some(params) else {
+    return Unknown(csi.to_owned())
+  }
+  match @kitty.parse_key(params) {
+    Some(key) => Key(key)
+    None => Unknown(csi.to_owned())
   }
 }
 

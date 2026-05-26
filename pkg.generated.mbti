@@ -27,6 +27,17 @@ pub(all) enum Event {
   Resize(WindowSize)
 } derive(Eq)
 
+type KeyboardEnhancementFlags derive(Eq)
+pub fn KeyboardEnhancementFlags::bits(Self) -> Int
+pub fn KeyboardEnhancementFlags::disambiguate() -> Self
+pub fn KeyboardEnhancementFlags::disambiguate_escape_codes(Self) -> Bool
+pub fn KeyboardEnhancementFlags::full() -> Self
+pub fn KeyboardEnhancementFlags::new(disambiguate_escape_codes? : Bool, report_event_types? : Bool, report_alternate_keys? : Bool, report_all_keys_as_escape_codes? : Bool, report_associated_text? : Bool) -> Self
+pub fn KeyboardEnhancementFlags::report_all_keys_as_escape_codes(Self) -> Bool
+pub fn KeyboardEnhancementFlags::report_alternate_keys(Self) -> Bool
+pub fn KeyboardEnhancementFlags::report_associated_text(Self) -> Bool
+pub fn KeyboardEnhancementFlags::report_event_types(Self) -> Bool
+
 pub(all) enum MouseTrackingMode {
   Click
   Drag
@@ -56,6 +67,8 @@ pub async fn Tty::leave_alt_screen(Self) -> Unit
 pub fn Tty::leave_raw_mode(Self, State) -> Unit raise @os_error.OSError
 pub fn[I : Reader, O : Writer] Tty::new(I, O) -> Self
 pub async fn Tty::open() -> Self
+pub async fn Tty::pop_keyboard_enhancement_flags(Self) -> Unit
+pub async fn Tty::push_keyboard_enhancement_flags(Self, KeyboardEnhancementFlags) -> Unit
 pub async fn Tty::query_cursor_position(Self, timeout_ms? : Int) -> CursorPosition?
 pub async fn Tty::query_kitty_keyboard_support(Self, timeout_ms? : Int) -> Bool
 pub async fn Tty::read_event(Self, esc_timeout_ms? : Int) -> Event
@@ -80,6 +93,8 @@ pub async fn Tty::underline(Self) -> Unit
 pub fn Tty::window_size(Self) -> WindowSize raise @os_error.OSError
 pub async fn[T] Tty::with_alt_screen(Self, async () -> T) -> T
 pub async fn[T] Tty::with_bracketed_paste(Self, async () -> T) -> T
+pub async fn[T] Tty::with_keyboard_enhancements(Self, KeyboardEnhancementFlags, async () -> T) -> T
+pub async fn[T] Tty::with_kitty_keyboard(Self, async () -> T) -> T
 pub async fn[T] Tty::with_mouse(Self, MouseTrackingMode, async () -> T) -> T
 pub async fn[T] Tty::with_raw_mode(Self, async () -> T) -> T
 pub async fn Tty::write(Self, &@io.Data) -> Unit
