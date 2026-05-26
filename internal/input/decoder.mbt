@@ -201,36 +201,12 @@ async fn read_csi(reader : EventReader, esc_timeout_ms~ : Int) -> Event {
       0x40..<0x7f =>
         break if is_bracketed_paste_start(reader.view()) {
           read_bracketed_paste(reader, esc_timeout_ms~)
-        } else if is_x10_mouse_start(reader.view()) {
-          read_x10_mouse_unknown(reader, esc_timeout_ms~)
         } else {
           parse_csi(reader.view())
         }
       _ => break Input(@public_input.Unknown(reader.view().to_owned()))
     }
   }
-}
-
-///|
-fn is_x10_mouse_start(csi : BytesView) -> Bool {
-  match csi {
-    [Esc, .. b"[M"] => true
-    _ => false
-  }
-}
-
-///|
-async fn read_x10_mouse_unknown(
-  reader : EventReader,
-  esc_timeout_ms~ : Int,
-) -> Event {
-  for _ in 0..<3 {
-    guard @async.with_timeout_opt(esc_timeout_ms, () => reader.read_byte())
-      is Some(_) else {
-      return Input(@public_input.Unknown(reader.view().to_owned()))
-    }
-  }
-  Input(@public_input.Unknown(reader.view().to_owned()))
 }
 
 ///|

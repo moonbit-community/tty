@@ -781,33 +781,20 @@ async test "decode invalid sgr mouse reports as unknown" {
 }
 
 ///|
-async test "decode x10 mouse report as one unknown event" {
-  with_input(b"\x1b[M0\x60\x70a", events => {
-    @debug.assert_eq(events.read_event(), input_unknown(b"\x1b[M0\x60\x70"))
+async test "decode csi m as unknown without consuming next input" {
+  with_input(b"\x1b[Mabc", events => {
+    @debug.assert_eq(events.read_event(), input_unknown(b"\x1b[M"))
     @debug.assert_eq(
       events.read_event(),
       input_key(@public_input.KeyEvent::new(@public_input.Char('a'), text="a")),
     )
-  })
-}
-
-///|
-async test "decode high-byte x10 mouse report as fixed width unknown event" {
-  with_input(b"\x1b[M0\xc2\x90a", events => {
-    @debug.assert_eq(events.read_event(), input_unknown(b"\x1b[M0\xc2\x90"))
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.Char('a'), text="a")),
+      input_key(@public_input.KeyEvent::new(@public_input.Char('b'), text="b")),
     )
-  })
-}
-
-///|
-async test "flush incomplete x10 mouse report as unknown" {
-  with_delayed_input(b"\x1b[M0", b"", 50, events => {
     @debug.assert_eq(
-      events.read_event(esc_timeout_ms=10),
-      input_unknown(b"\x1b[M0"),
+      events.read_event(),
+      input_key(@public_input.KeyEvent::new(@public_input.Char('c'), text="c")),
     )
   })
 }
