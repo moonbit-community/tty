@@ -83,7 +83,52 @@ fn describe_modifiers(modifiers : @tty/input.KeyModifiers) -> String {
   if modifiers.meta() {
     builder.write_string("Meta+")
   }
+  if modifiers.super_() {
+    builder.write_string("Super+")
+  }
+  if modifiers.hyper() {
+    builder.write_string("Hyper+")
+  }
   builder.to_string()
+}
+
+///|
+fn describe_media_key(code : @tty/input.MediaKeyCode) -> String {
+  match code {
+    Play => "MediaPlay"
+    Pause => "MediaPause"
+    PlayPause => "MediaPlayPause"
+    Reverse => "MediaReverse"
+    Stop => "MediaStop"
+    FastForward => "MediaFastForward"
+    Rewind => "MediaRewind"
+    TrackNext => "MediaTrackNext"
+    TrackPrevious => "MediaTrackPrevious"
+    Record => "MediaRecord"
+    LowerVolume => "MediaLowerVolume"
+    RaiseVolume => "MediaRaiseVolume"
+    MuteVolume => "MediaMuteVolume"
+  }
+}
+
+///|
+fn describe_modifier_key(code : @tty/input.ModifierKeyCode) -> String {
+  match code {
+    LeftShift => "LeftShift"
+    LeftControl => "LeftControl"
+    LeftAlt => "LeftAlt"
+    LeftSuper => "LeftSuper"
+    LeftHyper => "LeftHyper"
+    LeftMeta => "LeftMeta"
+    RightShift => "RightShift"
+    RightControl => "RightControl"
+    RightAlt => "RightAlt"
+    RightSuper => "RightSuper"
+    RightHyper => "RightHyper"
+    RightMeta => "RightMeta"
+    IsoLevel3Shift => "IsoLevel3Shift"
+    IsoLevel5Shift => "IsoLevel5Shift"
+  }
 }
 
 ///|
@@ -118,8 +163,63 @@ fn describe_key(key : @tty/input.KeyEvent) -> String {
     F10 => "F10"
     F11 => "F11"
     F12 => "F12"
+    F13 => "F13"
+    F14 => "F14"
+    F15 => "F15"
+    F16 => "F16"
+    F17 => "F17"
+    F18 => "F18"
+    F19 => "F19"
+    F20 => "F20"
+    F21 => "F21"
+    F22 => "F22"
+    F23 => "F23"
+    F24 => "F24"
+    F25 => "F25"
+    F26 => "F26"
+    F27 => "F27"
+    F28 => "F28"
+    F29 => "F29"
+    F30 => "F30"
+    F31 => "F31"
+    F32 => "F32"
+    F33 => "F33"
+    F34 => "F34"
+    F35 => "F35"
+    CapsLock => "CapsLock"
+    ScrollLock => "ScrollLock"
+    NumLock => "NumLock"
+    PrintScreen => "PrintScreen"
+    Pause => "Pause"
+    Menu => "Menu"
+    KeypadBegin => "KeypadBegin"
+    Keypad0 => "Keypad0"
+    Keypad1 => "Keypad1"
+    Keypad2 => "Keypad2"
+    Keypad3 => "Keypad3"
+    Keypad4 => "Keypad4"
+    Keypad5 => "Keypad5"
+    Keypad6 => "Keypad6"
+    Keypad7 => "Keypad7"
+    Keypad8 => "Keypad8"
+    Keypad9 => "Keypad9"
+    KeypadDecimal => "KeypadDecimal"
+    KeypadDivide => "KeypadDivide"
+    KeypadMultiply => "KeypadMultiply"
+    KeypadMinus => "KeypadMinus"
+    KeypadPlus => "KeypadPlus"
+    KeypadEnter => "KeypadEnter"
+    KeypadEqual => "KeypadEqual"
+    KeypadSeparator => "KeypadSeparator"
+    Media(code) => describe_media_key(code)
+    Modifier(code) => describe_modifier_key(code)
   }
-  "event: Key \{modifier}\{name}"
+  let kind = match key.kind {
+    Press => ""
+    Repeat => " repeat"
+    Release => " release"
+  }
+  "event: Key\{kind} \{modifier}\{name}"
 }
 
 ///|
@@ -234,8 +334,16 @@ async fn run_input_buffer(tty : @tty.Tty) -> Unit {
 async fn main {
   let tty = @tty.Tty::stdio()
   tty.with_raw_mode(() => {
-    tty.with_bracketed_paste(() => {
-      tty.with_mouse(Motion, () => run_input_buffer(tty))
-    })
+    if tty.query_kitty_keyboard_support(timeout_ms=100) {
+      tty.with_kitty_keyboard(() => {
+        tty.with_bracketed_paste(() => {
+          tty.with_mouse(Motion, () => run_input_buffer(tty))
+        })
+      })
+    } else {
+      tty.with_bracketed_paste(() => {
+        tty.with_mouse(Motion, () => run_input_buffer(tty))
+      })
+    }
   })
 }

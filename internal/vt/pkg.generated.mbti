@@ -54,6 +54,10 @@ pub let italic : Bytes
 
 pub let leave_alt_screen : Bytes
 
+pub let pop_keyboard_enhancement_flags : Bytes
+
+pub fn push_keyboard_enhancement_flags(Int) -> Bytes
+
 pub let query_keyboard_enhancement_flags : Bytes
 
 pub let request_cursor_position : Bytes

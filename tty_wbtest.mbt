@@ -106,6 +106,57 @@ async test "pipe tty mouse mode commands write sequences" {
 }
 
 ///|
+test "keyboard enhancement flags encode bits" {
+  let flags = KeyboardEnhancementFlags::new(
+    disambiguate_escape_codes=true,
+    report_event_types=true,
+    report_alternate_keys=true,
+    report_all_keys_as_escape_codes=true,
+    report_associated_text=true,
+  )
+  @debug.assert_eq(flags.bits(), 31)
+  @debug.assert_eq(flags.disambiguate_escape_codes(), true)
+  @debug.assert_eq(flags.report_event_types(), true)
+  @debug.assert_eq(flags.report_alternate_keys(), true)
+  @debug.assert_eq(flags.report_all_keys_as_escape_codes(), true)
+  @debug.assert_eq(flags.report_associated_text(), true)
+  @debug.assert_eq(KeyboardEnhancementFlags::disambiguate().bits(), 1)
+  @debug.assert_eq(KeyboardEnhancementFlags::full().bits(), 31)
+}
+
+///|
+async test "pipe tty keyboard enhancement commands write sequences" {
+  let output = with_pipe_tty(b"", tty => {
+    tty.push_keyboard_enhancement_flags(
+      KeyboardEnhancementFlags::new(
+        disambiguate_escape_codes=true,
+        report_event_types=true,
+      ),
+    )
+    tty.pop_keyboard_enhancement_flags()
+  })
+  inspect(output, content="\u{1B}[>3u\u{1B}[<1u")
+}
+
+///|
+async test "pipe tty with keyboard enhancements restores on success" {
+  let output = with_pipe_tty(b"", tty => {
+    tty.with_keyboard_enhancements(KeyboardEnhancementFlags::disambiguate(), () => {
+      tty.write("body")
+    })
+  })
+  inspect(output, content="\u{1B}[>1ubody\u{1B}[<1u")
+}
+
+///|
+async test "pipe tty with kitty keyboard uses full flags" {
+  let output = with_pipe_tty(b"", tty => {
+    tty.with_kitty_keyboard(() => tty.write("body"))
+  })
+  inspect(output, content="\u{1B}[>31ubody\u{1B}[<1u")
+}
+
+///|
 async test "pipe tty with mouse restores on success" {
   let output = with_pipe_tty(b"", tty => {
     tty.with_mouse(Drag, () => tty.write("body"))

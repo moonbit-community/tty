@@ -1,0 +1,25 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbit-community/tty/internal/input/kitty"
+
+import {
+  "moonbit-community/tty/input",
+}
+
+// Values
+pub fn parse_csi_key_report(Array[Array[Int?]]) -> ModifierReport?
+
+pub fn parse_key(Array[Array[Int?]]) -> @input.KeyEvent?
+
+pub fn parse_modifier_report(Array[Int?]) -> ModifierReport?
+
+// Errors
+
+// Types and methods
+type ModifierReport
+pub fn ModifierReport::default() -> Self
+pub fn ModifierReport::key_event(Self, @input.KeyCode) -> @input.KeyEvent
+
+// Type aliases
+
+// Traits
+

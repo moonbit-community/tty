@@ -155,6 +155,159 @@ pub async fn[T] Tty::with_bracketed_paste(self : Self, f : async () -> T) -> T {
 }
 
 ///|
+const KeyboardDisambiguateEscapeCodes : Int = 1
+
+///|
+const KeyboardReportEventTypes : Int = 2
+
+///|
+const KeyboardReportAlternateKeys : Int = 4
+
+///|
+const KeyboardReportAllKeysAsEscapeCodes : Int = 8
+
+///|
+const KeyboardReportAssociatedText : Int = 16
+
+///|
+/// Kitty keyboard protocol progressive enhancement flags.
+struct KeyboardEnhancementFlags(Int) derive(Eq)
+
+///|
+/// Construct kitty keyboard protocol progressive enhancement flags.
+pub fn KeyboardEnhancementFlags::new(
+  disambiguate_escape_codes? : Bool = false,
+  report_event_types? : Bool = false,
+  report_alternate_keys? : Bool = false,
+  report_all_keys_as_escape_codes? : Bool = false,
+  report_associated_text? : Bool = false,
+) -> KeyboardEnhancementFlags {
+  let mut bits = 0
+  if disambiguate_escape_codes {
+    bits = bits | KeyboardDisambiguateEscapeCodes
+  }
+  if report_event_types {
+    bits = bits | KeyboardReportEventTypes
+  }
+  if report_alternate_keys {
+    bits = bits | KeyboardReportAlternateKeys
+  }
+  if report_all_keys_as_escape_codes {
+    bits = bits | KeyboardReportAllKeysAsEscapeCodes
+  }
+  if report_associated_text {
+    bits = bits | KeyboardReportAssociatedText
+  }
+  KeyboardEnhancementFlags(bits)
+}
+
+///|
+/// Enhancement flags for unambiguous key reports.
+pub fn KeyboardEnhancementFlags::disambiguate() -> KeyboardEnhancementFlags {
+  KeyboardEnhancementFlags::new(disambiguate_escape_codes=true)
+}
+
+///|
+/// Enhancement flags for full kitty keyboard protocol reports.
+pub fn KeyboardEnhancementFlags::full() -> KeyboardEnhancementFlags {
+  KeyboardEnhancementFlags::new(
+    disambiguate_escape_codes=true,
+    report_event_types=true,
+    report_alternate_keys=true,
+    report_all_keys_as_escape_codes=true,
+    report_associated_text=true,
+  )
+}
+
+///|
+/// Return the raw kitty protocol bitset.
+pub fn KeyboardEnhancementFlags::bits(self : KeyboardEnhancementFlags) -> Int {
+  self.0
+}
+
+///|
+/// Return whether disambiguated escape-code reports are requested.
+pub fn KeyboardEnhancementFlags::disambiguate_escape_codes(
+  self : KeyboardEnhancementFlags,
+) -> Bool {
+  (self.0 & KeyboardDisambiguateEscapeCodes) != 0
+}
+
+///|
+/// Return whether key repeat and release reports are requested.
+pub fn KeyboardEnhancementFlags::report_event_types(
+  self : KeyboardEnhancementFlags,
+) -> Bool {
+  (self.0 & KeyboardReportEventTypes) != 0
+}
+
+///|
+/// Return whether alternate key-code reports are requested.
+pub fn KeyboardEnhancementFlags::report_alternate_keys(
+  self : KeyboardEnhancementFlags,
+) -> Bool {
+  (self.0 & KeyboardReportAlternateKeys) != 0
+}
+
+///|
+/// Return whether all keys should be reported as escape codes.
+pub fn KeyboardEnhancementFlags::report_all_keys_as_escape_codes(
+  self : KeyboardEnhancementFlags,
+) -> Bool {
+  (self.0 & KeyboardReportAllKeysAsEscapeCodes) != 0
+}
+
+///|
+/// Return whether associated text reports are requested.
+pub fn KeyboardEnhancementFlags::report_associated_text(
+  self : KeyboardEnhancementFlags,
+) -> Bool {
+  (self.0 & KeyboardReportAssociatedText) != 0
+}
+
+///|
+/// Push kitty keyboard protocol progressive enhancement flags.
+pub async fn Tty::push_keyboard_enhancement_flags(
+  self : Self,
+  flags : KeyboardEnhancementFlags,
+) -> Unit {
+  self.write(@vt.push_keyboard_enhancement_flags(flags.bits()))
+}
+
+///|
+/// Pop one kitty keyboard protocol progressive enhancement flag stack entry.
+pub async fn Tty::pop_keyboard_enhancement_flags(self : Self) -> Unit {
+  self.write(@vt.pop_keyboard_enhancement_flags)
+}
+
+///|
+/// Run `f` with kitty keyboard protocol enhancements enabled.
+pub async fn[T] Tty::with_keyboard_enhancements(
+  self : Self,
+  flags : KeyboardEnhancementFlags,
+  f : async () -> T,
+) -> T {
+  self.push_keyboard_enhancement_flags(flags)
+  try f() catch {
+    error => {
+      self.pop_keyboard_enhancement_flags()
+      raise error
+    }
+  } noraise {
+    value => {
+      self.pop_keyboard_enhancement_flags()
+      value
+    }
+  }
+}
+
+///|
+/// Run `f` with full kitty keyboard protocol reports enabled.
+pub async fn[T] Tty::with_kitty_keyboard(self : Self, f : async () -> T) -> T {
+  self.with_keyboard_enhancements(KeyboardEnhancementFlags::full(), f)
+}
+
+///|
 /// Mouse tracking scope for SGR mouse reports.
 pub(all) enum MouseTrackingMode {
   Click

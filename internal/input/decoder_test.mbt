@@ -58,16 +58,38 @@ test "key modifier accessors" {
     alt=true,
     ctrl=true,
     meta=true,
+    super_=true,
+    hyper=true,
   )
   @debug.assert_eq(modifiers.shift(), true)
   @debug.assert_eq(modifiers.alt(), true)
   @debug.assert_eq(modifiers.ctrl(), true)
   @debug.assert_eq(modifiers.meta(), true)
+  @debug.assert_eq(modifiers.super_(), true)
+  @debug.assert_eq(modifiers.hyper(), true)
   let none = @public_input.KeyModifiers::new()
   @debug.assert_eq(none.shift(), false)
   @debug.assert_eq(none.alt(), false)
   @debug.assert_eq(none.ctrl(), false)
   @debug.assert_eq(none.meta(), false)
+  @debug.assert_eq(none.super_(), false)
+  @debug.assert_eq(none.hyper(), false)
+}
+
+///|
+test "key event state accessors" {
+  let state = @public_input.KeyEventState::new(
+    keypad=true,
+    caps_lock=true,
+    num_lock=true,
+  )
+  @debug.assert_eq(state.keypad(), true)
+  @debug.assert_eq(state.caps_lock(), true)
+  @debug.assert_eq(state.num_lock(), true)
+  let none = @public_input.KeyEventState::new()
+  @debug.assert_eq(none.keypad(), false)
+  @debug.assert_eq(none.caps_lock(), false)
+  @debug.assert_eq(none.num_lock(), false)
 }
 
 ///|
@@ -82,6 +104,131 @@ async test "kitty keyboard enhancement flags response is a stream event" {
   with_input(b"\x1b[?0u\x1b[?15u", events => {
     @debug.assert_eq(events.read_event(), KeyboardEnhancementFlags(0))
     @debug.assert_eq(events.read_event(), KeyboardEnhancementFlags(15))
+  })
+}
+
+///|
+async test "decode kitty keyboard csi u key event kinds" {
+  with_input(b"\x1b[97u\x1b[97;1:2u\x1b[97;1:3u", events => {
+    @debug.assert_eq(
+      events.read_event(),
+      input_key(@public_input.KeyEvent::new(Char('a'), text="a")),
+    )
+    @debug.assert_eq(
+      events.read_event(),
+      input_key(@public_input.KeyEvent::new(Char('a'), kind=Repeat, text="a")),
+    )
+    @debug.assert_eq(
+      events.read_event(),
+      input_key(@public_input.KeyEvent::new(Char('a'), kind=Release, text="a")),
+    )
+  })
+}
+
+///|
+async test "decode kitty keyboard modifiers alternate keys and associated text" {
+  with_input(b"\x1b[105;5u\x1b[61:43;6u\x1b[0;;229u\x1b[0;;101:769u", events => {
+    @debug.assert_eq(
+      events.read_event(),
+      input_key(
+        @public_input.KeyEvent::new(
+          Char('i'),
+          modifiers=@public_input.KeyModifiers::new(ctrl=true),
+        ),
+      ),
+    )
+    @debug.assert_eq(
+      events.read_event(),
+      input_key(
+        @public_input.KeyEvent::new(
+          Char('='),
+          modifiers=@public_input.KeyModifiers::new(shift=true, ctrl=true),
+          shifted_code=Char('+'),
+        ),
+      ),
+    )
+    @debug.assert_eq(
+      events.read_event(),
+      input_key(@public_input.KeyEvent::new(Text, text="å")),
+    )
+    @debug.assert_eq(
+      events.read_event(),
+      input_key(@public_input.KeyEvent::new(Text, text="e\u{0301}")),
+    )
+  })
+}
+
+///|
+async test "invalid kitty keyboard csi u shapes remain unknown input" {
+  with_input(
+    b"\x1b[u\x1b[;5u\x1b[:43u\x1b[0u\x1b[1u\x1b[97:65;1u\x1b[97:0;1u\x1b[97::0u\x1b[97;0u\x1b[97;:2u\x1b[97;5:u\x1b[97;:u\x1b[97;5:2:9u\x1b[97:65:99:120u\x1b[97;1;65::66u\x1b[97;;10u\x1b[97;1;2;3u",
+    events => {
+      @debug.assert_eq(events.read_event(), input_unknown(b"\x1b[u"))
+      @debug.assert_eq(events.read_event(), input_unknown(b"\x1b[;5u"))
+      @debug.assert_eq(events.read_event(), input_unknown(b"\x1b[:43u"))
+      @debug.assert_eq(events.read_event(), input_unknown(b"\x1b[0u"))
+      @debug.assert_eq(events.read_event(), input_unknown(b"\x1b[1u"))
+      @debug.assert_eq(events.read_event(), input_unknown(b"\x1b[97:65;1u"))
+      @debug.assert_eq(events.read_event(), input_unknown(b"\x1b[97:0;1u"))
+      @debug.assert_eq(events.read_event(), input_unknown(b"\x1b[97::0u"))
+      @debug.assert_eq(events.read_event(), input_unknown(b"\x1b[97;0u"))
+      @debug.assert_eq(events.read_event(), input_unknown(b"\x1b[97;:2u"))
+      @debug.assert_eq(events.read_event(), input_unknown(b"\x1b[97;5:u"))
+      @debug.assert_eq(events.read_event(), input_unknown(b"\x1b[97;:u"))
+      @debug.assert_eq(events.read_event(), input_unknown(b"\x1b[97;5:2:9u"))
+      @debug.assert_eq(
+        events.read_event(),
+        input_unknown(b"\x1b[97:65:99:120u"),
+      )
+      @debug.assert_eq(events.read_event(), input_unknown(b"\x1b[97;1;65::66u"))
+      @debug.assert_eq(events.read_event(), input_unknown(b"\x1b[97;;10u"))
+      @debug.assert_eq(events.read_event(), input_unknown(b"\x1b[97;1;2;3u"))
+    },
+  )
+}
+
+///|
+async test "decode kitty keyboard functional keys state and extension event kinds" {
+  with_input(b"\x1b[57400u\x1b[57444u\x1b[1;5:2A\x1b[3;5:3~", events => {
+    @debug.assert_eq(
+      events.read_event(),
+      input_key(
+        @public_input.KeyEvent::new(
+          Keypad1,
+          state=@public_input.KeyEventState::new(keypad=true),
+          text="1",
+        ),
+      ),
+    )
+    @debug.assert_eq(
+      events.read_event(),
+      input_key(
+        @public_input.KeyEvent::new(
+          Modifier(LeftSuper),
+          modifiers=@public_input.KeyModifiers::new(super_=true),
+        ),
+      ),
+    )
+    @debug.assert_eq(
+      events.read_event(),
+      input_key(
+        @public_input.KeyEvent::new(
+          Up,
+          modifiers=@public_input.KeyModifiers::new(ctrl=true),
+          kind=Repeat,
+        ),
+      ),
+    )
+    @debug.assert_eq(
+      events.read_event(),
+      input_key(
+        @public_input.KeyEvent::new(
+          Delete,
+          modifiers=@public_input.KeyModifiers::new(ctrl=true),
+          kind=Release,
+        ),
+      ),
+    )
   })
 }
 
@@ -574,6 +721,40 @@ async test "decode csi key modifiers" {
         @public_input.KeyEvent::new(
           F1,
           modifiers=@public_input.KeyModifiers::new(shift=true),
+        ),
+      ),
+    )
+  })
+}
+
+///|
+async test "decode legacy and kitty csi key modifier mappings separately" {
+  with_input(b"\x1b[1;9A\x1b[3;9~\x1b[1;9:2A", events => {
+    @debug.assert_eq(
+      events.read_event(),
+      input_key(
+        @public_input.KeyEvent::new(
+          Up,
+          modifiers=@public_input.KeyModifiers::new(meta=true),
+        ),
+      ),
+    )
+    @debug.assert_eq(
+      events.read_event(),
+      input_key(
+        @public_input.KeyEvent::new(
+          Delete,
+          modifiers=@public_input.KeyModifiers::new(meta=true),
+        ),
+      ),
+    )
+    @debug.assert_eq(
+      events.read_event(),
+      input_key(
+        @public_input.KeyEvent::new(
+          Up,
+          modifiers=@public_input.KeyModifiers::new(super_=true),
+          kind=Repeat,
         ),
       ),
     )

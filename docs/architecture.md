@@ -120,10 +120,10 @@ Current shape:
 
 - `InputEvent` contains key events, complete valid UTF-8 bracketed paste
   payloads, SGR mouse events, and unknown byte sequences.
-- `KeyEvent` contains a logical key code, key modifiers, and optional decoded
-  text.
+- `KeyEvent` contains a logical key code, key modifiers, event kind, event
+  state, optional decoded text, and optional kitty alternate-key metadata.
 - `KeyModifiers` is opaque and exposes accessors for Shift, Alt, Ctrl, and
-  Meta.
+  Meta, Super, and Hyper.
 - Unsupported or intentionally unmodeled user input sequences should become
   `Unknown` input events rather than hard errors.
 
@@ -142,6 +142,12 @@ Current shape:
   and primary device attributes replies.
 - Terminal response events are consumed by root request/response methods and do
   not surface from root `Tty::read_event`.
+- `moonbit-community/tty/internal/input/csi` owns low-level CSI parameter
+  parsing. It does not know about terminal stream events or public input
+  semantics.
+- `moonbit-community/tty/internal/input/kitty` owns kitty keyboard protocol
+  key-report parsing. The main internal input decoder owns CSI framing,
+  dispatch, and fallback to `Unknown`.
 
 The decoder should stay focused on terminal input events. Higher-level line
 editing, Unicode grapheme management, completion queues, history, and prompt

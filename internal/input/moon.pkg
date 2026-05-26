@@ -4,4 +4,6 @@ import {
   "moonbitlang/core/debug",
   "moonbitlang/core/encoding/utf8",
   "moonbit-community/tty/input" @public_input,
+  "moonbit-community/tty/internal/input/csi",
+  "moonbit-community/tty/internal/input/kitty",
 }
