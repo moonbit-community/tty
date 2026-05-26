@@ -28,7 +28,7 @@ pub fn KeyEvent::new(
   modifiers? : KeyModifiers = KeyModifiers::new(),
   text? : String,
 ) -> KeyEvent {
-  KeyEvent::{ code, modifiers, text }
+  { code, modifiers, text }
 }
 
 ///|
@@ -144,7 +144,7 @@ pub fn MouseEvent::new(
   col : Int,
   modifiers? : KeyModifiers = KeyModifiers::new(),
 ) -> MouseEvent {
-  MouseEvent::{ kind, row, col, modifiers }
+  { kind, row, col, modifiers }
 }
 
 ///|

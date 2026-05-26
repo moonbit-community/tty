@@ -21,54 +21,54 @@ fn clamp_byte_value(value : Int) -> Int {
 ///|
 fn basic_foreground_code(color : @color.BasicColor) -> Int {
   match color {
-    @color.Black => 30
-    @color.Red => 31
-    @color.Green => 32
-    @color.Yellow => 33
-    @color.Blue => 34
-    @color.Magenta => 35
-    @color.Cyan => 36
-    @color.White => 37
-    @color.BrightBlack => 90
-    @color.BrightRed => 91
-    @color.BrightGreen => 92
-    @color.BrightYellow => 93
-    @color.BrightBlue => 94
-    @color.BrightMagenta => 95
-    @color.BrightCyan => 96
-    @color.BrightWhite => 97
+    Black => 30
+    Red => 31
+    Green => 32
+    Yellow => 33
+    Blue => 34
+    Magenta => 35
+    Cyan => 36
+    White => 37
+    BrightBlack => 90
+    BrightRed => 91
+    BrightGreen => 92
+    BrightYellow => 93
+    BrightBlue => 94
+    BrightMagenta => 95
+    BrightCyan => 96
+    BrightWhite => 97
   }
 }
 
 ///|
 fn basic_background_code(color : @color.BasicColor) -> Int {
   match color {
-    @color.Black => 40
-    @color.Red => 41
-    @color.Green => 42
-    @color.Yellow => 43
-    @color.Blue => 44
-    @color.Magenta => 45
-    @color.Cyan => 46
-    @color.White => 47
-    @color.BrightBlack => 100
-    @color.BrightRed => 101
-    @color.BrightGreen => 102
-    @color.BrightYellow => 103
-    @color.BrightBlue => 104
-    @color.BrightMagenta => 105
-    @color.BrightCyan => 106
-    @color.BrightWhite => 107
+    Black => 40
+    Red => 41
+    Green => 42
+    Yellow => 43
+    Blue => 44
+    Magenta => 45
+    Cyan => 46
+    White => 47
+    BrightBlack => 100
+    BrightRed => 101
+    BrightGreen => 102
+    BrightYellow => 103
+    BrightBlue => 104
+    BrightMagenta => 105
+    BrightCyan => 106
+    BrightWhite => 107
   }
 }
 
 ///|
 fn foreground_sequence(color : @color.Color) -> Bytes {
   match color {
-    @color.Default => reset_foreground_sequence
-    @color.Basic(color) => @vt.sgr1(basic_foreground_code(color))
-    @color.Indexed(index) => @vt.sgr3(38, 5, clamp_byte_value(index))
-    @color.Rgb(r, g, b) =>
+    Default => reset_foreground_sequence
+    Basic(color) => @vt.sgr1(basic_foreground_code(color))
+    Indexed(index) => @vt.sgr3(38, 5, clamp_byte_value(index))
+    Rgb(r, g, b) =>
       @vt.sgr5(
         38,
         2,
@@ -82,10 +82,10 @@ fn foreground_sequence(color : @color.Color) -> Bytes {
 ///|
 fn background_sequence(color : @color.Color) -> Bytes {
   match color {
-    @color.Default => reset_background_sequence
-    @color.Basic(color) => @vt.sgr1(basic_background_code(color))
-    @color.Indexed(index) => @vt.sgr3(48, 5, clamp_byte_value(index))
-    @color.Rgb(r, g, b) =>
+    Default => reset_background_sequence
+    Basic(color) => @vt.sgr1(basic_background_code(color))
+    Indexed(index) => @vt.sgr3(48, 5, clamp_byte_value(index))
+    Rgb(r, g, b) =>
       @vt.sgr5(
         48,
         2,

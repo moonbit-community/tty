@@ -7,7 +7,6 @@ import {
   "kawaz/grapheme",
   "rami3l/unicodewidth",
   "moonbit-community/tty",
-  "moonbit-community/tty/input" @tty/input,
 }
 
 supported_targets = "native"

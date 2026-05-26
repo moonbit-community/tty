@@ -33,22 +33,22 @@ async fn with_delayed_input(
 
 ///|
 fn input_key(key : @public_input.KeyEvent) -> @input.Event {
-  @input.Input(@public_input.Key(key))
+  Input(Key(key))
 }
 
 ///|
 fn input_unknown(bytes : Bytes) -> @input.Event {
-  @input.Input(@public_input.Unknown(bytes))
+  Input(Unknown(bytes))
 }
 
 ///|
 fn input_paste(text : String) -> @input.Event {
-  @input.Input(@public_input.Paste(text))
+  Input(Paste(text))
 }
 
 ///|
 fn input_mouse(mouse : @public_input.MouseEvent) -> @input.Event {
-  @input.Input(@public_input.Mouse(mouse))
+  Input(Mouse(mouse))
 }
 
 ///|
@@ -73,15 +73,15 @@ test "key modifier accessors" {
 ///|
 async test "cursor position response is a stream event" {
   with_input(b"\x1b[12;34R", events => {
-    @debug.assert_eq(events.read_event(), @input.CursorPosition(row=12, col=34))
+    @debug.assert_eq(events.read_event(), CursorPosition(row=12, col=34))
   })
 }
 
 ///|
 async test "kitty keyboard enhancement flags response is a stream event" {
   with_input(b"\x1b[?0u\x1b[?15u", events => {
-    @debug.assert_eq(events.read_event(), @input.KeyboardEnhancementFlags(0))
-    @debug.assert_eq(events.read_event(), @input.KeyboardEnhancementFlags(15))
+    @debug.assert_eq(events.read_event(), KeyboardEnhancementFlags(0))
+    @debug.assert_eq(events.read_event(), KeyboardEnhancementFlags(15))
   })
 }
 
@@ -90,7 +90,7 @@ async test "primary device attributes response is a stream event" {
   with_input(b"\x1b[?1;2c", events => {
     @debug.assert_eq(
       events.read_event(),
-      @input.PrimaryDeviceAttributes(b"\x1b[?1;2c"),
+      PrimaryDeviceAttributes(b"\x1b[?1;2c"),
     )
   })
 }
@@ -110,9 +110,9 @@ async test "cursor position response can follow input event" {
   with_input(b"a\x1b[12;34R", events => {
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.Char('a'), text="a")),
+      input_key(@public_input.KeyEvent::new(Char('a'), text="a")),
     )
-    @debug.assert_eq(events.read_event(), @input.CursorPosition(row=12, col=34))
+    @debug.assert_eq(events.read_event(), CursorPosition(row=12, col=34))
   })
 }
 
@@ -121,11 +121,11 @@ async test "decode printable ascii" {
   with_input(b"aA", events => {
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.Char('a'), text="a")),
+      input_key(@public_input.KeyEvent::new(Char('a'), text="a")),
     )
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.Char('A'), text="A")),
+      input_key(@public_input.KeyEvent::new(Char('A'), text="A")),
     )
   })
 }
@@ -135,21 +135,15 @@ async test "decode utf8 text" {
   with_input(b"\xc3\xa9\xe4\xbd\xa0\xf0\x9f\x98\x80", events => {
     @debug.assert_eq(
       events.read_event(),
-      input_key(
-        @public_input.KeyEvent::new(@public_input.Char('é'), text="é"),
-      ),
+      input_key(@public_input.KeyEvent::new(Char('é'), text="é")),
     )
     @debug.assert_eq(
       events.read_event(),
-      input_key(
-        @public_input.KeyEvent::new(@public_input.Char('你'), text="你"),
-      ),
+      input_key(@public_input.KeyEvent::new(Char('你'), text="你")),
     )
     @debug.assert_eq(
       events.read_event(),
-      input_key(
-        @public_input.KeyEvent::new(@public_input.Char('😀'), text="😀"),
-      ),
+      input_key(@public_input.KeyEvent::new(Char('😀'), text="😀")),
     )
   })
 }
@@ -159,9 +153,7 @@ async test "decode split utf8 text" {
   with_delayed_input(b"\xe4", b"\xbd\xa0", 5, events => {
     @debug.assert_eq(
       events.read_event(esc_timeout_ms=50),
-      input_key(
-        @public_input.KeyEvent::new(@public_input.Char('你'), text="你"),
-      ),
+      input_key(@public_input.KeyEvent::new(Char('你'), text="你")),
     )
   })
 }
@@ -172,7 +164,7 @@ async test "decode invalid utf8 as unknown and leaves ascii buffered" {
     @debug.assert_eq(events.read_event(), input_unknown(b"\xe4"))
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.Char('a'), text="a")),
+      input_key(@public_input.KeyEvent::new(Char('a'), text="a")),
     )
   })
 }
@@ -183,7 +175,7 @@ async test "decode invalid utf8 lead byte" {
     @debug.assert_eq(events.read_event(), input_unknown(b"\xff"))
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.Char('a'), text="a")),
+      input_key(@public_input.KeyEvent::new(Char('a'), text="a")),
     )
   })
 }
@@ -194,7 +186,7 @@ async test "decode malformed utf8 sequence" {
     @debug.assert_eq(events.read_event(), input_unknown(b"\xe0\x80\x80"))
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.Char('a'), text="a")),
+      input_key(@public_input.KeyEvent::new(Char('a'), text="a")),
     )
   })
 }
@@ -214,7 +206,7 @@ async test "flush escape key" {
   with_delayed_input(b"\x1b", b"", 50, events => {
     @debug.assert_eq(
       events.read_event(esc_timeout_ms=10),
-      input_key(@public_input.KeyEvent::new(@public_input.Escape)),
+      input_key(@public_input.KeyEvent::new(Escape)),
     )
   })
 }
@@ -231,7 +223,7 @@ async test "decode split csi arrow" {
   with_delayed_input(b"\x1b[", b"A", 5, events => {
     @debug.assert_eq(
       events.read_event(esc_timeout_ms=50),
-      input_key(@public_input.KeyEvent::new(@public_input.Up)),
+      input_key(@public_input.KeyEvent::new(Up)),
     )
   })
 }
@@ -245,7 +237,7 @@ async test "cancelled read_event preserves buffered bytes" {
     @debug.assert_eq(result, None)
     @debug.assert_eq(
       events.read_event(esc_timeout_ms=100),
-      input_key(@public_input.KeyEvent::new(@public_input.Up)),
+      input_key(@public_input.KeyEvent::new(Up)),
     )
   })
 }
@@ -257,37 +249,28 @@ async test "decode control bytes" {
       events.read_event(),
       input_key(
         @public_input.KeyEvent::new(
-          @public_input.Char('j'),
+          Char('j'),
           modifiers=@public_input.KeyModifiers::new(ctrl=true),
         ),
       ),
     )
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.Tab)),
+      input_key(@public_input.KeyEvent::new(Tab)),
     )
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.Backspace)),
+      input_key(@public_input.KeyEvent::new(Backspace)),
     )
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.Backspace)),
-    )
-    @debug.assert_eq(
-      events.read_event(),
-      input_key(
-        @public_input.KeyEvent::new(
-          @public_input.Char(' '),
-          modifiers=@public_input.KeyModifiers::new(ctrl=true),
-        ),
-      ),
+      input_key(@public_input.KeyEvent::new(Backspace)),
     )
     @debug.assert_eq(
       events.read_event(),
       input_key(
         @public_input.KeyEvent::new(
-          @public_input.Char('a'),
+          Char(' '),
           modifiers=@public_input.KeyModifiers::new(ctrl=true),
         ),
       ),
@@ -296,7 +279,7 @@ async test "decode control bytes" {
       events.read_event(),
       input_key(
         @public_input.KeyEvent::new(
-          @public_input.Char('z'),
+          Char('a'),
           modifiers=@public_input.KeyModifiers::new(ctrl=true),
         ),
       ),
@@ -305,7 +288,7 @@ async test "decode control bytes" {
       events.read_event(),
       input_key(
         @public_input.KeyEvent::new(
-          @public_input.Char('4'),
+          Char('z'),
           modifiers=@public_input.KeyModifiers::new(ctrl=true),
         ),
       ),
@@ -314,7 +297,16 @@ async test "decode control bytes" {
       events.read_event(),
       input_key(
         @public_input.KeyEvent::new(
-          @public_input.Char('7'),
+          Char('4'),
+          modifiers=@public_input.KeyModifiers::new(ctrl=true),
+        ),
+      ),
+    )
+    @debug.assert_eq(
+      events.read_event(),
+      input_key(
+        @public_input.KeyEvent::new(
+          Char('7'),
           modifiers=@public_input.KeyModifiers::new(ctrl=true),
         ),
       ),
@@ -327,7 +319,7 @@ async test "decode csi tilde key" {
   with_input(b"\x1b[3~", events => {
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.Delete)),
+      input_key(@public_input.KeyEvent::new(Delete)),
     )
   })
 }
@@ -337,11 +329,11 @@ async test "decode ss3 cursor and function keys" {
   with_input(b"\x1bOA\x1bOP", events => {
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.Up)),
+      input_key(@public_input.KeyEvent::new(Up)),
     )
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.F1)),
+      input_key(@public_input.KeyEvent::new(F1)),
     )
   })
 }
@@ -351,23 +343,23 @@ async test "decode ss3 cursor variants" {
   with_input(b"\x1bOB\x1bOC\x1bOD\x1bOH\x1bOF", events => {
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.Down)),
+      input_key(@public_input.KeyEvent::new(Down)),
     )
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.Right)),
+      input_key(@public_input.KeyEvent::new(Right)),
     )
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.Left)),
+      input_key(@public_input.KeyEvent::new(Left)),
     )
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.Home)),
+      input_key(@public_input.KeyEvent::new(Home)),
     )
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.End)),
+      input_key(@public_input.KeyEvent::new(End)),
     )
   })
 }
@@ -377,15 +369,15 @@ async test "decode ss3 function variants and unknown" {
   with_input(b"\x1bOQ\x1bOR\x1bOS\x1bOX", events => {
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.F2)),
+      input_key(@public_input.KeyEvent::new(F2)),
     )
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.F3)),
+      input_key(@public_input.KeyEvent::new(F3)),
     )
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.F4)),
+      input_key(@public_input.KeyEvent::new(F4)),
     )
     @debug.assert_eq(events.read_event(), input_unknown(b"\x1bOX"))
   })
@@ -410,7 +402,7 @@ async test "decode ss3 before repeated escape" {
     )
     @debug.assert_eq(
       events.read_event(esc_timeout_ms=10),
-      input_key(@public_input.KeyEvent::new(@public_input.Escape)),
+      input_key(@public_input.KeyEvent::new(Escape)),
     )
   })
 }
@@ -420,19 +412,19 @@ async test "decode csi function and home end variants" {
   with_input(b"\x1b[1~\x1b[8~\x1b[15~\x1b[24~", events => {
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.Home)),
+      input_key(@public_input.KeyEvent::new(Home)),
     )
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.End)),
+      input_key(@public_input.KeyEvent::new(End)),
     )
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.F5)),
+      input_key(@public_input.KeyEvent::new(F5)),
     )
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.F12)),
+      input_key(@public_input.KeyEvent::new(F12)),
     )
   })
 }
@@ -444,42 +436,42 @@ async test "decode csi direct key variants" {
       events.read_event(),
       input_key(
         @public_input.KeyEvent::new(
-          @public_input.Tab,
+          Tab,
           modifiers=@public_input.KeyModifiers::new(shift=true),
         ),
       ),
     )
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.Down)),
+      input_key(@public_input.KeyEvent::new(Down)),
     )
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.Right)),
+      input_key(@public_input.KeyEvent::new(Right)),
     )
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.Left)),
+      input_key(@public_input.KeyEvent::new(Left)),
     )
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.Home)),
+      input_key(@public_input.KeyEvent::new(Home)),
     )
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.End)),
+      input_key(@public_input.KeyEvent::new(End)),
     )
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.F2)),
+      input_key(@public_input.KeyEvent::new(F2)),
     )
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.F3)),
+      input_key(@public_input.KeyEvent::new(F3)),
     )
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.F4)),
+      input_key(@public_input.KeyEvent::new(F4)),
     )
   })
 }
@@ -491,55 +483,55 @@ async test "decode csi tilde variants" {
     events => {
       @debug.assert_eq(
         events.read_event(),
-        input_key(@public_input.KeyEvent::new(@public_input.Insert)),
+        input_key(@public_input.KeyEvent::new(Insert)),
       )
       @debug.assert_eq(
         events.read_event(),
-        input_key(@public_input.KeyEvent::new(@public_input.PageUp)),
+        input_key(@public_input.KeyEvent::new(PageUp)),
       )
       @debug.assert_eq(
         events.read_event(),
-        input_key(@public_input.KeyEvent::new(@public_input.PageDown)),
+        input_key(@public_input.KeyEvent::new(PageDown)),
       )
       @debug.assert_eq(
         events.read_event(),
-        input_key(@public_input.KeyEvent::new(@public_input.F1)),
+        input_key(@public_input.KeyEvent::new(F1)),
       )
       @debug.assert_eq(
         events.read_event(),
-        input_key(@public_input.KeyEvent::new(@public_input.F2)),
+        input_key(@public_input.KeyEvent::new(F2)),
       )
       @debug.assert_eq(
         events.read_event(),
-        input_key(@public_input.KeyEvent::new(@public_input.F3)),
+        input_key(@public_input.KeyEvent::new(F3)),
       )
       @debug.assert_eq(
         events.read_event(),
-        input_key(@public_input.KeyEvent::new(@public_input.F4)),
+        input_key(@public_input.KeyEvent::new(F4)),
       )
       @debug.assert_eq(
         events.read_event(),
-        input_key(@public_input.KeyEvent::new(@public_input.F6)),
+        input_key(@public_input.KeyEvent::new(F6)),
       )
       @debug.assert_eq(
         events.read_event(),
-        input_key(@public_input.KeyEvent::new(@public_input.F7)),
+        input_key(@public_input.KeyEvent::new(F7)),
       )
       @debug.assert_eq(
         events.read_event(),
-        input_key(@public_input.KeyEvent::new(@public_input.F8)),
+        input_key(@public_input.KeyEvent::new(F8)),
       )
       @debug.assert_eq(
         events.read_event(),
-        input_key(@public_input.KeyEvent::new(@public_input.F9)),
+        input_key(@public_input.KeyEvent::new(F9)),
       )
       @debug.assert_eq(
         events.read_event(),
-        input_key(@public_input.KeyEvent::new(@public_input.F10)),
+        input_key(@public_input.KeyEvent::new(F10)),
       )
       @debug.assert_eq(
         events.read_event(),
-        input_key(@public_input.KeyEvent::new(@public_input.F11)),
+        input_key(@public_input.KeyEvent::new(F11)),
       )
     },
   )
@@ -550,7 +542,7 @@ async test "decode csi tilde key with empty modifier parameter" {
   with_input(b"\x1b[2;~", events => {
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.Insert)),
+      input_key(@public_input.KeyEvent::new(Insert)),
     )
   })
 }
@@ -562,7 +554,7 @@ async test "decode csi key modifiers" {
       events.read_event(),
       input_key(
         @public_input.KeyEvent::new(
-          @public_input.Up,
+          Up,
           modifiers=@public_input.KeyModifiers::new(ctrl=true),
         ),
       ),
@@ -571,7 +563,7 @@ async test "decode csi key modifiers" {
       events.read_event(),
       input_key(
         @public_input.KeyEvent::new(
-          @public_input.Delete,
+          Delete,
           modifiers=@public_input.KeyModifiers::new(ctrl=true),
         ),
       ),
@@ -580,7 +572,7 @@ async test "decode csi key modifiers" {
       events.read_event(),
       input_key(
         @public_input.KeyEvent::new(
-          @public_input.F1,
+          F1,
           modifiers=@public_input.KeyModifiers::new(shift=true),
         ),
       ),
@@ -593,11 +585,11 @@ async test "decode csi zero modifier as no modifiers" {
   with_input(b"\x1b[1;0A\x1b[3;0~", events => {
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.Up)),
+      input_key(@public_input.KeyEvent::new(Up)),
     )
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.Delete)),
+      input_key(@public_input.KeyEvent::new(Delete)),
     )
   })
 }
@@ -609,77 +601,35 @@ async test "decode sgr mouse event kinds" {
     events => {
       @debug.assert_eq(
         events.read_event(),
-        input_mouse(
-          @public_input.MouseEvent::new(
-            @public_input.Press(@public_input.Left),
-            10,
-            20,
-          ),
-        ),
+        input_mouse(@public_input.MouseEvent::new(Press(Left), 10, 20)),
       )
       @debug.assert_eq(
         events.read_event(),
-        input_mouse(
-          @public_input.MouseEvent::new(
-            @public_input.Release(@public_input.Left),
-            10,
-            20,
-          ),
-        ),
+        input_mouse(@public_input.MouseEvent::new(Release(Left), 10, 20)),
       )
       @debug.assert_eq(
         events.read_event(),
-        input_mouse(
-          @public_input.MouseEvent::new(
-            @public_input.Drag(@public_input.Left),
-            11,
-            21,
-          ),
-        ),
+        input_mouse(@public_input.MouseEvent::new(Drag(Left), 11, 21)),
       )
       @debug.assert_eq(
         events.read_event(),
-        input_mouse(@public_input.MouseEvent::new(@public_input.Move, 12, 22)),
+        input_mouse(@public_input.MouseEvent::new(Move, 12, 22)),
       )
       @debug.assert_eq(
         events.read_event(),
-        input_mouse(
-          @public_input.MouseEvent::new(
-            @public_input.Scroll(@public_input.Up),
-            13,
-            23,
-          ),
-        ),
+        input_mouse(@public_input.MouseEvent::new(Scroll(Up), 13, 23)),
       )
       @debug.assert_eq(
         events.read_event(),
-        input_mouse(
-          @public_input.MouseEvent::new(
-            @public_input.Scroll(@public_input.Down),
-            14,
-            24,
-          ),
-        ),
+        input_mouse(@public_input.MouseEvent::new(Scroll(Down), 14, 24)),
       )
       @debug.assert_eq(
         events.read_event(),
-        input_mouse(
-          @public_input.MouseEvent::new(
-            @public_input.Scroll(@public_input.Left),
-            15,
-            25,
-          ),
-        ),
+        input_mouse(@public_input.MouseEvent::new(Scroll(Left), 15, 25)),
       )
       @debug.assert_eq(
         events.read_event(),
-        input_mouse(
-          @public_input.MouseEvent::new(
-            @public_input.Scroll(@public_input.Right),
-            16,
-            26,
-          ),
-        ),
+        input_mouse(@public_input.MouseEvent::new(Scroll(Right), 16, 26)),
       )
     },
   )
@@ -692,29 +642,17 @@ async test "decode sgr mouse buttons modifiers and optional trailing semicolon" 
     events => {
       @debug.assert_eq(
         events.read_event(),
-        input_mouse(
-          @public_input.MouseEvent::new(
-            @public_input.Press(@public_input.Middle),
-            3,
-            2,
-          ),
-        ),
+        input_mouse(@public_input.MouseEvent::new(Press(Middle), 3, 2)),
+      )
+      @debug.assert_eq(
+        events.read_event(),
+        input_mouse(@public_input.MouseEvent::new(Press(Right), 5, 4)),
       )
       @debug.assert_eq(
         events.read_event(),
         input_mouse(
           @public_input.MouseEvent::new(
-            @public_input.Press(@public_input.Right),
-            5,
-            4,
-          ),
-        ),
-      )
-      @debug.assert_eq(
-        events.read_event(),
-        input_mouse(
-          @public_input.MouseEvent::new(
-            @public_input.Press(@public_input.Left),
+            Press(Left),
             7,
             6,
             modifiers=@public_input.KeyModifiers::new(shift=true),
@@ -725,7 +663,7 @@ async test "decode sgr mouse buttons modifiers and optional trailing semicolon" 
         events.read_event(),
         input_mouse(
           @public_input.MouseEvent::new(
-            @public_input.Press(@public_input.Right),
+            Press(Right),
             9,
             8,
             modifiers=@public_input.KeyModifiers::new(alt=true),
@@ -736,7 +674,7 @@ async test "decode sgr mouse buttons modifiers and optional trailing semicolon" 
         events.read_event(),
         input_mouse(
           @public_input.MouseEvent::new(
-            @public_input.Press(@public_input.Right),
+            Press(Right),
             11,
             10,
             modifiers=@public_input.KeyModifiers::new(ctrl=true),
@@ -747,7 +685,7 @@ async test "decode sgr mouse buttons modifiers and optional trailing semicolon" 
         events.read_event(),
         input_mouse(
           @public_input.MouseEvent::new(
-            @public_input.Press(@public_input.Right),
+            Press(Right),
             13,
             12,
             modifiers=@public_input.KeyModifiers::new(
@@ -786,15 +724,15 @@ async test "decode csi m as unknown without consuming next input" {
     @debug.assert_eq(events.read_event(), input_unknown(b"\x1b[M"))
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.Char('a'), text="a")),
+      input_key(@public_input.KeyEvent::new(Char('a'), text="a")),
     )
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.Char('b'), text="b")),
+      input_key(@public_input.KeyEvent::new(Char('b'), text="b")),
     )
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.Char('c'), text="c")),
+      input_key(@public_input.KeyEvent::new(Char('c'), text="c")),
     )
   })
 }
@@ -806,7 +744,7 @@ async test "decode alt key" {
       events.read_event(),
       input_key(
         @public_input.KeyEvent::new(
-          @public_input.Char('x'),
+          Char('x'),
           modifiers=@public_input.KeyModifiers::new(alt=true),
         ),
       ),
@@ -815,7 +753,7 @@ async test "decode alt key" {
       events.read_event(),
       input_key(
         @public_input.KeyEvent::new(
-          @public_input.Char('X'),
+          Char('X'),
           modifiers=@public_input.KeyModifiers::new(alt=true),
         ),
       ),
@@ -830,7 +768,7 @@ async test "flush alt left bracket" {
       events.read_event(esc_timeout_ms=10),
       input_key(
         @public_input.KeyEvent::new(
-          @public_input.Char('['),
+          Char('['),
           modifiers=@public_input.KeyModifiers::new(alt=true),
         ),
       ),
@@ -866,7 +804,7 @@ async test "decode unsupported csi final as unknown" {
     @debug.assert_eq(events.read_event(), input_unknown(b"\x1b[1z"))
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.Char('a'), text="a")),
+      input_key(@public_input.KeyEvent::new(Char('a'), text="a")),
     )
   })
 }
@@ -877,7 +815,7 @@ async test "decode long csi grows event buffer" {
     @debug.assert_eq(events.read_event(), input_unknown(b"\x1b[1234567890~"))
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.Char('a'), text="a")),
+      input_key(@public_input.KeyEvent::new(Char('a'), text="a")),
     )
   })
 }
@@ -887,11 +825,11 @@ async test "decode multiple events with repeated calls" {
   with_input(b"a\r", events => {
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.Char('a'), text="a")),
+      input_key(@public_input.KeyEvent::new(Char('a'), text="a")),
     )
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.Enter)),
+      input_key(@public_input.KeyEvent::new(Enter)),
     )
   })
 }
@@ -902,7 +840,7 @@ async test "decode unsupported csi as unknown and leaves following bytes buffere
     @debug.assert_eq(events.read_event(), input_unknown(b"\x1b[999~"))
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.Char('a'), text="a")),
+      input_key(@public_input.KeyEvent::new(Char('a'), text="a")),
     )
   })
 }
@@ -913,7 +851,7 @@ async test "decode bracketed paste as one input event" {
     @debug.assert_eq(events.read_event(), input_paste("hello"))
     @debug.assert_eq(
       events.read_event(),
-      input_key(@public_input.KeyEvent::new(@public_input.Char('a'), text="a")),
+      input_key(@public_input.KeyEvent::new(Char('a'), text="a")),
     )
   })
 }
@@ -950,11 +888,11 @@ async test "decode repeated escape as two escape events" {
   with_delayed_input(b"\x1b\x1b", b"", 50, events => {
     @debug.assert_eq(
       events.read_event(esc_timeout_ms=10),
-      input_key(@public_input.KeyEvent::new(@public_input.Escape)),
+      input_key(@public_input.KeyEvent::new(Escape)),
     )
     @debug.assert_eq(
       events.read_event(esc_timeout_ms=10),
-      input_key(@public_input.KeyEvent::new(@public_input.Escape)),
+      input_key(@public_input.KeyEvent::new(Escape)),
     )
   })
 }

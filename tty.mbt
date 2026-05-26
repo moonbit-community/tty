@@ -31,7 +31,7 @@ struct Tty {
 pub fn[I : Reader, O : Writer] Tty::new(input : I, output : O) -> Tty {
   let input = input as &Reader
   let output = output as &Writer
-  Tty::{
+  {
     input,
     output,
     reader: @input.EventReader::new(input as &@async/io.Reader),
@@ -73,10 +73,10 @@ async fn Tty::read_decoded_input_event(
 ) -> Event {
   for ;; {
     match self.reader.read_event(esc_timeout_ms~) {
-      @input.Input(event) => return Input(event)
-      @input.CursorPosition(..) => ()
-      @input.KeyboardEnhancementFlags(_) => ()
-      @input.PrimaryDeviceAttributes(_) => ()
+      Input(event) => return Input(event)
+      CursorPosition(..) => ()
+      KeyboardEnhancementFlags(_) => ()
+      PrimaryDeviceAttributes(_) => ()
     }
   }
 }
@@ -106,10 +106,10 @@ pub async fn Tty::query_cursor_position(
     self.write(@vt.request_cursor_position)
     for ;; {
       match self.reader.read_event() {
-        @input.CursorPosition(row~, col~) => return CursorPosition::{ row, col }
-        @input.Input(event) => self.pending_input.push(event)
-        @input.KeyboardEnhancementFlags(_) => ()
-        @input.PrimaryDeviceAttributes(_) => ()
+        CursorPosition(row~, col~) => return { row, col }
+        Input(event) => self.pending_input.push(event)
+        KeyboardEnhancementFlags(_) => ()
+        PrimaryDeviceAttributes(_) => ()
       }
     }
   })
@@ -130,10 +130,10 @@ pub async fn Tty::query_kitty_keyboard_support(
       self.write(@vt.request_primary_device_attributes)
       for ;; {
         match self.reader.read_event() {
-          @input.KeyboardEnhancementFlags(_) => return true
-          @input.PrimaryDeviceAttributes(_) => return false
-          @input.CursorPosition(..) => ()
-          @input.Input(event) => self.pending_input.push(event)
+          KeyboardEnhancementFlags(_) => return true
+          PrimaryDeviceAttributes(_) => return false
+          CursorPosition(..) => ()
+          Input(event) => self.pending_input.push(event)
         }
       }
     }) {

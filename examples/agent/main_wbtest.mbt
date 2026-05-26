@@ -151,14 +151,12 @@ test "format shell result includes command and exit code" {
 
 ///|
 test "text from key ignores modified control keys" {
-  let text = text_from_key(
-    @tty/input.KeyEvent::new(@tty/input.Char('x'), text="x"),
-  )
+  let text = text_from_key(@tty/input.KeyEvent::new(Char('x'), text="x"))
   assert_true(text == Some("x"))
   assert_true(
     text_from_key(
       @tty/input.KeyEvent::new(
-        @tty/input.Char('c'),
+        Char('c'),
         modifiers=@tty/input.KeyModifiers::new(ctrl=true),
       ),
     ) ==
@@ -171,12 +169,12 @@ test "ctrl j is newline key" {
   assert_true(
     is_newline_key(
       @tty/input.KeyEvent::new(
-        @tty/input.Char('j'),
+        Char('j'),
         modifiers=@tty/input.KeyModifiers::new(ctrl=true),
       ),
     ),
   )
-  assert_false(is_newline_key(@tty/input.KeyEvent::new(@tty/input.Enter)))
+  assert_false(is_newline_key(@tty/input.KeyEvent::new(Enter)))
 }
 
 ///|
