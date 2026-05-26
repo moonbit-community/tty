@@ -7,3 +7,6 @@ docs/local-*.md
 
 # clangd
 compile_flags.txt
+
+# Git worktree
+worktrees/
