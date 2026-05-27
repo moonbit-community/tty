@@ -276,7 +276,7 @@ async test "osc dynamic color responses are stream events" {
 ///|
 async test "invalid osc dynamic color shapes remain unknown input" {
   with_input(
-    b"\x1b]10;?\x07\x1b]10;rgb:fffff/0/0\x07\x1b]13;rgb:ffff/0/0\x07",
+    b"\x1b]10;?\x07\x1b]10;rgb:fffff/0/0\x07\x1b]13;rgb:ffff/0/0\x07\x1b]110;rgb:ffff/0/0\x07",
     events => {
       @debug.assert_eq(events.read_event(), input_unknown(b"\x1b]10;?\x07"))
       @debug.assert_eq(
@@ -286,6 +286,10 @@ async test "invalid osc dynamic color shapes remain unknown input" {
       @debug.assert_eq(
         events.read_event(),
         input_unknown(b"\x1b]13;rgb:ffff/0/0\x07"),
+      )
+      @debug.assert_eq(
+        events.read_event(),
+        input_unknown(b"\x1b]110;rgb:ffff/0/0\x07"),
       )
     },
   )
