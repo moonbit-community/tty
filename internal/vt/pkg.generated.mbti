@@ -62,6 +62,12 @@ pub let pop_keyboard_enhancement_flags : Bytes
 
 pub fn push_keyboard_enhancement_flags(Int) -> Bytes
 
+pub let query_cursor_color : Bytes
+
+pub let query_default_background_color : Bytes
+
+pub let query_default_foreground_color : Bytes
+
 pub let query_keyboard_enhancement_flags : Bytes
 
 pub let request_cursor_position : Bytes

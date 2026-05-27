@@ -225,6 +225,51 @@ async test "tty query cursor position preserves interleaved focus input" {
 }
 
 ///|
+async test "tty query dynamic colors coordinates input and output" {
+  let output = with_pipe_tty(
+    b"a\x1b]10;rgb:ff/00/80\x07\x1b]11;rgb:0000/ffff/0000\x1b\\\x1b]12;rgb:0/0/f\x07",
+    tty => {
+      match tty.query_default_foreground_color() {
+        Some(color) => {
+          @debug.assert_eq(color.red, 65535)
+          @debug.assert_eq(color.green, 0)
+          @debug.assert_eq(color.blue, 32896)
+        }
+        None => fail("expected foreground color")
+      }
+      match tty.query_default_background_color() {
+        Some(color) => {
+          @debug.assert_eq(color.red, 0)
+          @debug.assert_eq(color.green, 65535)
+          @debug.assert_eq(color.blue, 0)
+        }
+        None => fail("expected background color")
+      }
+      match tty.query_cursor_color() {
+        Some(color) => {
+          @debug.assert_eq(color.red, 0)
+          @debug.assert_eq(color.green, 0)
+          @debug.assert_eq(color.blue, 65535)
+        }
+        None => fail("expected cursor color")
+      }
+      match tty.read_event() {
+        Input(event) =>
+          @debug.assert_eq(
+            event,
+            Key(@public_input.KeyEvent::new(Char('a'), text="a")),
+          )
+        Resize(_) => fail("expected pending input")
+      }
+    },
+  )
+  inspect(
+    output,
+    content="\u{1B}]10;?\u{1B}\\\u{1B}]11;?\u{1B}\\\u{1B}]12;?\u{1B}\\",
+  )
+}
+
+///|
 async test "pipe tty with alt screen restores on success" {
   let output = with_pipe_tty(b"", tty => {
     tty.with_alt_screen(() => tty.write("body"))

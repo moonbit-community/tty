@@ -142,6 +142,7 @@ async fn read_escape(reader : EventReader, esc_timeout_ms : Int) -> Event {
       Input(Key(@public_input.KeyEvent::new(Escape)))
     }
     b'[' => read_csi(reader, esc_timeout_ms~)
+    b']' => read_osc(reader, esc_timeout_ms~)
     b'O' => Input(read_ss3(reader, esc_timeout_ms~))
     0x20..<0x7f as byte =>
       Input(
@@ -153,6 +154,118 @@ async fn read_escape(reader : EventReader, esc_timeout_ms : Int) -> Event {
         ),
       )
     _ => Input(Unknown(reader.view().to_owned()))
+  }
+}
+
+///|
+async fn read_osc(reader : EventReader, esc_timeout_ms~ : Int) -> Event {
+  for ;; {
+    guard @async.with_timeout_opt(esc_timeout_ms, () => reader.read_byte())
+      is Some(byte) else {
+      return match reader.view() {
+        [Esc, b']'] =>
+          Input(
+            Key(
+              @public_input.KeyEvent::new(
+                Char(']'),
+                modifiers=@public_input.KeyModifiers::new(alt=true),
+              ),
+            ),
+          )
+        _ => Input(Unknown(reader.view().to_owned()))
+      }
+    }
+    match byte {
+      b'\x07' => return parse_osc(reader.view())
+      Esc => {
+        guard @async.with_timeout_opt(esc_timeout_ms, () => reader.read_byte())
+          is Some(byte) else {
+          return Input(Unknown(reader.view().to_owned()))
+        }
+        if byte == b'\\' {
+          return parse_osc(reader.view())
+        }
+      }
+      _ => ()
+    }
+  }
+}
+
+///|
+fn parse_osc(osc : BytesView) -> Event {
+  match osc {
+    [Esc, b']', .. body, b'\x07'] => parse_osc_body(osc, body)
+    [Esc, b']', .. body, Esc, b'\\'] => parse_osc_body(osc, body)
+    _ => Input(Unknown(osc.to_owned()))
+  }
+}
+
+///|
+fn parse_osc_body(osc : BytesView, body : BytesView) -> Event {
+  match body {
+    [.. b"10;rgb:", .. spec] => parse_dynamic_color(10, osc, spec)
+    [.. b"11;rgb:", .. spec] => parse_dynamic_color(11, osc, spec)
+    [.. b"12;rgb:", .. spec] => parse_dynamic_color(12, osc, spec)
+    _ => Input(Unknown(osc.to_owned()))
+  }
+}
+
+///|
+fn parse_dynamic_color(code : Int, osc : BytesView, spec : BytesView) -> Event {
+  guard parse_xparse_rgb(spec) is Some((red, green, blue)) else {
+    return Input(Unknown(osc.to_owned()))
+  }
+  DynamicColor(code~, red~, green~, blue~)
+}
+
+///|
+fn parse_xparse_rgb(spec : BytesView) -> (Int, Int, Int)? {
+  guard parse_hex_color_component(spec, 0) is Some((red, offset)) else {
+    return None
+  }
+  guard offset < spec.length() && spec[offset] == b'/' else { return None }
+  guard parse_hex_color_component(spec, offset + 1) is Some((green, offset)) else {
+    return None
+  }
+  guard offset < spec.length() && spec[offset] == b'/' else { return None }
+  guard parse_hex_color_component(spec, offset + 1) is Some((blue, offset)) else {
+    return None
+  }
+  guard offset == spec.length() else { return None }
+  Some((red, green, blue))
+}
+
+///|
+fn parse_hex_color_component(spec : BytesView, offset : Int) -> (Int, Int)? {
+  let mut index = offset
+  let mut value = 0
+  let mut length = 0
+  for ;; {
+    guard index < spec.length() else { break }
+    guard hex_digit(spec[index]) is Some(digit) else { break }
+    guard length < 4 else { return None }
+    value = value * 16 + digit
+    length += 1
+    index += 1
+  }
+  guard length > 0 else { return None }
+  let scaled = match length {
+    1 => value * 0x1111
+    2 => value * 0x0101
+    3 => value * 65535 / 4095
+    4 => value
+    _ => return None
+  }
+  Some((scaled, index))
+}
+
+///|
+fn hex_digit(byte : Byte) -> Int? {
+  match byte {
+    b'0'..=b'9' => Some(byte.to_int() - b'0'.to_int())
+    b'a'..=b'f' => Some(byte.to_int() - b'a'.to_int() + 10)
+    b'A'..=b'F' => Some(byte.to_int() - b'A'.to_int() + 10)
+    _ => None
   }
 }
 

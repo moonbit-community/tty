@@ -31,6 +31,18 @@ pub let query_keyboard_enhancement_flags : Bytes = b"\x1b[?u"
 pub let request_primary_device_attributes : Bytes = b"\x1b[c"
 
 ///|
+/// Query xterm dynamic text foreground color, OSC 10.
+pub let query_default_foreground_color : Bytes = b"\x1b]10;?\x1b\\"
+
+///|
+/// Query xterm dynamic text background color, OSC 11.
+pub let query_default_background_color : Bytes = b"\x1b]11;?\x1b\\"
+
+///|
+/// Query xterm text cursor color, OSC 12.
+pub let query_cursor_color : Bytes = b"\x1b]12;?\x1b\\"
+
+///|
 /// Push kitty keyboard protocol progressive enhancement flags.
 pub fn push_keyboard_enhancement_flags(flags : Int) -> Bytes {
   let flags = if flags < 0 { 0 } else { flags }

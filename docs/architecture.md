@@ -38,6 +38,7 @@ operations:
 - decoded root terminal events through `Tty`
 - coordinated cursor position report queries through `Tty`
 - kitty keyboard protocol support queries through `Tty`
+- OSC dynamic color queries through `Tty`
 - command helpers for common screen, cursor, color, and style operations
   through `Tty`
 - bracketed paste mode helpers through `Tty`
@@ -91,7 +92,8 @@ builders stay inside `internal/vt` as implementation helpers.
 It should:
 
 - define color values for terminal foreground/background commands
-- represent ANSI basic/bright colors, indexed 256 colors, and truecolor RGB
+- represent ANSI basic/bright colors, indexed 256 colors, truecolor RGB, and
+  16-bit RGB values returned by terminal color queries
 - stay independent from output streams, environment variables, terminfo, and
   platform FFI
 
@@ -105,6 +107,12 @@ It should not:
 
 Root `Tty` methods map color values onto SGR byte sequences when writing to a
 terminal.
+
+OSC dynamic color queries for the terminal default foreground, default
+background, and text cursor color belong on root `Tty` because they write a
+terminal request and consume an input-stream response. The returned color is
+terminal state, represented as `@color.Rgb16`; `color` still does not own the
+query operation.
 
 Root callers that want decoded terminal events should use `Tty::read_event` so
 terminal request/response side channels, resize notifications, and normal input
@@ -264,10 +272,11 @@ variants.
 
 Terminal request/response reports such as Cursor Position Report (`CSI row ;
 col R`), kitty keyboard enhancement flags (`CSI ? flags u`), and Primary Device
-Attributes replies (`CSI ? ... c`) are not user input events. They may appear as
-low-level stream events, but root `Tty::read_event` should not surface them as
-public root events. Root request/response operations such as
-`Tty::query_cursor_position` and `Tty::query_kitty_keyboard_support` should use
+Attributes replies (`CSI ? ... c`), and OSC dynamic color replies are not user
+input events. They may appear as low-level stream events, but root
+`Tty::read_event` should not surface them as public root events. Root
+request/response operations such as `Tty::query_cursor_position`,
+`Tty::query_kitty_keyboard_support`, and OSC dynamic color queries should use
 the shared reader, consume the matching response, and preserve interleaved input
 events for later `Tty::read_event` calls.
 

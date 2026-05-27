@@ -31,6 +31,8 @@ Use `Tty` when an operation needs a real terminal handle:
 - terminal size: `Tty::window_size`
 - cursor position report: `Tty::query_cursor_position`
 - kitty keyboard protocol support query: `Tty::query_kitty_keyboard_support`
+- dynamic color queries: `Tty::query_default_foreground_color`,
+  `Tty::query_default_background_color`, and `Tty::query_cursor_color`
 - terminal events: `Tty::read_event`
 - output commands: cursor movement/visibility, line erase, scroll margins,
   reverse index, alternate screen, bracketed paste mode, SGR mouse tracking,
@@ -66,8 +68,11 @@ tracking is enabled, focus in and focus out reports are decoded as input events.
 
 Semantic terminal color values.
 
-The package represents default, ANSI basic/bright, indexed 256-color, and RGB
-truecolor values. Root `Tty` methods turn these values into SGR output.
+The package represents default, ANSI basic/bright, indexed 256-color, RGB
+truecolor values, and 16-bit RGB values returned by terminal color queries.
+Root `Tty` methods turn `Color` values into SGR output.
+Terminal dynamic color queries live on root `Tty` because they coordinate output
+requests with input-stream responses.
 
 ## Usage
 
@@ -149,7 +154,8 @@ The examples are manual validation tools, not framework APIs:
 ## Design Boundaries
 
 - `tty` owns terminal handles, platform state, raw mode, terminal size, cursor
-  position queries, and command-style terminal operations.
+  position queries, dynamic color queries, and command-style terminal
+  operations.
 - internal VT helpers only build byte sequences for root `Tty` methods.
 - `input` contains user input event values.
 - internal input decoding turns host input bytes into root terminal events and

@@ -77,6 +77,7 @@ async fn Tty::read_decoded_input_event(
       CursorPosition(..) => ()
       KeyboardEnhancementFlags(_) => ()
       PrimaryDeviceAttributes(_) => ()
+      DynamicColor(..) => ()
     }
   }
 }
@@ -110,6 +111,7 @@ pub async fn Tty::query_cursor_position(
         Input(event) => self.pending_input.push(event)
         KeyboardEnhancementFlags(_) => ()
         PrimaryDeviceAttributes(_) => ()
+        DynamicColor(..) => ()
       }
     }
   })
@@ -133,6 +135,7 @@ pub async fn Tty::query_kitty_keyboard_support(
           KeyboardEnhancementFlags(_) => return true
           PrimaryDeviceAttributes(_) => return false
           CursorPosition(..) => ()
+          DynamicColor(..) => ()
           Input(event) => self.pending_input.push(event)
         }
       }
@@ -140,4 +143,66 @@ pub async fn Tty::query_kitty_keyboard_support(
     Some(supported) => supported
     None => false
   }
+}
+
+///|
+/// Query the terminal default foreground color.
+///
+/// The returned RGB components are 16-bit values in the range `0..65535`.
+/// User input received while waiting for the terminal response is preserved for
+/// later `Tty::read_event` calls.
+pub async fn Tty::query_default_foreground_color(
+  self : Self,
+  timeout_ms? : Int = 50,
+) -> @color.Rgb16? {
+  self.query_dynamic_color(10, @vt.query_default_foreground_color, timeout_ms~)
+}
+
+///|
+/// Query the terminal default background color.
+///
+/// The returned RGB components are 16-bit values in the range `0..65535`.
+/// User input received while waiting for the terminal response is preserved for
+/// later `Tty::read_event` calls.
+pub async fn Tty::query_default_background_color(
+  self : Self,
+  timeout_ms? : Int = 50,
+) -> @color.Rgb16? {
+  self.query_dynamic_color(11, @vt.query_default_background_color, timeout_ms~)
+}
+
+///|
+/// Query the terminal text cursor color.
+///
+/// The returned RGB components are 16-bit values in the range `0..65535`.
+/// User input received while waiting for the terminal response is preserved for
+/// later `Tty::read_event` calls.
+pub async fn Tty::query_cursor_color(
+  self : Self,
+  timeout_ms? : Int = 50,
+) -> @color.Rgb16? {
+  self.query_dynamic_color(12, @vt.query_cursor_color, timeout_ms~)
+}
+
+///|
+async fn Tty::query_dynamic_color(
+  self : Self,
+  expected_code : Int,
+  request : Bytes,
+  timeout_ms~ : Int,
+) -> @color.Rgb16? {
+  @async.with_timeout_opt(timeout_ms, () => {
+    self.write(request)
+    for ;; {
+      match self.reader.read_event() {
+        DynamicColor(code~, red~, green~, blue~) if code == expected_code =>
+          return { red, green, blue }
+        DynamicColor(..) => ()
+        CursorPosition(..) => ()
+        KeyboardEnhancementFlags(_) => ()
+        PrimaryDeviceAttributes(_) => ()
+        Input(event) => self.pending_input.push(event)
+      }
+    }
+  })
 }

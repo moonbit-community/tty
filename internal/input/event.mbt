@@ -8,4 +8,5 @@ pub(all) enum Event {
   CursorPosition(row~ : Int, col~ : Int)
   KeyboardEnhancementFlags(Int)
   PrimaryDeviceAttributes(Bytes)
+  DynamicColor(code~ : Int, red~ : Int, green~ : Int, blue~ : Int)
 } derive(Eq, Debug)

@@ -20,6 +20,9 @@ test "focus tracking sequences" {
 test "terminal response query sequences" {
   @debug.assert_eq(@vt.query_keyboard_enhancement_flags, b"\x1b[?u")
   @debug.assert_eq(@vt.request_primary_device_attributes, b"\x1b[c")
+  @debug.assert_eq(@vt.query_default_foreground_color, b"\x1b]10;?\x1b\\")
+  @debug.assert_eq(@vt.query_default_background_color, b"\x1b]11;?\x1b\\")
+  @debug.assert_eq(@vt.query_cursor_color, b"\x1b]12;?\x1b\\")
 }
 
 ///|

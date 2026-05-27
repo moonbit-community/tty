@@ -36,6 +36,12 @@ pub(all) enum Color {
   Rgb(Int, Int, Int)
 } derive(Eq, @debug.Debug)
 
+pub(all) struct Rgb16 {
+  red : Int
+  green : Int
+  blue : Int
+} derive(Eq, @debug.Debug)
+
 // Type aliases
 
 // Traits

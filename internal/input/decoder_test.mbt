@@ -253,6 +253,64 @@ async test "primary device attributes response is a stream event" {
 }
 
 ///|
+async test "osc dynamic color responses are stream events" {
+  with_input(
+    b"\x1b]10;rgb:ffff/0000/7fff\x07\x1b]11;rgb:ff/00/80\x1b\\\x1b]12;rgb:f/0/abc\x07",
+    events => {
+      @debug.assert_eq(
+        events.read_event(),
+        DynamicColor(code=10, red=65535, green=0, blue=32767),
+      )
+      @debug.assert_eq(
+        events.read_event(),
+        DynamicColor(code=11, red=65535, green=0, blue=32896),
+      )
+      @debug.assert_eq(
+        events.read_event(),
+        DynamicColor(code=12, red=65535, green=0, blue=43978),
+      )
+    },
+  )
+}
+
+///|
+async test "invalid osc dynamic color shapes remain unknown input" {
+  with_input(
+    b"\x1b]10;?\x07\x1b]10;rgb:fffff/0/0\x07\x1b]13;rgb:ffff/0/0\x07\x1b]110;rgb:ffff/0/0\x07",
+    events => {
+      @debug.assert_eq(events.read_event(), input_unknown(b"\x1b]10;?\x07"))
+      @debug.assert_eq(
+        events.read_event(),
+        input_unknown(b"\x1b]10;rgb:fffff/0/0\x07"),
+      )
+      @debug.assert_eq(
+        events.read_event(),
+        input_unknown(b"\x1b]13;rgb:ffff/0/0\x07"),
+      )
+      @debug.assert_eq(
+        events.read_event(),
+        input_unknown(b"\x1b]110;rgb:ffff/0/0\x07"),
+      )
+    },
+  )
+}
+
+///|
+async test "flush osc introducer as alt right bracket" {
+  with_delayed_input(b"\x1b]", b"", 50, events => {
+    @debug.assert_eq(
+      events.read_event(esc_timeout_ms=10),
+      input_key(
+        @public_input.KeyEvent::new(
+          Char(']'),
+          modifiers=@public_input.KeyModifiers::new(alt=true),
+        ),
+      ),
+    )
+  })
+}
+
+///|
 async test "invalid private response shapes remain unknown input" {
   with_input(b"\x1b[?u\x1b[?1;2u\x1b[?c\x1b[?1;c", events => {
     @debug.assert_eq(events.read_event(), input_unknown(b"\x1b[?u"))
