@@ -7,6 +7,8 @@ pub(all) enum InputEvent {
   Key(KeyEvent)
   Mouse(MouseEvent)
   Paste(String)
+  FocusIn
+  FocusOut
   Unknown(Bytes)
 } derive(Eq, Debug)
 

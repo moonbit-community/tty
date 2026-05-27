@@ -15,6 +15,14 @@ pub let enable_bracketed_paste : Bytes = b"\x1b[?2004h"
 pub let disable_bracketed_paste : Bytes = b"\x1b[?2004l"
 
 ///|
+/// Enable focus tracking, xterm private mode 1004.
+pub let enable_focus_tracking : Bytes = b"\x1b[?1004h"
+
+///|
+/// Disable focus tracking, xterm private mode 1004.
+pub let disable_focus_tracking : Bytes = b"\x1b[?1004l"
+
+///|
 /// Query kitty keyboard protocol progressive enhancement flags.
 pub let query_keyboard_enhancement_flags : Bytes = b"\x1b[?u"
 

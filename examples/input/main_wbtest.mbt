@@ -1,17 +1,8 @@
 ///|
-test "display width counts wide and emoji graphemes" {
-  inspect(display_width("abc"), content="3")
-  inspect(display_width("你好"), content="4")
-  inspect(display_width("👨‍👩‍👧‍👦"), content="2")
-}
-
-///|
-test "delete last grapheme" {
-  inspect(delete_last_grapheme(""), content="")
-  inspect(delete_last_grapheme("ab"), content="a")
-  inspect(delete_last_grapheme("a你"), content="a")
-  inspect(delete_last_grapheme("e\u{0301}"), content="")
-  inspect(delete_last_grapheme("x👨‍👩‍👧‍👦"), content="x")
+test "string char count" {
+  inspect(string_char_count("abc"), content="3")
+  inspect(string_char_count("你好"), content="2")
+  inspect(string_char_count("👨‍👩‍👧‍👦"), content="7")
 }
 
 ///|
@@ -112,6 +103,17 @@ test "describe key names" {
 }
 
 ///|
+test "describe input events" {
+  inspect(describe_input(Paste("hello")), content="event: Paste 5 chars")
+  inspect(describe_input(FocusIn), content="event: FocusIn")
+  inspect(describe_input(FocusOut), content="event: FocusOut")
+  inspect(
+    describe_input(Unknown(b"\x00\x7f")),
+    content="event: Unknown 2 bytes [0x00 0x7f]",
+  )
+}
+
+///|
 test "describe mouse events" {
   inspect(describe_mouse_button(Left), content="Left")
   inspect(describe_mouse_button(Middle), content="Middle")
@@ -136,4 +138,13 @@ test "describe mouse events" {
     ),
     content="event: Mouse Shift+Press Left row=10 col=20",
   )
+}
+
+///|
+test "describe terminal events" {
+  inspect(
+    describe_event(Input(Key(@tty/input.KeyEvent::new(Char('x'))))),
+    content="event: Key x",
+  )
+  inspect(describe_event(Input(FocusIn)), content="event: FocusIn")
 }

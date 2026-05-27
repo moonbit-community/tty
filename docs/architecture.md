@@ -41,6 +41,7 @@ operations:
 - command helpers for common screen, cursor, color, and style operations
   through `Tty`
 - bracketed paste mode helpers through `Tty`
+- focus tracking mode helpers through `Tty`
 - terminal state operations such as `Tty::get_state`, `Tty::set_state`, and raw
   mode helpers through `Tty`
 
@@ -67,6 +68,7 @@ It should:
 - construct erase sequences
 - construct screen mode sequences such as alternate-screen enter/leave
 - construct bracketed paste enable/disable sequences
+- construct focus tracking enable/disable sequences
 - construct scrolling-margin and reverse-index sequences
 - construct low-level SGR sequences and fixed SGR attribute bytes
 - document the standard or terminal family each sequence comes from
@@ -119,7 +121,7 @@ because it combines tty state, environment policy, and terminal conventions.
 Current shape:
 
 - `InputEvent` contains key events, complete valid UTF-8 bracketed paste
-  payloads, SGR mouse events, and unknown byte sequences.
+  payloads, SGR mouse events, focus events, and unknown byte sequences.
 - `KeyEvent` contains a logical key code, key modifiers, event kind, event
   state, optional decoded text, and optional kitty alternate-key metadata.
 - `KeyModifiers` is opaque and exposes accessors for Shift, Alt, Ctrl, and
@@ -166,6 +168,10 @@ with 1-based cell coordinates. SGR pixel coordinates, X10, UTF-8 mouse, and
 urxvt mouse encodings are intentionally unmodeled and should remain `Unknown`
 until a plan introduces them.
 
+Focus tracking decodes xterm focus reports (`CSI I` and `CSI O`) as user input
+events. Focus tracking is enabled with private mode 1004; unsupported terminals
+can ignore the mode switch, so the package does not add a focus support query.
+
 ### `examples`
 
 `examples/*` packages are manual validation tools in a separate workspace
@@ -173,7 +179,7 @@ module:
 
 - `examples/raw` validates raw mode behavior on a real tty
 - `examples/cursor` validates VT cursor/screen sequences visually
-- `examples/input` validates input decoding and line-buffer experiments
+- `examples/input` validates input decoding by printing decoded terminal events
 - `examples/pager` validates primary-screen paging with a fixed status row and
   scrolling margins
 - `examples/color` validates SGR color output visually
@@ -186,10 +192,8 @@ These commands can carry small UI experiments, but public API decisions should
 be recorded in `docs/architecture.md` or an active task plan before being moved
 into library packages.
 
-`examples/input` currently owns a demo-only grapheme-aware input buffer. It uses
-`kawaz/grapheme` for UAX #29 grapheme clusters and `rami3l/unicodewidth` for
-terminal display width. This validates Unicode editing behavior in a real
-terminal while keeping `moonbit-community/tty/input` below line-editor scope.
+`examples/input` is an event logger. It should print decoded terminal events as
+they arrive rather than growing into a line editor.
 
 ## Cross-Platform Model
 
@@ -254,8 +258,9 @@ Incomplete ESC or CSI sequences can become `Input(Unknown(...))` after timeout.
 This keeps the public API usable before the decoder knows every terminal
 sequence.
 
-Mouse reports are user input events. Root `Tty::read_event` should surface them
-as `Input(Mouse(...))` rather than adding a separate root event variant.
+Mouse and focus reports are user input events. Root `Tty::read_event` should
+surface them through `Input(...)` rather than adding separate root event
+variants.
 
 Terminal request/response reports such as Cursor Position Report (`CSI row ;
 col R`), kitty keyboard enhancement flags (`CSI ? flags u`), and Primary Device

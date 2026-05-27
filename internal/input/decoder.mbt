@@ -281,6 +281,8 @@ fn parse_csi(csi : BytesView) -> Event {
           ),
         ),
       )
+    [Esc, b'[', b'I'] => Input(FocusIn)
+    [Esc, b'[', b'O'] => Input(FocusOut)
     [Esc, b'[', b'<', .. params, b'M'] =>
       Input(parse_sgr_mouse(csi, params, false))
     [Esc, b'[', b'<', .. params, b'm'] =>

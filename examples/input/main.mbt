@@ -1,51 +1,10 @@
 ///|
-let prompt : String = "> "
-
-///|
 let esc_timeout_ms : Int = 50
 
 ///|
 async fn writeln(tty : @tty.Tty, line : String) -> Unit {
   tty.write(line)
   tty.write("\r\n")
-}
-
-///|
-async fn redraw_input(tty : @tty.Tty, buffer : String, status : String) -> Unit {
-  tty.write("\r")
-  tty.erase_line_all()
-  tty.write(prompt)
-  tty.write(buffer)
-  if status.length() > 0 {
-    let suffix = "  \{status}"
-    tty.write(suffix)
-    tty.cursor_back(display_width(suffix))
-  }
-}
-
-///|
-fn display_width(text : String) -> Int {
-  @unicodewidth.str_width(text)
-}
-
-///|
-fn delete_last_grapheme(text : String) -> String {
-  let graphemes = @grapheme.graphemes(text)
-  let length = graphemes.length()
-  if length == 0 {
-    ""
-  } else {
-    graphemes[:length - 1].to_string()
-  }
-}
-
-///|
-async fn submit(tty : @tty.Tty, line : String) -> Unit {
-  tty.write("\r")
-  tty.erase_line_all()
-  writeln(tty, "\{prompt}\{line}")
-  writeln(tty, "submitted: \{line}")
-  redraw_input(tty, "", "submitted")
 }
 
 ///|
@@ -259,73 +218,65 @@ fn describe_mouse(mouse : @tty/input.MouseEvent) -> String {
 }
 
 ///|
-async fn run_input_buffer(tty : @tty.Tty) -> Unit {
-  let mut buffer = ""
-  writeln(tty, "input buffer demo")
-  writeln(
-    tty,
-    "Type text or use the mouse. Enter submits. Backspace deletes one grapheme. Esc uses a \{esc_timeout_ms}ms timeout. Ctrl-C exits.",
-  )
-  redraw_input(tty, buffer, "")
+fn string_char_count(text : String) -> Int {
+  let mut count = 0
+  for _ in text {
+    count += 1
+  }
+  count
+}
+
+///|
+fn describe_input(input : @tty/input.InputEvent) -> String {
+  match input {
+    Key(key) => describe_key(key)
+    Unknown(bytes) =>
+      "event: Unknown \{bytes.length()} bytes [\{describe_bytes(bytes)}]"
+    Paste(text) => "event: Paste \{string_char_count(text)} chars"
+    FocusIn => "event: FocusIn"
+    FocusOut => "event: FocusOut"
+    Mouse(mouse) => describe_mouse(mouse)
+  }
+}
+
+///|
+fn describe_event(event : @tty.Event) -> String {
+  match event {
+    Input(input) => describe_input(input)
+    Resize(size) => "event: Resize rows=\{size.rows} cols=\{size.cols}"
+  }
+}
+
+///|
+fn is_exit_input(input : @tty/input.InputEvent) -> Bool {
+  match input {
+    Key(key) =>
+      match key.code {
+        Char('c') if key.modifiers.ctrl() => true
+        _ => false
+      }
+    _ => false
+  }
+}
+
+///|
+async fn run_input_events(tty : @tty.Tty) -> Unit {
+  writeln(tty, "input event demo")
+  writeln(tty, "Events print as they arrive. Ctrl-C exits.")
   while true {
     let event = tty.read_event(esc_timeout_ms~) catch {
       @async/io.ReaderClosed => break
       error => raise error
     }
     match event {
-      Input(input) =>
-        match input {
-          Key(key) =>
-            match key.code {
-              Char('c') if key.modifiers.ctrl() => {
-                tty.write("\r")
-                tty.erase_line_all()
-                writeln(tty, "exiting")
-                break
-              }
-              Enter => {
-                submit(tty, buffer)
-                buffer = ""
-              }
-              Backspace => {
-                buffer = delete_last_grapheme(buffer)
-                redraw_input(tty, buffer, "event: Backspace")
-              }
-              Text =>
-                match key.text {
-                  Some(text) => {
-                    buffer = buffer + text
-                    redraw_input(tty, buffer, describe_key(key))
-                  }
-                  None => redraw_input(tty, buffer, describe_key(key))
-                }
-              Char(ch) if !key.modifiers.ctrl() && !key.modifiers.alt() => {
-                let text = match key.text {
-                  Some(text) => text
-                  None => [ch]
-                }
-                buffer = buffer + text
-                redraw_input(tty, buffer, describe_key(key))
-              }
-              _ => redraw_input(tty, buffer, describe_key(key))
-            }
-          Unknown(bytes) =>
-            redraw_input(
-              tty,
-              buffer,
-              "event: Unknown \{bytes.length()} bytes [\{describe_bytes(bytes)}]",
-            )
-          Paste(text) => {
-            buffer = buffer + text
-            redraw_input(
-              tty,
-              buffer,
-              "event: Paste \{display_width(text)} cols",
-            )
-          }
-          Mouse(mouse) => redraw_input(tty, buffer, describe_mouse(mouse))
+      Input(input) => {
+        writeln(tty, describe_input(input))
+        if is_exit_input(input) {
+          writeln(tty, "exiting")
+          break
         }
-      Resize(_) => redraw_input(tty, buffer, "")
+      }
+      Resize(_) => writeln(tty, describe_event(event))
     }
   }
 }
@@ -337,12 +288,16 @@ async fn main {
     if tty.query_kitty_keyboard_support(timeout_ms=100) {
       tty.with_kitty_keyboard(() => {
         tty.with_bracketed_paste(() => {
-          tty.with_mouse(Motion, () => run_input_buffer(tty))
+          tty.with_focus_tracking(() => {
+            tty.with_mouse(Motion, () => run_input_events(tty))
+          })
         })
       })
     } else {
       tty.with_bracketed_paste(() => {
-        tty.with_mouse(Motion, () => run_input_buffer(tty))
+        tty.with_focus_tracking(() => {
+          tty.with_mouse(Motion, () => run_input_events(tty))
+        })
       })
     }
   })

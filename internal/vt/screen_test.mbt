@@ -11,6 +11,12 @@ test "bracketed paste sequences" {
 }
 
 ///|
+test "focus tracking sequences" {
+  @debug.assert_eq(@vt.enable_focus_tracking, b"\x1b[?1004h")
+  @debug.assert_eq(@vt.disable_focus_tracking, b"\x1b[?1004l")
+}
+
+///|
 test "terminal response query sequences" {
   @debug.assert_eq(@vt.query_keyboard_enhancement_flags, b"\x1b[?u")
   @debug.assert_eq(@vt.request_primary_device_attributes, b"\x1b[c")
