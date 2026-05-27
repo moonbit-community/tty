@@ -7,10 +7,10 @@
 struct State(Bytes)
 
 ///|
-/// Capture the current terminal state from the input side of this handle.
+/// Capture the current terminal state for this handle.
 pub fn Tty::get_state(self : Self) -> State raise @os_error.OSError {
   let state = State::new()
-  let rc = tty_get_state(self.input.fd(), state)
+  let rc = tty_get_state(self.input.fd(), self.output.fd(), state)
   if rc < 0 {
     @os_error.check_errno("Tty::get_state")
   }
@@ -24,8 +24,9 @@ pub fn Tty::set_state(
   state : State,
 ) -> State raise @os_error.OSError {
   let old_state = self.get_state()
-  let rc = tty_set_state(self.input.fd(), state)
+  let rc = tty_set_state(self.input.fd(), self.output.fd(), state)
   if rc < 0 {
+    ignore(tty_set_state(self.input.fd(), self.output.fd(), old_state))
     @os_error.check_errno("Tty::set_state")
   }
   old_state
@@ -44,8 +45,9 @@ pub fn State::make_raw(self : Self) -> State {
 pub fn Tty::enter_raw_mode(self : Self) -> State raise @os_error.OSError {
   let old_state = self.get_state()
   let raw_state = old_state.make_raw()
-  let rc = tty_set_state(self.input.fd(), raw_state)
+  let rc = tty_set_state(self.input.fd(), self.output.fd(), raw_state)
   if rc < 0 {
+    ignore(tty_set_state(self.input.fd(), self.output.fd(), old_state))
     @os_error.check_errno("Tty::enter_raw_mode")
   }
   old_state
@@ -57,7 +59,7 @@ pub fn Tty::leave_raw_mode(
   self : Self,
   state : State,
 ) -> Unit raise @os_error.OSError {
-  let rc = tty_set_state(self.input.fd(), state)
+  let rc = tty_set_state(self.input.fd(), self.output.fd(), state)
   if rc < 0 {
     @os_error.check_errno("Tty::leave_raw_mode")
   }
@@ -95,11 +97,19 @@ fn State::new() -> State {
 
 ///|
 #borrow(state)
-extern "c" fn tty_get_state(fd : @async/types.Fd, state : State) -> Int = "moonbit_tty_get_state"
+extern "c" fn tty_get_state(
+  input_fd : @async/types.Fd,
+  output_fd : @async/types.Fd,
+  state : State,
+) -> Int = "moonbit_tty_get_state"
 
 ///|
 #borrow(state)
-extern "c" fn tty_set_state(fd : @async/types.Fd, state : State) -> Int = "moonbit_tty_set_state"
+extern "c" fn tty_set_state(
+  input_fd : @async/types.Fd,
+  output_fd : @async/types.Fd,
+  state : State,
+) -> Int = "moonbit_tty_set_state"
 
 ///|
 #borrow(state, raw)
