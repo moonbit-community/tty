@@ -106,6 +106,23 @@ async test "pipe tty mouse mode commands write sequences" {
 }
 
 ///|
+async test "pipe tty focus tracking commands write sequences" {
+  let output = with_pipe_tty(b"", tty => {
+    tty.enable_focus_tracking()
+    tty.disable_focus_tracking()
+  })
+  inspect(output, content="\u{1B}[?1004h\u{1B}[?1004l")
+}
+
+///|
+async test "pipe tty with focus tracking restores on success" {
+  let output = with_pipe_tty(b"", tty => {
+    tty.with_focus_tracking(() => tty.write("body"))
+  })
+  inspect(output, content="\u{1B}[?1004hbody\u{1B}[?1004l")
+}
+
+///|
 test "keyboard enhancement flags encode bits" {
   let flags = KeyboardEnhancementFlags::new(
     disambiguate_escape_codes=true,
@@ -183,6 +200,24 @@ async test "tty query cursor position coordinates input and output" {
           event,
           Key(@public_input.KeyEvent::new(Char('a'), text="a")),
         )
+      Resize(_) => fail("expected pending input")
+    }
+  })
+  inspect(output, content="\u{1B}[6n")
+}
+
+///|
+async test "tty query cursor position preserves interleaved focus input" {
+  let output = with_pipe_tty(b"\x1b[I\x1b[7;9R", tty => {
+    match tty.query_cursor_position() {
+      Some(pos) => {
+        @debug.assert_eq(pos.row, 7)
+        @debug.assert_eq(pos.col, 9)
+      }
+      None => fail("expected cursor position")
+    }
+    match tty.read_event() {
+      Input(event) => @debug.assert_eq(event, FocusIn)
       Resize(_) => fail("expected pending input")
     }
   })

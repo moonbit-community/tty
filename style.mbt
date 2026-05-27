@@ -155,6 +155,35 @@ pub async fn[T] Tty::with_bracketed_paste(self : Self, f : async () -> T) -> T {
 }
 
 ///|
+/// Enable focus tracking.
+pub async fn Tty::enable_focus_tracking(self : Self) -> Unit {
+  self.write(@vt.enable_focus_tracking)
+}
+
+///|
+/// Disable focus tracking.
+pub async fn Tty::disable_focus_tracking(self : Self) -> Unit {
+  self.write(@vt.disable_focus_tracking)
+}
+
+///|
+/// Run `f` with focus tracking enabled.
+pub async fn[T] Tty::with_focus_tracking(self : Self, f : async () -> T) -> T {
+  self.enable_focus_tracking()
+  try f() catch {
+    error => {
+      self.disable_focus_tracking()
+      raise error
+    }
+  } noraise {
+    value => {
+      self.disable_focus_tracking()
+      value
+    }
+  }
+}
+
+///|
 const KeyboardDisambiguateEscapeCodes : Int = 1
 
 ///|

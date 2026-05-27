@@ -34,7 +34,8 @@ Use `Tty` when an operation needs a real terminal handle:
 - terminal events: `Tty::read_event`
 - output commands: cursor movement/visibility, line erase, scroll margins,
   reverse index, alternate screen, bracketed paste mode, SGR mouse tracking,
-  foreground/background colors, text attributes, and style reset
+  focus tracking, foreground/background colors, text attributes, and style
+  reset
 
 Raw file and stdio byte I/O should use `moonbitlang/async/fs` and
 `moonbitlang/async/stdio` directly. The root package does not wrap them as
@@ -48,7 +49,7 @@ helpers directly.
 
 User input event values.
 
-The package contains key, paste, mouse, modifier, and unknown-input values
+The package contains key, paste, mouse, focus, modifier, and unknown-input values
 reported through root `Tty::read_event`. Terminal response traffic such as
 cursor position reports and kitty keyboard detection replies is consumed by root
 query methods and is not part of the public input event model. Root callers
@@ -58,7 +59,8 @@ terminal handle.
 
 When bracketed paste mode is enabled, complete valid UTF-8 paste payloads are
 reported as one paste input event. When SGR mouse tracking is enabled, 1006
-mouse reports are decoded as cell-coordinate mouse input events.
+mouse reports are decoded as cell-coordinate mouse input events. When focus
+tracking is enabled, focus in and focus out reports are decoded as input events.
 
 ### `moonbit-community/tty/color`
 
@@ -110,6 +112,8 @@ async fn main {
           }
         Input(Paste(_)) => ()
         Input(Mouse(_)) => ()
+        Input(FocusIn) => ()
+        Input(FocusOut) => ()
         Input(Unknown(_)) => ()
         Resize(_) => ()
       }
@@ -134,8 +138,8 @@ moon run examples/agent
 The examples are manual validation tools, not framework APIs:
 
 - `examples/raw` checks raw mode behavior.
-- `examples/input` exercises decoded key, paste, and mouse input with
-  grapheme-aware demo editing.
+- `examples/input` prints decoded key, paste, mouse, focus, and resize events
+  as they arrive.
 - `examples/color` prints a color specimen.
 - `examples/cursor` draws with cursor movement and erase sequences.
 - `examples/pager` demonstrates primary-screen paging with a fixed status row.

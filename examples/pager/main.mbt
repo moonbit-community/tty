@@ -384,6 +384,8 @@ async fn run_pager(
             }
           Paste(_) => ()
           Mouse(_) => ()
+          FocusIn => ()
+          FocusOut => ()
           Unknown(_) => ()
         }
       Resize(_) => ()

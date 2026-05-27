@@ -54,8 +54,10 @@ pub async fn Tty::cursor_back(Self, Int) -> Unit
 pub async fn Tty::cursor_forward(Self, Int) -> Unit
 pub async fn Tty::cursor_up(Self, Int) -> Unit
 pub async fn Tty::disable_bracketed_paste(Self) -> Unit
+pub async fn Tty::disable_focus_tracking(Self) -> Unit
 pub async fn Tty::disable_mouse(Self) -> Unit
 pub async fn Tty::enable_bracketed_paste(Self) -> Unit
+pub async fn Tty::enable_focus_tracking(Self) -> Unit
 pub async fn Tty::enable_mouse(Self, MouseTrackingMode) -> Unit
 pub async fn Tty::enter_alt_screen(Self) -> Unit
 pub fn Tty::enter_raw_mode(Self) -> State raise @os_error.OSError
@@ -93,6 +95,7 @@ pub async fn Tty::underline(Self) -> Unit
 pub fn Tty::window_size(Self) -> WindowSize raise @os_error.OSError
 pub async fn[T] Tty::with_alt_screen(Self, async () -> T) -> T
 pub async fn[T] Tty::with_bracketed_paste(Self, async () -> T) -> T
+pub async fn[T] Tty::with_focus_tracking(Self, async () -> T) -> T
 pub async fn[T] Tty::with_keyboard_enhancements(Self, KeyboardEnhancementFlags, async () -> T) -> T
 pub async fn[T] Tty::with_kitty_keyboard(Self, async () -> T) -> T
 pub async fn[T] Tty::with_mouse(Self, MouseTrackingMode, async () -> T) -> T

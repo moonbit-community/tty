@@ -47,6 +47,16 @@ fn input_paste(text : String) -> @input.Event {
 }
 
 ///|
+fn input_focus_in() -> @input.Event {
+  Input(FocusIn)
+}
+
+///|
+fn input_focus_out() -> @input.Event {
+  Input(FocusOut)
+}
+
+///|
 fn input_mouse(mouse : @public_input.MouseEvent) -> @input.Event {
   Input(Mouse(mouse))
 }
@@ -260,6 +270,16 @@ async test "cursor position response can follow input event" {
       input_key(@public_input.KeyEvent::new(Char('a'), text="a")),
     )
     @debug.assert_eq(events.read_event(), CursorPosition(row=12, col=34))
+  })
+}
+
+///|
+async test "decode focus tracking reports" {
+  with_input(b"\x1b[I\x1b[O\x1b[1I\x1b[?O", events => {
+    @debug.assert_eq(events.read_event(), input_focus_in())
+    @debug.assert_eq(events.read_event(), input_focus_out())
+    @debug.assert_eq(events.read_event(), input_unknown(b"\x1b[1I"))
+    @debug.assert_eq(events.read_event(), input_unknown(b"\x1b[?O"))
   })
 }
 

@@ -1,8 +1,6 @@
 import {
   "moonbitlang/async",
   "moonbitlang/async/io" @async/io,
-  "kawaz/grapheme",
-  "rami3l/unicodewidth",
   "moonbit-community/tty",
   "moonbit-community/tty/input" @tty/input,
 }
