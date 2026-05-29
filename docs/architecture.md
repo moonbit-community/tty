@@ -43,6 +43,7 @@ operations:
   through `Tty`
 - bracketed paste mode helpers through `Tty`
 - focus tracking mode helpers through `Tty`
+- DEC auto wrap mode helpers through `Tty`
 - terminal state operations such as `Tty::get_state`, `Tty::set_state`, and raw
   mode helpers through `Tty`
 
@@ -70,6 +71,7 @@ It should:
 - construct screen mode sequences such as alternate-screen enter/leave
 - construct bracketed paste enable/disable sequences
 - construct focus tracking enable/disable sequences
+- construct DEC auto wrap enable/disable sequences
 - construct scrolling-margin and reverse-index sequences
 - construct low-level SGR sequences and fixed SGR attribute bytes
 - document the standard or terminal family each sequence comes from

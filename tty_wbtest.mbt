@@ -115,6 +115,15 @@ async test "pipe tty focus tracking commands write sequences" {
 }
 
 ///|
+async test "pipe tty auto wrap commands write sequences" {
+  let output = with_pipe_tty(b"", tty => {
+    tty.enable_auto_wrap()
+    tty.disable_auto_wrap()
+  })
+  inspect(output, content="\u{1B}[?7h\u{1B}[?7l")
+}
+
+///|
 async test "pipe tty with focus tracking restores on success" {
   let output = with_pipe_tty(b"", tty => {
     tty.with_focus_tracking(() => tty.write("body"))

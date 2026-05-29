@@ -167,6 +167,18 @@ pub async fn Tty::disable_focus_tracking(self : Self) -> Unit {
 }
 
 ///|
+/// Enable DEC auto wrap mode (DECAWM).
+pub async fn Tty::enable_auto_wrap(self : Self) -> Unit {
+  self.write(@vt.enable_auto_wrap)
+}
+
+///|
+/// Disable DEC auto wrap mode (DECAWM).
+pub async fn Tty::disable_auto_wrap(self : Self) -> Unit {
+  self.write(@vt.disable_auto_wrap)
+}
+
+///|
 /// Run `f` with focus tracking enabled.
 pub async fn[T] Tty::with_focus_tracking(self : Self, f : async () -> T) -> T {
   self.enable_focus_tracking()

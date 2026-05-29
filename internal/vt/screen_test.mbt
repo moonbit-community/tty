@@ -17,6 +17,12 @@ test "focus tracking sequences" {
 }
 
 ///|
+test "auto wrap mode sequences" {
+  @debug.assert_eq(@vt.enable_auto_wrap, b"\x1b[?7h")
+  @debug.assert_eq(@vt.disable_auto_wrap, b"\x1b[?7l")
+}
+
+///|
 test "terminal response query sequences" {
   @debug.assert_eq(@vt.query_keyboard_enhancement_flags, b"\x1b[?u")
   @debug.assert_eq(@vt.request_primary_device_attributes, b"\x1b[c")
