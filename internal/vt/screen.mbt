@@ -23,6 +23,14 @@ pub let enable_focus_tracking : Bytes = b"\x1b[?1004h"
 pub let disable_focus_tracking : Bytes = b"\x1b[?1004l"
 
 ///|
+/// Enable DEC auto wrap mode (DECAWM), DEC private mode 7.
+pub let enable_auto_wrap : Bytes = b"\x1b[?7h"
+
+///|
+/// Disable DEC auto wrap mode (DECAWM), DEC private mode 7.
+pub let disable_auto_wrap : Bytes = b"\x1b[?7l"
+
+///|
 /// Query kitty keyboard protocol progressive enhancement flags.
 pub let query_keyboard_enhancement_flags : Bytes = b"\x1b[?u"
 
