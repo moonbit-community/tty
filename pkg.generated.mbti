@@ -105,6 +105,7 @@ pub async fn[T] Tty::with_keyboard_enhancements(Self, KeyboardEnhancementFlags, 
 pub async fn[T] Tty::with_kitty_keyboard(Self, async () -> T) -> T
 pub async fn[T] Tty::with_mouse(Self, MouseTrackingMode, async () -> T) -> T
 pub async fn[T] Tty::with_raw_mode(Self, async () -> T) -> T
+pub async fn[T] Tty::with_top_bottom_margins(Self, Int, Int, async () -> T) -> T
 pub async fn Tty::write(Self, &@io.Data) -> Unit
 pub async fn Tty::write_string(Self, String) -> Unit
 
