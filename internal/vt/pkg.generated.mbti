@@ -50,11 +50,15 @@ pub let enable_sgr_mouse : Bytes
 
 pub let enter_alt_screen : Bytes
 
+pub let erase_display : Bytes
+
 pub let erase_line_all : Bytes
 
 pub let erase_line_left : Bytes
 
 pub let erase_line_right : Bytes
+
+pub let erase_scrollback : Bytes
 
 pub let hide_cursor : Bytes
 
