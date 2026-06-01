@@ -34,10 +34,10 @@ Use `Tty` when an operation needs a real terminal handle:
 - dynamic color queries: `Tty::query_default_foreground_color`,
   `Tty::query_default_background_color`, and `Tty::query_cursor_color`
 - terminal events: `Tty::read_event`
-- output commands: cursor movement/visibility, line erase, scroll margins,
-  reverse index, alternate screen, bracketed paste mode, SGR mouse tracking,
-  focus tracking, DEC auto wrap mode, foreground/background colors, text
-  attributes, and style reset
+- output commands: cursor movement/visibility, line/display/scrollback erase,
+  scroll margins, reverse index, alternate screen, bracketed paste mode, SGR
+  mouse tracking, focus tracking, DEC auto wrap mode, foreground/background
+  colors, text attributes, and style reset
 
 Raw file and stdio byte I/O should use `moonbitlang/async/fs` and
 `moonbitlang/async/stdio` directly. The root package does not wrap them as

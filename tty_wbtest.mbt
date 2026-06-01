@@ -63,6 +63,8 @@ async test "pipe tty terminal commands write sequences" {
     tty.cursor_up(2)
     tty.cursor_forward(3)
     tty.erase_line_all()
+    tty.erase_display()
+    tty.erase_scrollback()
     tty.set_top_bottom_margins(1, 5)
     tty.reverse_index()
     tty.reset_top_bottom_margins()
@@ -85,7 +87,7 @@ async test "pipe tty terminal commands write sequences" {
   })
   inspect(
     output,
-    content="\u{1B}[?1049h\u{1B}[?2004h\u{1B}[?25l\u{1B}[3;4H\u{1B}[2A\u{1B}[3C\u{1B}[2K\u{1B}[1;5r\u{1B}M\u{1B}[r\u{1B}[31m\u{1B}[39m\u{1B}[48;5;42m\u{1B}[49m\u{1B}[1m\u{1B}[22m\u{1B}[3m\u{1B}[23m\u{1B}[4m\u{1B}[24m\u{1B}[7m\u{1B}[27m\u{1B}[0m\u{1B}[?25h\u{1B}[?2004l\u{1B}[?1049l",
+    content="\u{1B}[?1049h\u{1B}[?2004h\u{1B}[?25l\u{1B}[3;4H\u{1B}[2A\u{1B}[3C\u{1B}[2K\u{1B}[2J\u{1B}[3J\u{1B}[1;5r\u{1B}M\u{1B}[r\u{1B}[31m\u{1B}[39m\u{1B}[48;5;42m\u{1B}[49m\u{1B}[1m\u{1B}[22m\u{1B}[3m\u{1B}[23m\u{1B}[4m\u{1B}[24m\u{1B}[7m\u{1B}[27m\u{1B}[0m\u{1B}[?25h\u{1B}[?2004l\u{1B}[?1049l",
   )
 }
 

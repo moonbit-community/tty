@@ -447,6 +447,18 @@ pub async fn Tty::erase_line_all(self : Self) -> Unit {
 }
 
 ///|
+/// Erase the visible display (ED 2), ECMA-48.
+pub async fn Tty::erase_display(self : Self) -> Unit {
+  self.write(@vt.erase_display)
+}
+
+///|
+/// Erase saved lines in the terminal scrollback (ED 3), xterm extension.
+pub async fn Tty::erase_scrollback(self : Self) -> Unit {
+  self.write(@vt.erase_scrollback)
+}
+
+///|
 /// Set Top and Bottom Margins (DECSTBM).
 pub async fn Tty::set_top_bottom_margins(
   self : Self,
