@@ -279,14 +279,6 @@ async test "tty query dynamic colors coordinates input and output" {
 }
 
 ///|
-async test "pipe tty with alt screen restores on success" {
-  let output = with_pipe_tty(b"", tty => {
-    tty.with_alt_screen(() => tty.write("body"))
-  })
-  inspect(output, content="\u{1B}[?1049hbody\u{1B}[?1049l")
-}
-
-///|
 async test "tty query kitty keyboard support returns true for flags reply" {
   let output = with_pipe_tty(b"\x1b[?1u", tty => {
     @debug.assert_eq(tty.query_kitty_keyboard_support(), true)

@@ -15,6 +15,7 @@ import {
 
 import {
   "moonbitlang/async",
+  "moonbitlang/async/pipe" @async/pipe,
   "moonbitlang/async/stdio" @async/stdio,
 } for "test"
 
