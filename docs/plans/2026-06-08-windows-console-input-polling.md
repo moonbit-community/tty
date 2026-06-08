@@ -117,6 +117,9 @@ Accepted implementation shape:
 - Use `@aqueue.Queue[Event]` for non-byte root events such as resize and focus.
 - `Tty::read_event` on Windows console handles races the existing decoder
   against the queued root events, matching Unix resize behavior.
+- Preserve order within the byte-decoder lane and within the queued native-event
+  lane, but do not promise strict cross-lane ordering between resize/focus
+  notifications and terminal byte sequences.
 - Keep `ReadConsoleInputW` as the single console input record consumer.
 - Keep non-console Windows handles on the original byte-reader decoder.
 - Keep the public API unchanged and review `.mbti` output after `moon info`.
@@ -225,6 +228,27 @@ Follow-up result:
   `RIGHT_ALT_PRESSED | LEFT_CTRL_PRESSED` AltGr text on the byte-decoder path.
 - Added a Windows white-box regression test for AltGr text input.
 
+## Follow-up: Preserve Ctrl+[ Records
+
+Automated review of the direct-key path found that Windows reports `Ctrl+[`
+as a Ctrl-modified key record with Unicode ESC (`0x1b`). Since modified key
+records bypass the byte decoder, the direct control-code mapping must preserve
+that character.
+
+Accepted implementation shape:
+
+- Map Windows control character `0x1b` to `KeyCode::Escape`.
+- Preserve the existing Windows `ctrl` modifier metadata on the resulting
+  direct `KeyEvent`.
+- Do not change the byte decoder or public API.
+- Keep the lane-ordering behavior explicit rather than adding a second Windows
+  VT decoder.
+
+Follow-up result:
+
+- Added direct Windows control-code mapping for ESC.
+- Added a Windows white-box regression test for `Ctrl+[`.
+
 ## Public API Audit
 
 - No public MoonBit API changed.
@@ -244,13 +268,15 @@ Follow-up result:
   passed, 1 test.
 - `moon test . --filter "win32 console source preserves printable key modifiers"`:
   passed, 1 test.
+- `moon test . --filter "win32 console source preserves ctrl left bracket"`:
+  passed, 1 test.
 - `moon test . --filter "win32 console source preserves AltGr text input"`:
   passed, 1 test.
 - `moon test . --filter "win32 console source preserves keypad key metadata"`:
   passed, 1 test.
 - `moon test . --filter "win32 console source preserves keypad enter metadata"`:
   passed, 1 test.
-- `moon test`: passed, 154 tests.
+- `moon test`: passed, 155 tests.
 - `moon check --target all`: passed with the same pre-existing warnings.
 - `moon info`: passed with the known Windows-generated `pkg.generated.mbti`
   `Fd::fd` drift; the generated drift was restored.

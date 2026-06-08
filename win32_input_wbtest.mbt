@@ -82,6 +82,34 @@ async test "win32 console source preserves printable key modifiers" {
 
 ///|
 #cfg(platform="windows")
+async test "win32 console source preserves ctrl left bracket" {
+  let (dummy_input, dummy_output) = @async/pipe.pipe()
+  defer dummy_input.close()
+  defer dummy_output.close()
+  let source = Win32ConsoleInputSource::new(dummy_input.fd(), dummy_output.fd())
+  defer source.close()
+  source.read_key_record(
+    win32_test_key_record(
+      '\u{1B}',
+      virtual_key_code=0xdb,
+      control_key_state=Win32LeftCtrlPressed,
+    ),
+  )
+  match source.try_get_event() {
+    Some(Input(Key(event))) =>
+      @debug.assert_eq(
+        event,
+        @public_input.KeyEvent::new(
+          Escape,
+          modifiers=@public_input.KeyModifiers::new(ctrl=true),
+        ),
+      )
+    _ => fail("expected Ctrl+[ escape key event")
+  }
+}
+
+///|
+#cfg(platform="windows")
 async test "win32 console source preserves AltGr text input" {
   let (dummy_input, dummy_output) = @async/pipe.pipe()
   defer dummy_input.close()

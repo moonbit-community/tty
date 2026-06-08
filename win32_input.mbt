@@ -549,6 +549,7 @@ fn win32_control_code_from_char(charcode : Int) -> @public_input.KeyCode? {
   match charcode {
     0x00 => Some(Char(' '))
     0x01..=0x1a => Some(Char((charcode - 1 + 'a'.to_int()).unsafe_to_char()))
+    0x1b => Some(Escape)
     0x1c..=0x1f => Some(Char((charcode - 0x1c + '4'.to_int()).unsafe_to_char()))
     _ => None
   }
