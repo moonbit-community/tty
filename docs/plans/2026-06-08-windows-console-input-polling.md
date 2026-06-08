@@ -158,6 +158,28 @@ Follow-up result:
 - Added a Windows white-box regression test for `Alt+a` and `Shift+Alt+X`
   printable key records.
 
+## Follow-up: Preserve Keypad Metadata
+
+Automated review of the printable-key follow-up found that unmodified numpad
+records also carry printable Unicode text while relying on virtual-key and lock
+state metadata to distinguish keypad keys from ordinary text.
+
+Accepted implementation shape:
+
+- Keep unmodified non-keypad text key records on the private pipe so
+  terminal-generated VT byte streams still go through the existing decoder.
+- Route keypad virtual-key records through direct `KeyEvent` construction so
+  `Keypad*`, `keypad`, and `num_lock` state are preserved.
+- Keep the public API unchanged and review `.mbti` output after `moon info`.
+
+Follow-up result:
+
+- Added a private direct-metadata predicate for Windows key records.
+- `Win32InputRecord::win32_key_text_uses_decoder` now excludes both keyboard
+  modifiers and keypad virtual keys from the byte-decoder path.
+- Added a Windows white-box regression test for `VK_NUMPAD1` and
+  `VK_MULTIPLY` records carrying printable Unicode text.
+
 ## Public API Audit
 
 - No public MoonBit API changed.
@@ -177,7 +199,9 @@ Follow-up result:
   passed, 1 test.
 - `moon test . --filter "win32 console source preserves printable key modifiers"`:
   passed, 1 test.
-- `moon test`: passed, 151 tests.
+- `moon test . --filter "win32 console source preserves keypad key metadata"`:
+  passed, 1 test.
+- `moon test`: passed, 152 tests.
 - `moon check --target all`: passed with the same pre-existing warnings.
 - `moon info`: passed with the known Windows-generated `pkg.generated.mbti`
   `Fd::fd` drift; the generated drift was restored.

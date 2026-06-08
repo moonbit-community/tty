@@ -276,7 +276,16 @@ fn Win32InputRecord::win32_repeat_count(self : Win32InputRecord) -> Int {
 fn Win32InputRecord::win32_key_text_uses_decoder(
   self : Win32InputRecord,
 ) -> Bool {
-  self.key_down != 0 && !self.win32_has_keyboard_modifier()
+  self.key_down != 0 && !self.win32_has_direct_key_metadata()
+}
+
+///|
+#cfg(platform="windows")
+fn Win32InputRecord::win32_has_direct_key_metadata(
+  self : Win32InputRecord,
+) -> Bool {
+  self.win32_has_keyboard_modifier() ||
+  win32_virtual_key_is_keypad(self.virtual_key_code)
 }
 
 ///|
