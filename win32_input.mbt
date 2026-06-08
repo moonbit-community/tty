@@ -288,7 +288,8 @@ fn Win32InputRecord::win32_key_text_uses_decoder(
 fn Win32InputRecord::win32_has_direct_key_metadata(
   self : Win32InputRecord,
 ) -> Bool {
-  self.win32_has_keyboard_modifier() || self.win32_is_keypad()
+  (self.win32_has_keyboard_modifier() && !self.win32_is_alt_gr_text()) ||
+  self.win32_is_keypad()
 }
 
 ///|
@@ -303,6 +304,19 @@ fn Win32InputRecord::win32_has_keyboard_modifier(
     Win32RightAltPressed |
     Win32LeftCtrlPressed |
     Win32RightCtrlPressed,
+  )
+}
+
+///|
+#cfg(platform="windows")
+fn Win32InputRecord::win32_is_alt_gr_text(self : Win32InputRecord) -> Bool {
+  let alt_gr_state = Win32RightAltPressed | Win32LeftCtrlPressed
+  self.key_down != 0 &&
+  self.unicode_char > 0x1f &&
+  (self.control_key_state & alt_gr_state) == alt_gr_state &&
+  !win32_has_state(
+    self.control_key_state,
+    Win32LeftAltPressed | Win32RightCtrlPressed,
   )
 }
 

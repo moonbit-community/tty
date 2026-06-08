@@ -82,6 +82,34 @@ async test "win32 console source preserves printable key modifiers" {
 
 ///|
 #cfg(platform="windows")
+async test "win32 console source preserves AltGr text input" {
+  let (dummy_input, dummy_output) = @async/pipe.pipe()
+  defer dummy_input.close()
+  defer dummy_output.close()
+  let source = Win32ConsoleInputSource::new(dummy_input.fd(), dummy_output.fd())
+  defer source.close()
+  @async.with_task_group() <| group => {
+    group.spawn_bg() <| () => {
+      source.read_key_record(
+        win32_test_key_record(
+          '@',
+          control_key_state=Win32RightAltPressed | Win32LeftCtrlPressed,
+        ),
+      )
+    }
+    match source.read_decoded_input_event(50) {
+      Input(Key(event)) =>
+        @debug.assert_eq(
+          event,
+          @public_input.KeyEvent::new(Char('@'), text="@"),
+        )
+      _ => fail("expected decoded AltGr text key event")
+    }
+  }
+}
+
+///|
+#cfg(platform="windows")
 async test "win32 console source preserves keypad key metadata" {
   let (dummy_input, dummy_output) = @async/pipe.pipe()
   defer dummy_input.close()

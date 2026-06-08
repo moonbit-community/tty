@@ -200,6 +200,31 @@ Follow-up result:
   mapping.
 - Added a Windows white-box regression test for keypad Enter.
 
+## Follow-up: Preserve AltGr Text Input
+
+Automated review of the printable-key modifier follow-up found that Windows
+keyboard layouts using AltGr report printable text records with
+`RIGHT_ALT_PRESSED | LEFT_CTRL_PRESSED`, which the modifier predicate can
+misclassify as an explicit `Ctrl+Alt` shortcut chord.
+
+Accepted implementation shape:
+
+- Treat printable key records with the Windows AltGr state as text input for the
+  private byte decoder.
+- Keep explicit modified printable keys such as `Alt+a` and `Shift+Alt+X` on
+  the direct `KeyEvent` path so their modifier metadata is preserved.
+- Keep keypad virtual-key records and keypad Enter on the direct `KeyEvent`
+  path.
+- Keep the public API unchanged and review `.mbti` output after `moon info`.
+
+Follow-up result:
+
+- Added a private Windows AltGr text predicate used only by the key-record
+  decoder/direct-event routing decision.
+- `Win32InputRecord::win32_key_text_uses_decoder` now keeps printable
+  `RIGHT_ALT_PRESSED | LEFT_CTRL_PRESSED` AltGr text on the byte-decoder path.
+- Added a Windows white-box regression test for AltGr text input.
+
 ## Public API Audit
 
 - No public MoonBit API changed.
@@ -219,11 +244,13 @@ Follow-up result:
   passed, 1 test.
 - `moon test . --filter "win32 console source preserves printable key modifiers"`:
   passed, 1 test.
+- `moon test . --filter "win32 console source preserves AltGr text input"`:
+  passed, 1 test.
 - `moon test . --filter "win32 console source preserves keypad key metadata"`:
   passed, 1 test.
 - `moon test . --filter "win32 console source preserves keypad enter metadata"`:
   passed, 1 test.
-- `moon test`: passed, 153 tests.
+- `moon test`: passed, 154 tests.
 - `moon check --target all`: passed with the same pre-existing warnings.
 - `moon info`: passed with the known Windows-generated `pkg.generated.mbti`
   `Fd::fd` drift; the generated drift was restored.
