@@ -249,6 +249,25 @@ Follow-up result:
 - Added direct Windows control-code mapping for ESC.
 - Added a Windows white-box regression test for `Ctrl+[`.
 
+## Follow-up: Preserve Ctrl+Space Records
+
+Automated review of the direct-key path found that Windows can report
+`Ctrl+Space` as `UnicodeChar == 0` with `VK_SPACE`. Since that path falls back
+to virtual-key control-code mapping, `VK_SPACE` must be mapped explicitly.
+
+Accepted implementation shape:
+
+- Map Windows virtual key `VK_SPACE` to `KeyCode::Char(' ')` in the direct
+  control-code fallback.
+- Preserve the existing Windows `ctrl` modifier metadata on the resulting
+  direct `KeyEvent`.
+- Do not change the byte decoder or public API.
+
+Follow-up result:
+
+- Added direct Windows virtual-key control-code mapping for `VK_SPACE`.
+- Added a Windows white-box regression test for `Ctrl+Space`.
+
 ## Public API Audit
 
 - No public MoonBit API changed.
@@ -270,13 +289,15 @@ Follow-up result:
   passed, 1 test.
 - `moon test . --filter "win32 console source preserves ctrl left bracket"`:
   passed, 1 test.
+- `moon test . --filter "win32 console source preserves ctrl space"`:
+  passed, 1 test.
 - `moon test . --filter "win32 console source preserves AltGr text input"`:
   passed, 1 test.
 - `moon test . --filter "win32 console source preserves keypad key metadata"`:
   passed, 1 test.
 - `moon test . --filter "win32 console source preserves keypad enter metadata"`:
   passed, 1 test.
-- `moon test`: passed, 155 tests.
+- `moon test`: passed, 156 tests.
 - `moon check --target all`: passed with the same pre-existing warnings.
 - `moon info`: passed with the known Windows-generated `pkg.generated.mbti`
   `Fd::fd` drift; the generated drift was restored.

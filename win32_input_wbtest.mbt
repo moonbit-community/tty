@@ -18,6 +18,24 @@ fn win32_test_key_record(
 
 ///|
 #cfg(platform="windows")
+fn win32_test_key_record_charcode(
+  charcode : Int,
+  virtual_key_code? : Int = 0,
+  control_key_state? : Int = 0,
+) -> Win32InputRecord {
+  {
+    event_type: Win32RecordKey,
+    key_down: 1,
+    repeat_count: 1,
+    virtual_key_code,
+    unicode_char: charcode,
+    control_key_state,
+    focus_set: 0,
+  }
+}
+
+///|
+#cfg(platform="windows")
 async test "win32 console source decodes bracketed paste key records" {
   let (dummy_input, dummy_output) = @async/pipe.pipe()
   defer dummy_input.close()
@@ -105,6 +123,34 @@ async test "win32 console source preserves ctrl left bracket" {
         ),
       )
     _ => fail("expected Ctrl+[ escape key event")
+  }
+}
+
+///|
+#cfg(platform="windows")
+async test "win32 console source preserves ctrl space" {
+  let (dummy_input, dummy_output) = @async/pipe.pipe()
+  defer dummy_input.close()
+  defer dummy_output.close()
+  let source = Win32ConsoleInputSource::new(dummy_input.fd(), dummy_output.fd())
+  defer source.close()
+  source.read_key_record(
+    win32_test_key_record_charcode(
+      0,
+      virtual_key_code=0x20,
+      control_key_state=Win32LeftCtrlPressed,
+    ),
+  )
+  match source.try_get_event() {
+    Some(Input(Key(event))) =>
+      @debug.assert_eq(
+        event,
+        @public_input.KeyEvent::new(
+          Char(' '),
+          modifiers=@public_input.KeyModifiers::new(ctrl=true),
+        ),
+      )
+    _ => fail("expected Ctrl+Space key event")
   }
 }
 

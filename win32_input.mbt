@@ -558,7 +558,9 @@ fn win32_control_code_from_char(charcode : Int) -> @public_input.KeyCode? {
 ///|
 #cfg(platform="windows")
 fn win32_control_code_from_virtual_key(vk : Int) -> @public_input.KeyCode? {
-  if vk >= 0x41 && vk <= 0x5a {
+  if vk == 0x20 {
+    Some(Char(' '))
+  } else if vk >= 0x41 && vk <= 0x5a {
     Some(Char((vk - 0x41 + 'a'.to_int()).unsafe_to_char()))
   } else {
     None
