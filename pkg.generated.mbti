@@ -48,6 +48,7 @@ type State
 pub fn State::make_raw(Self) -> Self
 
 type Tty
+pub async fn Tty::begin_synchronized_update(Self) -> Unit
 pub async fn Tty::bold(Self) -> Unit
 pub fn Tty::close(Self) -> Unit
 pub async fn Tty::cursor_back(Self, Int) -> Unit
@@ -61,6 +62,7 @@ pub async fn Tty::enable_auto_wrap(Self) -> Unit
 pub async fn Tty::enable_bracketed_paste(Self) -> Unit
 pub async fn Tty::enable_focus_tracking(Self) -> Unit
 pub async fn Tty::enable_mouse(Self, MouseTrackingMode) -> Unit
+pub async fn Tty::end_synchronized_update(Self) -> Unit
 pub async fn Tty::enter_alt_screen(Self) -> Unit
 pub fn Tty::enter_raw_mode(Self) -> State raise @os_error.OSError
 pub async fn Tty::erase_display(Self) -> Unit
@@ -107,6 +109,7 @@ pub async fn[T] Tty::with_keyboard_enhancements(Self, KeyboardEnhancementFlags, 
 pub async fn[T] Tty::with_kitty_keyboard(Self, async () -> T) -> T
 pub async fn[T] Tty::with_mouse(Self, MouseTrackingMode, async () -> T) -> T
 pub async fn[T] Tty::with_raw_mode(Self, async () -> T) -> T
+pub async fn[T] Tty::with_synchronized_update(Self, async () -> T) -> T
 pub async fn[T] Tty::with_top_bottom_margins(Self, Int, Int, async () -> T) -> T
 pub async fn Tty::write(Self, &@io.Data) -> Unit
 pub async fn Tty::write_string(Self, String) -> Unit

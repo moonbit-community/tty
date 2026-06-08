@@ -2,6 +2,8 @@
 package "moonbit-community/tty/internal/vt"
 
 // Values
+pub let begin_synchronized_update : Bytes
+
 pub let bold : Bytes
 
 pub fn cursor_back(Int) -> Bytes
@@ -47,6 +49,8 @@ pub let enable_mouse_drag : Bytes
 pub let enable_mouse_motion : Bytes
 
 pub let enable_sgr_mouse : Bytes
+
+pub let end_synchronized_update : Bytes
 
 pub let enter_alt_screen : Bytes
 

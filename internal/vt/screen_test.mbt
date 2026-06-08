@@ -5,6 +5,12 @@ test "alternate screen sequences" {
 }
 
 ///|
+test "synchronized update sequences" {
+  @debug.assert_eq(@vt.begin_synchronized_update, b"\x1b[?2026h")
+  @debug.assert_eq(@vt.end_synchronized_update, b"\x1b[?2026l")
+}
+
+///|
 test "bracketed paste sequences" {
   @debug.assert_eq(@vt.enable_bracketed_paste, b"\x1b[?2004h")
   @debug.assert_eq(@vt.disable_bracketed_paste, b"\x1b[?2004l")
