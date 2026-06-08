@@ -56,7 +56,7 @@ async fn build_runner(name : String) -> Unit {
 async test "isatty" {
   @async.with_task_group() <| group => {
     build_runner("isatty")
-    let pty = @pty.Pty::spawn(group, runner_args("isatty"), no_wait=true)
+    let pty = @pty.spawn(group, runner_args("isatty"), no_wait=true)
     defer pty.close()
     let output = read_until_text(pty, "isatty(stderr): true")
     assert_true(output.contains("isatty(stdin): true"))
@@ -70,7 +70,7 @@ async test "isatty" {
 async test "Tty::open" {
   @async.with_task_group() <| group => {
     build_runner("open")
-    let pty = @pty.Pty::spawn(
+    let pty = @pty.spawn(
       group,
       runner_args("open"),
       cols=100,
@@ -91,7 +91,7 @@ async test "Tty::open" {
 async test "resize event" {
   @async.with_task_group() <| group => {
     build_runner("resize")
-    let pty = @pty.Pty::spawn(
+    let pty = @pty.spawn(
       group,
       runner_args("resize"),
       cols=100,
