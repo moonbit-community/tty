@@ -3,4 +3,5 @@ members = [
   ".",
   "./isatty",
   "./open",
+  "./resize",
 ]
