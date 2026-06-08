@@ -180,6 +180,26 @@ Follow-up result:
 - Added a Windows white-box regression test for `VK_NUMPAD1` and
   `VK_MULTIPLY` records carrying printable Unicode text.
 
+## Follow-up: Preserve Keypad Enter Metadata
+
+Automated review of the keypad follow-up found that numeric-keypad Enter is
+reported as `VK_RETURN` with the Windows `ENHANCED_KEY` bit, rather than as one
+of the numeric keypad virtual keys.
+
+Accepted implementation shape:
+
+- Treat `VK_RETURN` with `ENHANCED_KEY` as keypad metadata.
+- Decode that record as `KeypadEnter` and mark the key state as `keypad`.
+- Keep ordinary `VK_RETURN` behavior unchanged.
+- Keep the public API unchanged and review `.mbti` output after `moon info`.
+
+Follow-up result:
+
+- Added the private Windows `ENHANCED_KEY` bit constant.
+- Added private record-level helpers for keypad detection and virtual-key code
+  mapping.
+- Added a Windows white-box regression test for keypad Enter.
+
 ## Public API Audit
 
 - No public MoonBit API changed.
@@ -201,7 +221,9 @@ Follow-up result:
   passed, 1 test.
 - `moon test . --filter "win32 console source preserves keypad key metadata"`:
   passed, 1 test.
-- `moon test`: passed, 152 tests.
+- `moon test . --filter "win32 console source preserves keypad enter metadata"`:
+  passed, 1 test.
+- `moon test`: passed, 153 tests.
 - `moon check --target all`: passed with the same pre-existing warnings.
 - `moon info`: passed with the known Windows-generated `pkg.generated.mbti`
   `Fd::fd` drift; the generated drift was restored.

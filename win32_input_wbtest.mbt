@@ -119,3 +119,31 @@ async test "win32 console source preserves keypad key metadata" {
     _ => fail("expected keypad multiply key event")
   }
 }
+
+///|
+#cfg(platform="windows")
+async test "win32 console source preserves keypad enter metadata" {
+  let (dummy_input, dummy_output) = @async/pipe.pipe()
+  defer dummy_input.close()
+  defer dummy_output.close()
+  let source = Win32ConsoleInputSource::new(dummy_input.fd(), dummy_output.fd())
+  defer source.close()
+  source.read_key_record(
+    win32_test_key_record(
+      '\r',
+      virtual_key_code=0x0d,
+      control_key_state=Win32EnhancedKey,
+    ),
+  )
+  match source.try_get_event() {
+    Some(Input(Key(event))) =>
+      @debug.assert_eq(
+        event,
+        @public_input.KeyEvent::new(
+          KeypadEnter,
+          state=@public_input.KeyEventState::new(keypad=true),
+        ),
+      )
+    _ => fail("expected keypad enter key event")
+  }
+}

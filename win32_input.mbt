@@ -40,6 +40,10 @@ const Win32CapsLockOn : Int = 0x0080
 
 ///|
 #cfg(platform="windows")
+const Win32EnhancedKey : Int = 0x0100
+
+///|
+#cfg(platform="windows")
 priv struct Win32InputRecord {
   event_type : Int
   key_down : Int
@@ -284,8 +288,7 @@ fn Win32InputRecord::win32_key_text_uses_decoder(
 fn Win32InputRecord::win32_has_direct_key_metadata(
   self : Win32InputRecord,
 ) -> Bool {
-  self.win32_has_keyboard_modifier() ||
-  win32_virtual_key_is_keypad(self.virtual_key_code)
+  self.win32_has_keyboard_modifier() || self.win32_is_keypad()
 }
 
 ///|
@@ -382,7 +385,7 @@ fn Win32InputRecord::win32_key_state(
   self : Win32InputRecord,
 ) -> @public_input.KeyEventState {
   @public_input.KeyEventState::new(
-    keypad=win32_virtual_key_is_keypad(self.virtual_key_code),
+    keypad=self.win32_is_keypad(),
     caps_lock=win32_has_state(self.control_key_state, Win32CapsLockOn),
     num_lock=win32_has_state(self.control_key_state, Win32NumLockOn),
   )
@@ -397,7 +400,7 @@ fn Win32InputRecord::win32_key_event(
   let kind = self.win32_key_kind()
   let modifiers = self.win32_modifiers()
   let state = self.win32_key_state()
-  match win32_key_code_from_virtual_key(self.virtual_key_code) {
+  match self.win32_key_code_from_virtual_key() {
     Some(code) => {
       pending_surrogate.val = 0
       return Some(@public_input.KeyEvent::new(code, modifiers~, kind~, state~))
@@ -431,6 +434,32 @@ fn Win32InputRecord::win32_key_event(
   pending_surrogate.val = 0
   let char = charcode.unsafe_to_char()
   Some(self.win32_char_key_event(char, modifiers, kind, state))
+}
+
+///|
+#cfg(platform="windows")
+fn Win32InputRecord::win32_key_code_from_virtual_key(
+  self : Win32InputRecord,
+) -> @public_input.KeyCode? {
+  if self.win32_is_keypad_enter() {
+    Some(KeypadEnter)
+  } else {
+    win32_key_code_from_virtual_key(self.virtual_key_code)
+  }
+}
+
+///|
+#cfg(platform="windows")
+fn Win32InputRecord::win32_is_keypad(self : Win32InputRecord) -> Bool {
+  win32_virtual_key_is_keypad(self.virtual_key_code) ||
+  self.win32_is_keypad_enter()
+}
+
+///|
+#cfg(platform="windows")
+fn Win32InputRecord::win32_is_keypad_enter(self : Win32InputRecord) -> Bool {
+  self.virtual_key_code == 0x0d &&
+  win32_has_state(self.control_key_state, Win32EnhancedKey)
 }
 
 ///|
