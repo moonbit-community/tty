@@ -100,28 +100,61 @@ follow-up design keeps that surrogate buffer local to
 high-surrogate records until a complete key event is available, so this keeps
 the state at the narrowest call site and removes the warning suppression.
 
+## Follow-up: Preserve VT Byte Decoding
+
+Automated review found that direct `KEY_EVENT_RECORD` to `KeyEvent` mapping
+bypasses the existing VT byte decoder on Windows console input handles. That
+breaks higher-level terminal input modes such as bracketed paste and mouse
+tracking, whose reports arrive as ESC/CSI byte sequences.
+
+Accepted implementation shape:
+
+- Add a private `Win32ConsoleInputSource`.
+- Use `@io.pipe()` for key bytes:
+  - `PipeRead` is passed to a private `@input.EventReader` owned by the
+    Windows console source.
+  - `PipeWrite` receives key-record Unicode text as bytes for the decoder.
+- Use `@aqueue.Queue[Event]` for non-byte root events such as resize and focus.
+- `Tty::read_event` on Windows console handles races the existing decoder
+  against the queued root events, matching Unix resize behavior.
+- Keep `ReadConsoleInputW` as the single console input record consumer.
+- Keep non-console Windows handles on the original byte-reader decoder.
+- Keep the public API unchanged and review `.mbti` output after `moon info`.
+
+Follow-up result:
+
+- `Win32ConsoleInputSource` now owns the Windows console input record stream.
+- Text-bearing key records are written into a private `@io.pipe()` and decoded
+  by a private `@input.EventReader`, so VT sequences such as bracketed paste and
+  mouse reports go through the existing byte decoder.
+- Resize and focus records are queued as root `Event` values with
+  `@aqueue.Queue[Event]`.
+- Non-text Windows key records still map directly to `KeyEvent`, and coalesced
+  repeats enqueue one event/write per repeat.
+- Added a Windows white-box regression test that feeds bracketed paste key
+  records through the source and expects a single decoded `Paste` event.
+
 ## Public API Audit
 
 - No public MoonBit API changed.
 - `pkg.generated.mbti` did not change after `moon info`.
 - `input/pkg.generated.mbti` did not change after `moon info`.
-- Windows FFI symbols and record mapping helpers remain private to the root
-  package.
+- Windows FFI symbols, console input source state, and record mapping helpers
+  remain private to the root package.
 
 ## Validation Results
 
 - `moon fmt`: passed.
-- `moon check`: passed with pre-existing `try?` deprecation warnings in
-  `tty_wbtest.mbt`.
+- `moon check`: passed with the pre-existing `async/raw_fd` unused-package
+  warnings.
+- `moon -C tests test --filter "resize event"`: passed, 1 test.
+- `moon -C tests test --filter "isatty"`: passed, 2 tests.
+- `moon test . --filter "win32 console source decodes bracketed paste key records"`:
+  passed, 1 test.
+- `moon test`: passed, 150 tests.
 - `moon check --target all`: passed with the same pre-existing warnings.
-- Temporary Windows backend typecheck: passed by copying the repo to
-  `/private/tmp`, removing only `#cfg(platform="windows")` from
-  `win32_input.mbt`, and running `moon check`.
-- `moon test .`: passed, 25 tests.
-- `moon test input`: no test entry in that package.
-- `moon test internal/input`: passed, 60 tests.
-- `moon test`: passed, 147 tests.
-- `moon info`: passed.
-- `.mbti` review: no public interface diff.
+- `moon info`: passed with the known Windows-generated `pkg.generated.mbti`
+  `Fd::fd` drift; the generated drift was restored.
+- `.mbti` review: no public interface diff remains in the worktree.
 - `git diff --check`: passed.
 - Windows Terminal manual resize smoke: not run in this environment.

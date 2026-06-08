@@ -23,6 +23,7 @@ struct Tty {
   input : &Reader
   output : &Writer
   reader : @input.EventReader
+  win32_console_input : Win32ConsoleInputSource?
   pending_input : Array[@public_input.InputEvent]
 }
 
@@ -31,10 +32,12 @@ struct Tty {
 pub fn[I : Reader, O : Writer] Tty::new(input : I, output : O) -> Tty {
   let input = input as &Reader
   let output = output as &Writer
+  let win32_console_input = win32_console_input_source(input.fd(), output.fd())
   {
     input,
     output,
     reader: @input.EventReader::new(input as &@async/io.Reader),
+    win32_console_input,
     pending_input: [],
   }
 }
@@ -50,6 +53,10 @@ pub fn Tty::stdio() -> Tty {
 ///
 /// Closing stdio-backed handles is a no-op.
 pub fn Tty::close(self : Self) -> Unit {
+  match self.win32_console_input {
+    Some(source) => source.close()
+    None => ()
+  }
   self.input.close()
   self.output.close()
 }

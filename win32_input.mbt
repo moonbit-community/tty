@@ -51,67 +51,242 @@ priv struct Win32InputRecord {
 }
 
 ///|
+priv struct Win32ConsoleInputSource {
+  input_fd : @async/types.Fd
+  output_fd : @async/types.Fd
+  byte_read : @async/io.PipeRead
+  byte_write : @async/io.PipeWrite
+  reader : @input.EventReader
+  events : @aqueue.Queue[Event]
+  pending_surrogate : Ref[Int]
+}
+
+///|
+fn Win32ConsoleInputSource::new(
+  input_fd : @async/types.Fd,
+  output_fd : @async/types.Fd,
+) -> Win32ConsoleInputSource {
+  let (byte_read, byte_write) = @async/io.pipe()
+  {
+    input_fd,
+    output_fd,
+    byte_read,
+    byte_write,
+    reader: @input.EventReader::new(byte_read as &@async/io.Reader),
+    events: Queue(kind=Unbounded),
+    pending_surrogate: Ref(0),
+  }
+}
+
+///|
+fn Win32ConsoleInputSource::close(self : Win32ConsoleInputSource) -> Unit {
+  ignore(self.input_fd)
+  ignore(self.output_fd)
+  ignore(self.reader)
+  ignore(self.pending_surrogate.val)
+  self.byte_read.close()
+  self.byte_write.close()
+  self.events.close(clear=true)
+}
+
+///|
+#cfg(platform="windows")
+fn win32_console_input_source(
+  input_fd : @async/types.Fd,
+  output_fd : @async/types.Fd,
+) -> Win32ConsoleInputSource? {
+  if tty_isatty(input_fd) > 0 {
+    Some(Win32ConsoleInputSource::new(input_fd, output_fd))
+  } else {
+    None
+  }
+}
+
+///|
+#cfg(not(platform="windows"))
+fn win32_console_input_source(
+  _input_fd : @async/types.Fd,
+  _output_fd : @async/types.Fd,
+) -> Win32ConsoleInputSource? {
+  None
+}
+
+///|
 #cfg(platform="windows")
 async fn Tty::read_win32_console_event(
   self : Self,
   esc_timeout_ms : Int,
 ) -> Event {
-  if !self.win32_console_input_enabled() {
-    return self.read_decoded_input_event(esc_timeout_ms)
+  match self.win32_console_input {
+    Some(source) => source.read_event(esc_timeout_ms)
+    None => self.read_decoded_input_event(esc_timeout_ms)
   }
-  let pending_surrogate = Ref(0)
+}
+
+///|
+#cfg(platform="windows")
+async fn Win32ConsoleInputSource::read_event(
+  self : Win32ConsoleInputSource,
+  esc_timeout_ms : Int,
+) -> Event {
+  match self.try_get_event() {
+    Some(event) => return event
+    None => ()
+  }
+  @async.with_task_group() <| group => {
+    group.spawn_bg(no_wait=true) <| () => { self.read_records() }
+    group.spawn_bg(no_wait=true) <| () => {
+      group.return_immediately(self.read_decoded_input_event(esc_timeout_ms))
+    }
+    self.events.get()
+  }
+}
+
+///|
+#cfg(platform="windows")
+async fn Win32ConsoleInputSource::read_decoded_input_event(
+  self : Win32ConsoleInputSource,
+  esc_timeout_ms : Int,
+) -> Event {
   for ;; {
-    match win32_read_console_input_record(self.input.fd()) {
-      None => @async.sleep(10)
-      Some(record) =>
-        match self.win32_event_from_record(record, pending_surrogate) {
-          Some(event) => return event
-          None => ()
-        }
+    match self.reader.read_event(esc_timeout_ms~) {
+      Input(event) => return Input(event)
+      CursorPosition(..) => ()
+      KeyboardEnhancementFlags(_) => ()
+      PrimaryDeviceAttributes(_) => ()
+      DynamicColor(..) => ()
     }
   }
 }
 
 ///|
 #cfg(platform="windows")
-fn Tty::win32_console_input_enabled(self : Self) -> Bool {
-  tty_isatty(self.input.fd()) > 0
+fn Win32ConsoleInputSource::try_get_event(
+  self : Win32ConsoleInputSource,
+) -> Event? {
+  try self.events.try_get() catch {
+    _ => None
+  } noraise {
+    event => event
+  }
 }
 
 ///|
 #cfg(platform="windows")
-fn Tty::win32_event_from_record(
-  self : Self,
+async fn Win32ConsoleInputSource::read_records(
+  self : Win32ConsoleInputSource,
+) -> Unit {
+  for ;; {
+    match win32_read_console_input_record(self.input_fd) {
+      None => @async.sleep(10)
+      Some(record) => self.read_record(record)
+    }
+  }
+}
+
+///|
+#cfg(platform="windows")
+async fn Win32ConsoleInputSource::read_record(
+  self : Win32ConsoleInputSource,
   record : Win32InputRecord,
-  pending_surrogate : Ref[Int],
-) -> Event? {
+) -> Unit {
   match record.event_type {
-    Win32RecordKey =>
-      match record.win32_key_input(pending_surrogate) {
-        Some(input) => Some(Input(input))
-        None => None
-      }
+    Win32RecordKey => self.read_key_record(record)
     Win32RecordWindowBufferSize => {
-      pending_surrogate.val = 0
-      try self.window_size() catch {
-        _ => None
-      } noraise {
-        size => Some(Resize(size))
+      self.pending_surrogate.val = 0
+      match self.window_size() {
+        Some(size) => self.events.put(Resize(size))
+        None => ()
       }
     }
     Win32RecordFocus => {
-      pending_surrogate.val = 0
+      self.pending_surrogate.val = 0
       if record.focus_set != 0 {
-        Some(Input(FocusIn))
+        self.events.put(Input(FocusIn))
       } else {
-        Some(Input(FocusOut))
+        self.events.put(Input(FocusOut))
       }
     }
     _ => {
-      pending_surrogate.val = 0
-      None
+      self.pending_surrogate.val = 0
+      ()
     }
   }
+}
+
+///|
+#cfg(platform="windows")
+async fn Win32ConsoleInputSource::read_key_record(
+  self : Win32ConsoleInputSource,
+  record : Win32InputRecord,
+) -> Unit {
+  match record.win32_key_text(self.pending_surrogate) {
+    Some(text) =>
+      for _ in 0..<record.win32_repeat_count() {
+        self.byte_write.write(text)
+      }
+    None =>
+      match record.win32_key_input(self.pending_surrogate) {
+        Some(input) =>
+          for _ in 0..<record.win32_repeat_count() {
+            self.events.put(Input(input))
+          }
+        None => ()
+      }
+  }
+}
+
+///|
+#cfg(platform="windows")
+fn Win32ConsoleInputSource::window_size(
+  self : Win32ConsoleInputSource,
+) -> WindowSize? {
+  let rows = Ref(0)
+  let cols = Ref(0)
+  if tty_get_window_size(self.output_fd, rows, cols) < 0 {
+    None
+  } else {
+    Some({ rows: rows.val, cols: cols.val })
+  }
+}
+
+///|
+#cfg(platform="windows")
+fn Win32InputRecord::win32_repeat_count(self : Win32InputRecord) -> Int {
+  if self.repeat_count > 0 {
+    self.repeat_count
+  } else {
+    1
+  }
+}
+
+///|
+#cfg(platform="windows")
+fn Win32InputRecord::win32_key_text(
+  self : Win32InputRecord,
+  pending_surrogate : Ref[Int],
+) -> String? {
+  if self.key_down == 0 {
+    return None
+  }
+  let charcode = self.unicode_char
+  if charcode == 0 {
+    pending_surrogate.val = 0
+    return None
+  }
+  if win32_is_high_surrogate(charcode) {
+    pending_surrogate.val = charcode
+    return None
+  }
+  if win32_is_low_surrogate(charcode) {
+    let high = pending_surrogate.val
+    pending_surrogate.val = 0
+    guard high != 0 else { return None }
+    let char = win32_decode_surrogate_pair(high, charcode)
+    return Some([char])
+  }
+  pending_surrogate.val = 0
+  Some([charcode.unsafe_to_char()])
 }
 
 ///|
@@ -120,16 +295,8 @@ fn Win32InputRecord::win32_key_input(
   self : Win32InputRecord,
   pending_surrogate : Ref[Int],
 ) -> @public_input.InputEvent? {
-  let kind = self.win32_key_kind()
-  let modifiers = self.win32_modifiers()
-  let state = self.win32_key_state()
-  guard self.win32_key_code(pending_surrogate) is Some((code, text)) else {
+  guard self.win32_key_event(pending_surrogate) is Some(event) else {
     return None
-  }
-  let event = match text {
-    Some(text) =>
-      @public_input.KeyEvent::new(code, modifiers~, kind~, state~, text~)
-    None => @public_input.KeyEvent::new(code, modifiers~, kind~, state~)
   }
   Some(Key(event))
 }
@@ -180,14 +347,17 @@ fn Win32InputRecord::win32_key_state(
 
 ///|
 #cfg(platform="windows")
-fn Win32InputRecord::win32_key_code(
+fn Win32InputRecord::win32_key_event(
   self : Win32InputRecord,
   pending_surrogate : Ref[Int],
-) -> (@public_input.KeyCode, String?)? {
+) -> @public_input.KeyEvent? {
+  let kind = self.win32_key_kind()
+  let modifiers = self.win32_modifiers()
+  let state = self.win32_key_state()
   match win32_key_code_from_virtual_key(self.virtual_key_code) {
     Some(code) => {
       pending_surrogate.val = 0
-      return Some((code, None))
+      return Some(@public_input.KeyEvent::new(code, modifiers~, kind~, state~))
     }
     None => ()
   }
@@ -195,12 +365,14 @@ fn Win32InputRecord::win32_key_code(
   if charcode == 0 {
     pending_surrogate.val = 0
     return win32_control_code_from_virtual_key(self.virtual_key_code).map(code => {
-      (code, None)
+      @public_input.KeyEvent::new(code, modifiers~, kind~, state~)
     })
   }
   if charcode >= 0x00 && charcode <= 0x1f {
     pending_surrogate.val = 0
-    return win32_control_code_from_char(charcode).map(code => (code, None))
+    return win32_control_code_from_char(charcode).map(code => {
+      @public_input.KeyEvent::new(code, modifiers~, kind~, state~)
+    })
   }
   if win32_is_high_surrogate(charcode) {
     pending_surrogate.val = charcode
@@ -211,11 +383,27 @@ fn Win32InputRecord::win32_key_code(
     pending_surrogate.val = 0
     guard high != 0 else { return None }
     let char = win32_decode_surrogate_pair(high, charcode)
-    return Some((Char(char), win32_text_for_key(self, char)))
+    return Some(self.win32_char_key_event(char, modifiers, kind, state))
   }
   pending_surrogate.val = 0
   let char = charcode.unsafe_to_char()
-  Some((Char(char), win32_text_for_key(self, char)))
+  Some(self.win32_char_key_event(char, modifiers, kind, state))
+}
+
+///|
+#cfg(platform="windows")
+fn Win32InputRecord::win32_char_key_event(
+  self : Win32InputRecord,
+  char : Char,
+  modifiers : @public_input.KeyModifiers,
+  kind : @public_input.KeyEventKind,
+  state : @public_input.KeyEventState,
+) -> @public_input.KeyEvent {
+  match win32_text_for_key(self, char) {
+    Some(text) =>
+      @public_input.KeyEvent::new(Char(char), modifiers~, kind~, state~, text~)
+    None => @public_input.KeyEvent::new(Char(char), modifiers~, kind~, state~)
+  }
 }
 
 ///|
