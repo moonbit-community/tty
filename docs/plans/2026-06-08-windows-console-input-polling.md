@@ -268,6 +268,46 @@ Follow-up result:
 - Added direct Windows virtual-key control-code mapping for `VK_SPACE`.
 - Added a Windows white-box regression test for `Ctrl+Space`.
 
+## Follow-up: Ignore Unrequested Key-Up Records
+
+Automated review found that Windows console handles produce both key-down and
+key-up records for ordinary typing. Reporting native key-up records as public
+`Release` events would add events that the byte-stream and Unix paths do not
+emit unless a terminal keyboard protocol explicitly reports releases.
+
+Accepted implementation shape:
+
+- Drop Windows console key-up records in the private record adapter.
+- Keep byte-decoded release events from terminal protocols unchanged.
+- Do not change the public API.
+
+Follow-up result:
+
+- `Win32ConsoleInputSource::read_key_record` now ignores `key_down == 0`
+  records.
+- Added a Windows white-box regression test proving ordinary key-up records do
+  not enqueue release events.
+
+## Follow-up: Preserve NumLock-Off Keypad Navigation Metadata
+
+Automated review found that Windows reports NumLock-off keypad navigation keys
+as navigation virtual keys such as `VK_END`, while the separate navigation
+cluster carries `ENHANCED_KEY`.
+
+Accepted implementation shape:
+
+- Treat navigation virtual keys without `ENHANCED_KEY` as keypad-origin records.
+- Leave `ENHANCED_KEY` navigation records as the dedicated navigation cluster.
+- Keep the existing navigation `KeyCode` values and use `keypad=true` metadata
+  to distinguish keypad-origin navigation.
+- Do not change the public API.
+
+Follow-up result:
+
+- Added private Windows navigation virtual-key detection for keypad-state
+  classification.
+- Added a Windows white-box regression test for keypad End versus enhanced End.
+
 ## Public API Audit
 
 - No public MoonBit API changed.
@@ -291,13 +331,17 @@ Follow-up result:
   passed, 1 test.
 - `moon test . --filter "win32 console source preserves ctrl space"`:
   passed, 1 test.
+- `moon test . --filter "win32 console source ignores key-up records"`:
+  passed, 1 test.
+- `moon test . --filter "win32 console source preserves keypad navigation metadata"`:
+  passed, 1 test.
 - `moon test . --filter "win32 console source preserves AltGr text input"`:
   passed, 1 test.
 - `moon test . --filter "win32 console source preserves keypad key metadata"`:
   passed, 1 test.
 - `moon test . --filter "win32 console source preserves keypad enter metadata"`:
   passed, 1 test.
-- `moon test`: passed, 156 tests.
+- `moon test`: passed, 158 tests.
 - `moon check --target all`: passed with the same pre-existing warnings.
 - `moon info`: passed with the known Windows-generated `pkg.generated.mbti`
   `Fd::fd` drift; the generated drift was restored.

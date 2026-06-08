@@ -4,10 +4,11 @@ fn win32_test_key_record(
   char : Char,
   virtual_key_code? : Int = 0,
   control_key_state? : Int = 0,
+  key_down? : Int = 1,
 ) -> Win32InputRecord {
   {
     event_type: Win32RecordKey,
-    key_down: 1,
+    key_down,
     repeat_count: 1,
     virtual_key_code,
     unicode_char: char.to_int(),
@@ -22,15 +23,31 @@ fn win32_test_key_record_charcode(
   charcode : Int,
   virtual_key_code? : Int = 0,
   control_key_state? : Int = 0,
+  key_down? : Int = 1,
 ) -> Win32InputRecord {
   {
     event_type: Win32RecordKey,
-    key_down: 1,
+    key_down,
     repeat_count: 1,
     virtual_key_code,
     unicode_char: charcode,
     control_key_state,
     focus_set: 0,
+  }
+}
+
+///|
+#cfg(platform="windows")
+async test "win32 console source ignores key-up records" {
+  let (dummy_input, dummy_output) = @async/pipe.pipe()
+  defer dummy_input.close()
+  defer dummy_output.close()
+  let source = Win32ConsoleInputSource::new(dummy_input.fd(), dummy_output.fd())
+  defer source.close()
+  source.read_key_record(win32_test_key_record('a', key_down=0))
+  match source.try_get_event() {
+    None => ()
+    Some(_) => fail("expected key-up record to be ignored")
   }
 }
 
@@ -247,5 +264,41 @@ async test "win32 console source preserves keypad enter metadata" {
         ),
       )
     _ => fail("expected keypad enter key event")
+  }
+}
+
+///|
+#cfg(platform="windows")
+async test "win32 console source preserves keypad navigation metadata" {
+  let (dummy_input, dummy_output) = @async/pipe.pipe()
+  defer dummy_input.close()
+  defer dummy_output.close()
+  let source = Win32ConsoleInputSource::new(dummy_input.fd(), dummy_output.fd())
+  defer source.close()
+  source.read_key_record(
+    win32_test_key_record_charcode(0, virtual_key_code=0x23),
+  )
+  match source.try_get_event() {
+    Some(Input(Key(event))) =>
+      @debug.assert_eq(
+        event,
+        @public_input.KeyEvent::new(
+          End,
+          state=@public_input.KeyEventState::new(keypad=true),
+        ),
+      )
+    _ => fail("expected keypad End key event")
+  }
+  source.read_key_record(
+    win32_test_key_record_charcode(
+      0,
+      virtual_key_code=0x23,
+      control_key_state=Win32EnhancedKey,
+    ),
+  )
+  match source.try_get_event() {
+    Some(Input(Key(event))) =>
+      @debug.assert_eq(event, @public_input.KeyEvent::new(End))
+    _ => fail("expected enhanced End key event")
   }
 }

@@ -224,6 +224,9 @@ async fn Win32ConsoleInputSource::read_key_record(
   self : Win32ConsoleInputSource,
   record : Win32InputRecord,
 ) -> Unit {
+  if record.key_down == 0 {
+    return
+  }
   if !record.win32_key_text_uses_decoder() {
     return self.queue_key_input(record)
   }
@@ -466,7 +469,8 @@ fn Win32InputRecord::win32_key_code_from_virtual_key(
 #cfg(platform="windows")
 fn Win32InputRecord::win32_is_keypad(self : Win32InputRecord) -> Bool {
   win32_virtual_key_is_keypad(self.virtual_key_code) ||
-  self.win32_is_keypad_enter()
+  self.win32_is_keypad_enter() ||
+  self.win32_is_keypad_navigation()
 }
 
 ///|
@@ -474,6 +478,15 @@ fn Win32InputRecord::win32_is_keypad(self : Win32InputRecord) -> Bool {
 fn Win32InputRecord::win32_is_keypad_enter(self : Win32InputRecord) -> Bool {
   self.virtual_key_code == 0x0d &&
   win32_has_state(self.control_key_state, Win32EnhancedKey)
+}
+
+///|
+#cfg(platform="windows")
+fn Win32InputRecord::win32_is_keypad_navigation(
+  self : Win32InputRecord,
+) -> Bool {
+  win32_virtual_key_is_navigation(self.virtual_key_code) &&
+  !win32_has_state(self.control_key_state, Win32EnhancedKey)
 }
 
 ///|
@@ -621,6 +634,15 @@ fn win32_keypad_digit(number : Int) -> @public_input.KeyCode? {
 #cfg(platform="windows")
 fn win32_virtual_key_is_keypad(vk : Int) -> Bool {
   vk >= 0x60 && vk <= 0x6f
+}
+
+///|
+#cfg(platform="windows")
+fn win32_virtual_key_is_navigation(vk : Int) -> Bool {
+  match vk {
+    0x21 | 0x22 | 0x23 | 0x24 | 0x25 | 0x26 | 0x27 | 0x28 | 0x2d | 0x2e => true
+    _ => false
+  }
 }
 
 ///|
