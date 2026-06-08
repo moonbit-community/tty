@@ -220,19 +220,30 @@ async fn Win32ConsoleInputSource::read_key_record(
   self : Win32ConsoleInputSource,
   record : Win32InputRecord,
 ) -> Unit {
+  if !record.win32_key_text_uses_decoder() {
+    return self.queue_key_input(record)
+  }
   match record.win32_key_text(self.pending_surrogate) {
     Some(text) =>
       for _ in 0..<record.win32_repeat_count() {
         self.byte_write.write(text)
       }
-    None =>
-      match record.win32_key_input(self.pending_surrogate) {
-        Some(input) =>
-          for _ in 0..<record.win32_repeat_count() {
-            self.events.put(Input(input))
-          }
-        None => ()
+    None => self.queue_key_input(record)
+  }
+}
+
+///|
+#cfg(platform="windows")
+async fn Win32ConsoleInputSource::queue_key_input(
+  self : Win32ConsoleInputSource,
+  record : Win32InputRecord,
+) -> Unit {
+  match record.win32_key_input(self.pending_surrogate) {
+    Some(input) =>
+      for _ in 0..<record.win32_repeat_count() {
+        self.events.put(Input(input))
       }
+    None => ()
   }
 }
 
@@ -258,6 +269,29 @@ fn Win32InputRecord::win32_repeat_count(self : Win32InputRecord) -> Int {
   } else {
     1
   }
+}
+
+///|
+#cfg(platform="windows")
+fn Win32InputRecord::win32_key_text_uses_decoder(
+  self : Win32InputRecord,
+) -> Bool {
+  self.key_down != 0 && !self.win32_has_keyboard_modifier()
+}
+
+///|
+#cfg(platform="windows")
+fn Win32InputRecord::win32_has_keyboard_modifier(
+  self : Win32InputRecord,
+) -> Bool {
+  win32_has_state(
+    self.control_key_state,
+    Win32ShiftPressed |
+    Win32LeftAltPressed |
+    Win32RightAltPressed |
+    Win32LeftCtrlPressed |
+    Win32RightCtrlPressed,
+  )
 }
 
 ///|

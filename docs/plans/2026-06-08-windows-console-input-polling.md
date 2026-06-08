@@ -134,6 +134,30 @@ Follow-up result:
 - Added a Windows white-box regression test that feeds bracketed paste key
   records through the source and expects a single decoded `Paste` event.
 
+## Follow-up: Preserve Printable Key Modifiers
+
+Automated review of the VT-decoding follow-up found that routing every
+text-bearing Windows key record through the byte decoder loses
+`control_key_state` metadata for printable modified keys such as `Alt+A` and
+`Shift+Alt+X`.
+
+Accepted implementation shape:
+
+- Keep unmodified text key records on the private pipe so terminal-generated VT
+  byte streams still go through the existing decoder.
+- Route text key records with Windows keyboard modifiers through direct
+  `KeyEvent` construction so `win32_modifiers()` is preserved.
+- Keep resize/focus records on the `@aqueue.Queue[Event]` path.
+- Keep the public API unchanged and review `.mbti` output after `moon info`.
+
+Follow-up result:
+
+- Added a private modifier predicate for Windows key records.
+- `Win32ConsoleInputSource::read_key_record` now sends modified printable keys
+  to the direct key-event path and only sends unmodified text to the decoder.
+- Added a Windows white-box regression test for `Alt+a` and `Shift+Alt+X`
+  printable key records.
+
 ## Public API Audit
 
 - No public MoonBit API changed.
@@ -151,7 +175,9 @@ Follow-up result:
 - `moon -C tests test --filter "isatty"`: passed, 2 tests.
 - `moon test . --filter "win32 console source decodes bracketed paste key records"`:
   passed, 1 test.
-- `moon test`: passed, 150 tests.
+- `moon test . --filter "win32 console source preserves printable key modifiers"`:
+  passed, 1 test.
+- `moon test`: passed, 151 tests.
 - `moon check --target all`: passed with the same pre-existing warnings.
 - `moon info`: passed with the known Windows-generated `pkg.generated.mbti`
   `Fd::fd` drift; the generated drift was restored.
