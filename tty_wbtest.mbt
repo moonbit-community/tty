@@ -315,7 +315,13 @@ async test "tty query kitty keyboard support preserves interleaved input" {
 ///|
 async test "tty window size rejects non tty output" {
   ignore(
-    with_pipe_tty(b"", tty => assert_true((try? tty.window_size()) is Err(_))),
+    with_pipe_tty(b"", tty => {
+      try tty.window_size() catch {
+        _ => ()
+      } noraise {
+        _ => fail("expected window_size to reject non tty output")
+      }
+    }),
   )
 }
 
@@ -333,11 +339,31 @@ async test "tty state operations reject non tty pipe" {
   ignore(
     with_pipe_tty(b"", tty => {
       let state = State::new()
-      assert_true((try? tty.get_state()) is Err(_))
-      assert_true((try? tty.set_state(state)) is Err(_))
-      assert_true((try? tty.enter_raw_mode()) is Err(_))
-      assert_true((try? tty.leave_raw_mode(state)) is Err(_))
-      assert_true((try? tty.with_raw_mode(() => ())) is Err(_))
+      try tty.get_state() catch {
+        _ => ()
+      } noraise {
+        _ => fail("expected get_state to reject non tty pipe")
+      }
+      try tty.set_state(state) catch {
+        _ => ()
+      } noraise {
+        _ => fail("expected set_state to reject non tty pipe")
+      }
+      try tty.enter_raw_mode() catch {
+        _ => ()
+      } noraise {
+        _ => fail("expected enter_raw_mode to reject non tty pipe")
+      }
+      try tty.leave_raw_mode(state) catch {
+        _ => ()
+      } noraise {
+        _ => fail("expected leave_raw_mode to reject non tty pipe")
+      }
+      try tty.with_raw_mode(() => ()) catch {
+        _ => ()
+      } noraise {
+        _ => fail("expected with_raw_mode to reject non tty pipe")
+      }
     }),
   )
 }
