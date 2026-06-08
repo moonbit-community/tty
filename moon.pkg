@@ -27,5 +27,12 @@ import {
 supported_targets = "native"
 
 options(
-  "native-stub": [ "isatty.c", "state.c", "size.c", "tty_open.c", "resize.c" ],
+  "native-stub": [
+    "isatty.c",
+    "state.c",
+    "size.c",
+    "tty_open.c",
+    "resize.c",
+    "win32_input.c",
+  ],
 )

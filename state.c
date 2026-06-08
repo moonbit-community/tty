@@ -123,6 +123,9 @@ moonbit_tty_make_raw_state(
 #ifdef ENABLE_VIRTUAL_TERMINAL_INPUT
   mode |= ENABLE_VIRTUAL_TERMINAL_INPUT;
 #endif
+#ifdef ENABLE_WINDOW_INPUT
+  mode |= ENABLE_WINDOW_INPUT;
+#endif
   raw->input_mode = mode;
   if (raw->has_output_mode) {
     DWORD output_mode = state->output_mode;
