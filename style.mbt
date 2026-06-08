@@ -126,6 +126,46 @@ pub async fn[T] Tty::with_alt_screen(self : Self, f : async () -> T) -> T {
 }
 
 ///|
+/// Begin a synchronized update (DEC private mode 2026). Output written until the
+/// matching `end_synchronized_update` is buffered by the terminal and presented
+/// as one atomic frame, so a clear-then-repaint is never shown half-drawn.
+/// Prefer `with_synchronized_update`, which always emits the matching end.
+pub async fn Tty::begin_synchronized_update(self : Self) -> Unit {
+  self.write(@vt.begin_synchronized_update)
+}
+
+///|
+/// End a synchronized update (DEC private mode 2026): flush and atomically
+/// present everything written since `begin_synchronized_update`.
+pub async fn Tty::end_synchronized_update(self : Self) -> Unit {
+  self.write(@vt.end_synchronized_update)
+}
+
+///|
+/// Run `f` inside a synchronized update so the frame it draws is presented
+/// atomically (no flicker from a visible clear-then-repaint). The end is always
+/// emitted, even if `f` raises, so the terminal is never left with synchronized
+/// output stuck on. Terminals without mode 2026 ignore the markers and `f` draws
+/// as before.
+pub async fn[T] Tty::with_synchronized_update(
+  self : Self,
+  f : async () -> T,
+) -> T {
+  self.begin_synchronized_update()
+  try f() catch {
+    error => {
+      self.end_synchronized_update()
+      raise error
+    }
+  } noraise {
+    value => {
+      self.end_synchronized_update()
+      value
+    }
+  }
+}
+
+///|
 /// Enable bracketed paste mode.
 pub async fn Tty::enable_bracketed_paste(self : Self) -> Unit {
   self.write(@vt.enable_bracketed_paste)

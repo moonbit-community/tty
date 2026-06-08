@@ -7,6 +7,18 @@ pub let enter_alt_screen : Bytes = b"\x1b[?1049h"
 pub let leave_alt_screen : Bytes = b"\x1b[?1049l"
 
 ///|
+/// Begin a synchronized update, DEC private mode 2026. The terminal buffers all
+/// output until the matching end and then presents it as one atomic frame, so a
+/// clear-then-repaint is never shown half-drawn. Terminals without 2026 support
+/// ignore this private-mode set.
+pub let begin_synchronized_update : Bytes = b"\x1b[?2026h"
+
+///|
+/// End a synchronized update, DEC private mode 2026: flush and atomically present
+/// everything written since `begin_synchronized_update`.
+pub let end_synchronized_update : Bytes = b"\x1b[?2026l"
+
+///|
 /// Enable bracketed paste mode, xterm private mode 2004.
 pub let enable_bracketed_paste : Bytes = b"\x1b[?2004h"
 
