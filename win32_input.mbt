@@ -59,11 +59,12 @@ async fn Tty::read_win32_console_event(
   if !self.win32_console_input_enabled() {
     return self.read_decoded_input_event(esc_timeout_ms)
   }
+  let pending_surrogate = Ref(0)
   for ;; {
     match win32_read_console_input_record(self.input.fd()) {
       None => @async.sleep(10)
       Some(record) =>
-        match self.win32_event_from_record(record) {
+        match self.win32_event_from_record(record, pending_surrogate) {
           Some(event) => return event
           None => ()
         }
@@ -82,15 +83,16 @@ fn Tty::win32_console_input_enabled(self : Self) -> Bool {
 fn Tty::win32_event_from_record(
   self : Self,
   record : Win32InputRecord,
+  pending_surrogate : Ref[Int],
 ) -> Event? {
   match record.event_type {
     Win32RecordKey =>
-      match self.win32_key_input(record) {
+      match record.win32_key_input(pending_surrogate) {
         Some(input) => Some(Input(input))
         None => None
       }
     Win32RecordWindowBufferSize => {
-      self.win32_pending_surrogate.val = 0
+      pending_surrogate.val = 0
       try self.window_size() catch {
         _ => None
       } noraise {
@@ -98,7 +100,7 @@ fn Tty::win32_event_from_record(
       }
     }
     Win32RecordFocus => {
-      self.win32_pending_surrogate.val = 0
+      pending_surrogate.val = 0
       if record.focus_set != 0 {
         Some(Input(FocusIn))
       } else {
@@ -106,7 +108,7 @@ fn Tty::win32_event_from_record(
       }
     }
     _ => {
-      self.win32_pending_surrogate.val = 0
+      pending_surrogate.val = 0
       None
     }
   }
@@ -114,14 +116,16 @@ fn Tty::win32_event_from_record(
 
 ///|
 #cfg(platform="windows")
-fn Tty::win32_key_input(
-  self : Self,
-  record : Win32InputRecord,
+fn Win32InputRecord::win32_key_input(
+  self : Win32InputRecord,
+  pending_surrogate : Ref[Int],
 ) -> @public_input.InputEvent? {
-  let kind = record.win32_key_kind()
-  let modifiers = record.win32_modifiers()
-  let state = record.win32_key_state()
-  guard self.win32_key_code(record) is Some((code, text)) else { return None }
+  let kind = self.win32_key_kind()
+  let modifiers = self.win32_modifiers()
+  let state = self.win32_key_state()
+  guard self.win32_key_code(pending_surrogate) is Some((code, text)) else {
+    return None
+  }
   let event = match text {
     Some(text) =>
       @public_input.KeyEvent::new(code, modifiers~, kind~, state~, text~)
@@ -176,42 +180,42 @@ fn Win32InputRecord::win32_key_state(
 
 ///|
 #cfg(platform="windows")
-fn Tty::win32_key_code(
-  self : Self,
-  record : Win32InputRecord,
+fn Win32InputRecord::win32_key_code(
+  self : Win32InputRecord,
+  pending_surrogate : Ref[Int],
 ) -> (@public_input.KeyCode, String?)? {
-  match win32_key_code_from_virtual_key(record.virtual_key_code) {
+  match win32_key_code_from_virtual_key(self.virtual_key_code) {
     Some(code) => {
-      self.win32_pending_surrogate.val = 0
+      pending_surrogate.val = 0
       return Some((code, None))
     }
     None => ()
   }
-  let charcode = record.unicode_char
+  let charcode = self.unicode_char
   if charcode == 0 {
-    self.win32_pending_surrogate.val = 0
-    return win32_control_code_from_virtual_key(record.virtual_key_code).map(code => {
+    pending_surrogate.val = 0
+    return win32_control_code_from_virtual_key(self.virtual_key_code).map(code => {
       (code, None)
     })
   }
   if charcode >= 0x00 && charcode <= 0x1f {
-    self.win32_pending_surrogate.val = 0
+    pending_surrogate.val = 0
     return win32_control_code_from_char(charcode).map(code => (code, None))
   }
   if win32_is_high_surrogate(charcode) {
-    self.win32_pending_surrogate.val = charcode
+    pending_surrogate.val = charcode
     return None
   }
   if win32_is_low_surrogate(charcode) {
-    let high = self.win32_pending_surrogate.val
-    self.win32_pending_surrogate.val = 0
+    let high = pending_surrogate.val
+    pending_surrogate.val = 0
     guard high != 0 else { return None }
     let char = win32_decode_surrogate_pair(high, charcode)
-    return Some((Char(char), win32_text_for_key(record, char)))
+    return Some((Char(char), win32_text_for_key(self, char)))
   }
-  self.win32_pending_surrogate.val = 0
+  pending_surrogate.val = 0
   let char = charcode.unsafe_to_char()
-  Some((Char(char), win32_text_for_key(record, char)))
+  Some((Char(char), win32_text_for_key(self, char)))
 }
 
 ///|

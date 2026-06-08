@@ -19,13 +19,11 @@ pub(all) enum Event {
 ///
 /// `Tty` is for terminal protocols that need to write a request and read the
 /// response from the same terminal input stream. It does not model a screen.
-#warnings("-7")
 struct Tty {
   input : &Reader
   output : &Writer
   reader : @input.EventReader
   pending_input : Array[@public_input.InputEvent]
-  win32_pending_surrogate : Ref[Int]
 }
 
 ///|
@@ -38,7 +36,6 @@ pub fn[I : Reader, O : Writer] Tty::new(input : I, output : O) -> Tty {
     output,
     reader: @input.EventReader::new(input as &@async/io.Reader),
     pending_input: [],
-    win32_pending_surrogate: Ref(0),
   }
 }
 

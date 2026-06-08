@@ -90,6 +90,16 @@ Add the private Windows FFI wrapper and polling event source, then wire
 - Windows raw mode now enables `ENABLE_WINDOW_INPUT`.
 - Non-console Windows input handles fall back to the existing byte decoder.
 
+## Follow-up: Local Surrogate State
+
+The initial implementation stored a Windows-only UTF-16 surrogate buffer on
+`Tty`, which required suppressing the non-Windows `unused_field` warning because
+MoonBit does not support `#cfg` on individual struct fields. The accepted
+follow-up design keeps that surrogate buffer local to
+`Tty::read_win32_console_event` instead. The polling loop already waits through
+high-surrogate records until a complete key event is available, so this keeps
+the state at the narrowest call site and removes the warning suppression.
+
 ## Public API Audit
 
 - No public MoonBit API changed.
