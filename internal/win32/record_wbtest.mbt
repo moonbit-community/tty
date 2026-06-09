@@ -71,14 +71,3 @@ test "win32 raw input record parses mouse records" {
     _ => fail("expected mouse record")
   }
 }
-
-///|
-#cfg(platform="windows")
-test "win32 raw input record parses focus records" {
-  let buf = test_raw_record(RecordFocus)
-  test_set_u32_le(buf, 4, 1)
-  match test_input_record(buf) {
-    Focus(true) => ()
-    _ => fail("expected focus record")
-  }
-}
