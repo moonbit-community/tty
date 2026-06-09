@@ -80,10 +80,6 @@ const MouseButtonMask : Int = 0x0007
 
 ///|
 #cfg(platform="windows")
-pub(all) struct RawInputRecord(Bytes)
-
-///|
-#cfg(platform="windows")
 pub(all) enum InputRecord {
   Key(KeyRecord)
   Mouse(MouseRecord)
@@ -166,14 +162,8 @@ pub fn MouseButtonState::new() -> MouseButtonState {
 
 ///|
 #cfg(platform="windows")
-pub fn RawInputRecord::new(size : Int) -> RawInputRecord {
-  RawInputRecord(Bytes::make(size, 0))
-}
-
-///|
-#cfg(platform="windows")
-pub fn RawInputRecord::parse(self : RawInputRecord) -> InputRecord {
-  let bytes = self.0[:]
+pub fn InputRecord::parse(record : Bytes) -> InputRecord {
+  let bytes = record[:]
   guard u16_at(bytes, 0) is Some(event_type) else { return Unsupported(0) }
   match event_type {
     RecordKey => parse_key_record(bytes)

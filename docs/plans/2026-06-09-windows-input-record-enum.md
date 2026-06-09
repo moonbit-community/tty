@@ -247,3 +247,19 @@ platform FFI.
 - Note: `moon info` still rewrites the pre-existing root `Fd::fd` generated
   mbti spelling from `Int` to `@types.Fd`; this split restored the root
   generated interface to avoid unrelated public API churn.
+
+### Follow-up Result
+
+- Removed the internal `RawInputRecord` wrapper.
+- Root now allocates a `Bytes` buffer for `ReadConsoleInputW`, passes that
+  buffer directly through the FFI borrow boundary, and calls
+  `@win32.InputRecord::parse(bytes)`.
+- `internal/win32` now exposes `InputRecord::parse(Bytes) -> InputRecord`.
+
+### Follow-up Validation Results
+
+- Passed: `moon fmt`
+- Passed: `moon check --target-dir .moon-check-win32-parse-bytes-build`
+- Passed: `moon test internal/win32 --target-dir .moon-test-internal-win32-parse-bytes-build`
+- Passed: `moon test . --filter "win32*" --target-dir .moon-test-win32-parse-bytes-build`
+- Passed: `moon info --target-dir .moon-info-win32-parse-bytes-build`

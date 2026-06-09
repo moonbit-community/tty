@@ -8,8 +8,8 @@ fn test_raw_record(event_type : Int) -> FixedArray[Byte] {
 
 ///|
 #cfg(platform="windows")
-fn test_raw_input_record(buf : FixedArray[Byte]) -> RawInputRecord {
-  RawInputRecord(buf.unsafe_reinterpret_as_bytes())
+fn test_input_record(buf : FixedArray[Byte]) -> InputRecord {
+  InputRecord::parse(buf.unsafe_reinterpret_as_bytes())
 }
 
 ///|
@@ -38,7 +38,7 @@ test "win32 raw input record parses key records" {
   test_set_u16_le(buf, 12, 0x1e)
   test_set_u16_le(buf, 14, 'A'.to_int())
   test_set_u32_le(buf, 16, ShiftPressed)
-  match test_raw_input_record(buf).parse() {
+  match test_input_record(buf) {
     Key(record) => {
       @debug.assert_eq(record.key_down, 1)
       @debug.assert_eq(record.repeat_count, 2)
@@ -60,7 +60,7 @@ test "win32 raw input record parses mouse records" {
   test_set_u32_le(buf, 8, MouseLeftButton)
   test_set_u32_le(buf, 12, ShiftPressed)
   test_set_u32_le(buf, 16, MouseMoved)
-  match test_raw_input_record(buf).parse() {
+  match test_input_record(buf) {
     Mouse(record) => {
       @debug.assert_eq(record.x, 30)
       @debug.assert_eq(record.y, 2)
@@ -77,7 +77,7 @@ test "win32 raw input record parses mouse records" {
 test "win32 raw input record parses focus records" {
   let buf = test_raw_record(RecordFocus)
   test_set_u32_le(buf, 4, 1)
-  match test_raw_input_record(buf).parse() {
+  match test_input_record(buf) {
     Focus(true) => ()
     _ => fail("expected focus record")
   }

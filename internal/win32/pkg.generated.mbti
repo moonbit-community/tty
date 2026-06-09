@@ -60,6 +60,7 @@ pub(all) enum InputRecord {
   Focus(Bool)
   Unsupported(Int)
 }
+pub fn InputRecord::parse(Bytes) -> Self
 
 pub struct KeyRecord {
   key_down : Int
@@ -90,10 +91,6 @@ pub struct MouseRecord {
   event_flags : Int
 }
 pub fn MouseRecord::new(x? : Int, y? : Int, button_state? : Int, control_key_state? : Int, event_flags? : Int) -> Self
-
-pub(all) struct RawInputRecord(Bytes)
-pub fn RawInputRecord::new(Int) -> Self
-pub fn RawInputRecord::parse(Self) -> InputRecord
 
 // Type aliases
 

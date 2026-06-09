@@ -243,7 +243,7 @@ let sizeof_win32_input_record : Int = win32_sizeof_input_record()
 #cfg(platform="windows")
 extern "c" fn win32_read_console_input_record_ffi(
   fd : @async/types.Fd,
-  record : @win32.RawInputRecord,
+  record : Bytes,
 ) -> Int = "moonbit_tty_read_console_input_record"
 
 ///|
@@ -251,7 +251,7 @@ extern "c" fn win32_read_console_input_record_ffi(
 fn win32_read_console_input_record(
   fd : @async/types.Fd,
 ) -> @win32.InputRecord? raise {
-  let record = @win32.RawInputRecord::new(sizeof_win32_input_record)
+  let record = Bytes::make(sizeof_win32_input_record, 0)
   let rc = win32_read_console_input_record_ffi(fd, record)
   if rc < 0 {
     @os_error.check_errno("ReadConsoleInputW")
@@ -259,6 +259,6 @@ fn win32_read_console_input_record(
   if rc == 0 {
     None
   } else {
-    Some(record.parse())
+    Some(@win32.InputRecord::parse(record))
   }
 }
