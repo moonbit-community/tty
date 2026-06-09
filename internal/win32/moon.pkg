@@ -1,0 +1,7 @@
+import {
+  "moonbit-community/tty/input" @public_input,
+}
+
+import {
+  "moonbitlang/core/debug",
+} for "wbtest"

@@ -10,6 +10,7 @@ import {
   "moonbit-community/tty/color",
   "moonbit-community/tty/input" @public_input,
   "moonbit-community/tty/internal/input",
+  "moonbit-community/tty/internal/win32",
   "moonbit-community/tty/internal/vt",
 }
 

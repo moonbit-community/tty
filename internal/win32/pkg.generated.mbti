@@ -1,0 +1,101 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbit-community/tty/internal/win32"
+
+import {
+  "moonbit-community/tty/input",
+  "moonbitlang/core/ref",
+}
+
+// Values
+pub const CapsLockOn : Int = 0x0080
+
+pub const EnhancedKey : Int = 0x0100
+
+pub const LeftAltPressed : Int = 0x0002
+
+pub const LeftCtrlPressed : Int = 0x0008
+
+pub const MouseDoubleClick : Int = 0x0002
+
+pub const MouseHorizontalWheeled : Int = 0x0008
+
+pub const MouseLeftButton : Int = 0x0001
+
+pub const MouseMiddleButton : Int = 0x0004
+
+pub const MouseMoved : Int = 0x0001
+
+pub const MouseRightButton : Int = 0x0002
+
+pub const MouseWheeled : Int = 0x0004
+
+pub const NumLockOn : Int = 0x0020
+
+pub const RecordFocus : Int = 0x0010
+
+pub const RecordKey : Int = 0x0001
+
+pub const RecordMouse : Int = 0x0002
+
+pub const RecordWindowBufferSize : Int = 0x0004
+
+pub const RightAltPressed : Int = 0x0001
+
+pub const RightCtrlPressed : Int = 0x0004
+
+pub const ShiftPressed : Int = 0x0010
+
+// Errors
+
+// Types and methods
+pub struct Coord {
+  x : Int
+  y : Int
+}
+
+pub(all) enum InputRecord {
+  Key(KeyRecord)
+  Mouse(MouseRecord)
+  WindowBufferSize(Coord)
+  Focus(Bool)
+  Unsupported(Int)
+}
+
+pub struct KeyRecord {
+  key_down : Int
+  repeat_count : Int
+  virtual_key_code : Int
+  virtual_scan_code : Int
+  unicode_char : Int
+  control_key_state : Int
+}
+pub fn KeyRecord::input(Self, @ref.Ref[Int]) -> @input.InputEvent?
+pub fn KeyRecord::is_down(Self) -> Bool
+pub fn KeyRecord::new(key_down? : Int, repeat_count? : Int, virtual_key_code? : Int, virtual_scan_code? : Int, unicode_char? : Int, control_key_state? : Int) -> Self
+pub fn KeyRecord::repeat_count(Self) -> Int
+pub fn KeyRecord::text(Self, @ref.Ref[Int]) -> String?
+pub fn KeyRecord::text_uses_decoder(Self) -> Bool
+
+pub struct MouseButtonState {
+  mut buttons : Int
+}
+pub fn MouseButtonState::input_event(Self, MouseRecord) -> @input.InputEvent?
+pub fn MouseButtonState::new() -> Self
+
+pub struct MouseRecord {
+  x : Int
+  y : Int
+  button_state : Int
+  control_key_state : Int
+  event_flags : Int
+}
+pub fn MouseRecord::new(x? : Int, y? : Int, button_state? : Int, control_key_state? : Int, event_flags? : Int) -> Self
+
+pub(all) struct RawInputRecord(Bytes)
+pub fn RawInputRecord::new(Int) -> Self
+pub fn RawInputRecord::parse(Self) -> InputRecord
+
+// Type aliases
+
+// Traits
+

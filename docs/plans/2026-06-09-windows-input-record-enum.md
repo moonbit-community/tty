@@ -177,3 +177,73 @@ backend stored by `Tty`.
 - Note: `moon info` still rewrites the pre-existing `Fd::fd` generated mbti
   spelling from `Int` to `@types.Fd`; this flatten refactor does not intend to
   include that generated public-interface churn.
+
+## Follow-up: Split Win32 Input Parser Package
+
+### Goal
+
+Move the pure Windows `INPUT_RECORD` parsing and native key/mouse mapping code
+out of the root tty package into `internal/win32`, while keeping root `Tty`
+responsible for terminal handles, backend selection, async record reading, and
+platform FFI.
+
+### Accepted Design
+
+- Add a new internal package at `internal/win32`.
+- Move raw input record modeling, byte-layout parsing, key mapping, mouse
+  mapping, modifier mapping, and surrogate helpers into that package.
+- Use package-local names without redundant `Win32` prefixes where the package
+  path already supplies the Win32 context:
+  - `RawInputRecord`
+  - `InputRecord`
+  - `KeyRecord`
+  - `MouseRecord`
+  - `MouseButtonState`
+- Keep `ReadConsoleInputW` and `sizeof(INPUT_RECORD)` FFI wrappers in the root
+  tty package. Root passes an `@win32.RawInputRecord` buffer to C and then asks
+  the internal package to parse it.
+- Keep the current pipe-based text-byte delivery and direct event queue
+  behavior unchanged.
+- Keep root tests for `Tty`/backend behavior in the root white-box test file,
+  and move raw record layout tests to `internal/win32`.
+
+### Public API / Interface Diff
+
+- No root public MoonBit API change intended.
+- Root `pkg.generated.mbti` should remain unchanged after `moon info`.
+- The new `internal/win32` package will expose an internal-only interface for
+  root tty code and white-box tests.
+
+### Validation Plan
+
+- `moon fmt`
+- `moon test internal/win32 --target-dir .moon-test-internal-win32-build`
+- `moon test . --filter "win32*" --target-dir .moon-test-win32-split-build`
+- `moon check --target-dir .moon-check-win32-split-build`
+- `moon info --target-dir .moon-info-win32-split-build`
+- Review `.mbti` diff.
+- `git diff --check`
+
+### Result
+
+- Added `internal/win32` for pure Windows `INPUT_RECORD` modeling, parsing,
+  key mapping, mouse mapping, and modifier/surrogate helpers.
+- Root `win32_input.mbt` now keeps only the Windows input backend, `Tty`
+  dispatch helpers, and the `ReadConsoleInputW` / `sizeof(INPUT_RECORD)` FFI
+  wrapper.
+- Root passes an `@win32.RawInputRecord` buffer to C and parses it through the
+  internal package.
+- Moved raw record layout white-box tests into `internal/win32`.
+- Kept root white-box tests focused on `Tty` backend behavior.
+
+### Validation Results
+
+- Passed: `moon fmt`
+- Passed: `moon test internal/win32 --target-dir .moon-test-internal-win32-build`
+- Passed: `moon test . --filter "win32*" --target-dir .moon-test-win32-split-build`
+- Passed: `moon check --target-dir .moon-check-win32-split-build`
+- Passed: `moon info --target-dir .moon-info-win32-split-build`
+- Passed: `git diff --check`
+- Note: `moon info` still rewrites the pre-existing root `Fd::fd` generated
+  mbti spelling from `Int` to `@types.Fd`; this split restored the root
+  generated interface to avoid unrelated public API churn.
