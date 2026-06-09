@@ -4,6 +4,10 @@ const Win32RecordKey : Int = 0x0001
 
 ///|
 #cfg(platform="windows")
+const Win32RecordMouse : Int = 0x0002
+
+///|
+#cfg(platform="windows")
 const Win32RecordWindowBufferSize : Int = 0x0004
 
 ///|
@@ -44,14 +48,82 @@ const Win32EnhancedKey : Int = 0x0100
 
 ///|
 #cfg(platform="windows")
-priv struct Win32InputRecord {
-  event_type : Int
+const Win32MouseMoved : Int = 0x0001
+
+///|
+#cfg(platform="windows")
+const Win32MouseDoubleClick : Int = 0x0002
+
+///|
+#cfg(platform="windows")
+const Win32MouseWheeled : Int = 0x0004
+
+///|
+#cfg(platform="windows")
+const Win32MouseHorizontalWheeled : Int = 0x0008
+
+///|
+#cfg(platform="windows")
+const Win32MouseLeftButton : Int = 0x0001
+
+///|
+#cfg(platform="windows")
+const Win32MouseRightButton : Int = 0x0002
+
+///|
+#cfg(platform="windows")
+const Win32MouseMiddleButton : Int = 0x0004
+
+///|
+#cfg(platform="windows")
+const Win32MouseButtonMask : Int = 0x0007
+
+///|
+#cfg(platform="windows")
+priv struct Win32RawInputRecord(Bytes)
+
+///|
+#cfg(platform="windows")
+priv enum Win32InputRecord {
+  Key(Win32KeyRecord)
+  Mouse(Win32MouseRecord)
+  WindowBufferSize(Win32Coord)
+  Focus(Bool)
+  Unsupported(Int)
+}
+
+///|
+#cfg(platform="windows")
+priv struct Win32Coord {
+  x : Int
+  y : Int
+}
+
+///|
+#cfg(platform="windows")
+priv struct Win32KeyRecord {
   key_down : Int
   repeat_count : Int
   virtual_key_code : Int
+  virtual_scan_code : Int
   unicode_char : Int
   control_key_state : Int
-  focus_set : Int
+}
+
+///|
+#cfg(platform="windows")
+priv struct Win32MouseRecord {
+  x : Int
+  y : Int
+  button_state : Int
+  control_key_state : Int
+  event_flags : Int
+}
+
+///|
+#cfg(platform="windows")
+priv struct Win32MouseButtonState {
+  mut buttons : Int
 }
 
 ///|
@@ -64,6 +136,7 @@ priv struct Win32ConsoleInputSource {
   reader : @input.EventReader
   events : @async.Queue[Event]
   pending_surrogate : Ref[Int]
+  mouse_button_state : Win32MouseButtonState
 }
 
 ///|
@@ -81,6 +154,7 @@ fn Win32ConsoleInputSource::new(
     reader: @input.EventReader::new(byte_read as &@async/io.Reader),
     events: Queue(kind=Unbounded),
     pending_surrogate: Ref(0),
+    mouse_button_state: { buttons: 0 },
   }
 }
 
@@ -91,6 +165,7 @@ fn Win32ConsoleInputSource::close(self : Win32ConsoleInputSource) -> Unit {
   ignore(self.output_fd)
   ignore(self.reader)
   ignore(self.pending_surrogate.val)
+  ignore(self.mouse_button_state.buttons)
   self.byte_read.close()
   self.byte_write.close()
   self.events.close(clear=true)
@@ -152,14 +227,23 @@ async fn Win32ConsoleInputSource::read_event(
   self : Win32ConsoleInputSource,
   esc_timeout_ms : Int,
 ) -> Event {
-  match self.try_get_event() {
-    Some(event) => return event
-    None => ()
-  }
   @async.with_task_group() <| group => {
     group.spawn_bg(no_wait=true) <| () => { self.read_records() }
+    self.read_decoded_input_event(esc_timeout_ms)
+  }
+}
+
+///|
+#cfg(platform="windows")
+async fn Win32ConsoleInputSource::read_decoded_input_event(
+  self : Win32ConsoleInputSource,
+  esc_timeout_ms : Int,
+) -> Event {
+  @async.with_task_group() <| group => {
     group.spawn_bg(no_wait=true) <| () => {
-      group.return_immediately(self.read_decoded_input_event(esc_timeout_ms))
+      group.return_immediately(
+        self.read_input_event_from_decoder(esc_timeout_ms),
+      )
     }
     self.events.get()
   }
@@ -167,7 +251,7 @@ async fn Win32ConsoleInputSource::read_event(
 
 ///|
 #cfg(platform="windows")
-async fn Win32ConsoleInputSource::read_decoded_input_event(
+async fn Win32ConsoleInputSource::read_input_event_from_decoder(
   self : Win32ConsoleInputSource,
   esc_timeout_ms : Int,
 ) -> Event {
@@ -193,18 +277,6 @@ async fn Win32ConsoleInputSource::read_internal_event(
 
 ///|
 #cfg(platform="windows")
-fn Win32ConsoleInputSource::try_get_event(
-  self : Win32ConsoleInputSource,
-) -> Event? {
-  try self.events.try_get() catch {
-    _ => None
-  } noraise {
-    event => event
-  }
-}
-
-///|
-#cfg(platform="windows")
 async fn Win32ConsoleInputSource::read_records(
   self : Win32ConsoleInputSource,
 ) -> Unit {
@@ -222,27 +294,24 @@ async fn Win32ConsoleInputSource::read_record(
   self : Win32ConsoleInputSource,
   record : Win32InputRecord,
 ) -> Unit {
-  match record.event_type {
-    Win32RecordKey => self.read_key_record(record)
-    Win32RecordWindowBufferSize => {
+  match record {
+    Key(record) => self.read_key_record(record)
+    Mouse(record) => self.read_mouse_record(record)
+    WindowBufferSize(_) => {
       self.pending_surrogate.val = 0
-      match self.window_size() {
-        Some(size) => self.events.put(Resize(size))
-        None => ()
+      if self.window_size() is Some(size) {
+        self.events.put(Resize(size))
       }
     }
-    Win32RecordFocus => {
+    Focus(focus_set) => {
       self.pending_surrogate.val = 0
-      if record.focus_set != 0 {
+      if focus_set {
         self.events.put(Input(FocusIn))
       } else {
         self.events.put(Input(FocusOut))
       }
     }
-    _ => {
-      self.pending_surrogate.val = 0
-      ()
-    }
+    Unsupported(_) => self.pending_surrogate.val = 0
   }
 }
 
@@ -250,8 +319,9 @@ async fn Win32ConsoleInputSource::read_record(
 #cfg(platform="windows")
 async fn Win32ConsoleInputSource::read_key_record(
   self : Win32ConsoleInputSource,
-  record : Win32InputRecord,
+  record : Win32KeyRecord,
 ) -> Unit {
+  ignore(record.virtual_scan_code)
   if record.key_down == 0 {
     return
   }
@@ -271,13 +341,38 @@ async fn Win32ConsoleInputSource::read_key_record(
 #cfg(platform="windows")
 async fn Win32ConsoleInputSource::queue_key_input(
   self : Win32ConsoleInputSource,
-  record : Win32InputRecord,
+  record : Win32KeyRecord,
 ) -> Unit {
   match record.win32_key_input(self.pending_surrogate) {
     Some(input) =>
       for _ in 0..<record.win32_repeat_count() {
         self.events.put(Input(input))
       }
+    None => ()
+  }
+}
+
+///|
+#cfg(platform="windows")
+async fn Win32ConsoleInputSource::read_mouse_record(
+  self : Win32ConsoleInputSource,
+  record : Win32MouseRecord,
+) -> Unit {
+  self.pending_surrogate.val = 0
+  match self.mouse_button_state.event_kind(record) {
+    Some(kind) =>
+      self.events.put(
+        Input(
+          Mouse(
+            @public_input.MouseEvent::new(
+              kind,
+              record.y + 1,
+              record.x + 1,
+              modifiers=record.win32_modifiers(),
+            ),
+          ),
+        ),
+      )
     None => ()
   }
 }
@@ -298,7 +393,147 @@ fn Win32ConsoleInputSource::window_size(
 
 ///|
 #cfg(platform="windows")
-fn Win32InputRecord::win32_repeat_count(self : Win32InputRecord) -> Int {
+fn Win32MouseButtonState::event_kind(
+  self : Win32MouseButtonState,
+  record : Win32MouseRecord,
+) -> @public_input.MouseEventKind? {
+  let buttons = record.button_state & Win32MouseButtonMask
+  match record.event_flags {
+    0 => {
+      let previous = self.buttons
+      self.buttons = buttons
+      match win32_newly_pressed_mouse_button(previous, buttons) {
+        Some(button) => Some(Press(button))
+        None =>
+          win32_newly_released_mouse_button(previous, buttons).map(button => {
+            Release(button)
+          })
+      }
+    }
+    Win32MouseMoved => {
+      self.buttons = buttons
+      match win32_mouse_button_from_state(buttons) {
+        Some(button) => Some(Drag(button))
+        None => Some(Move)
+      }
+    }
+    Win32MouseDoubleClick => {
+      self.buttons = buttons
+      win32_mouse_button_from_state(buttons).map(button => Press(button))
+    }
+    Win32MouseWheeled => {
+      self.buttons = buttons
+      let delta = win32_signed_high_word(record.button_state)
+      if delta > 0 {
+        Some(Scroll(Up))
+      } else if delta < 0 {
+        Some(Scroll(Down))
+      } else {
+        None
+      }
+    }
+    Win32MouseHorizontalWheeled => {
+      self.buttons = buttons
+      let delta = win32_signed_high_word(record.button_state)
+      if delta > 0 {
+        Some(Scroll(Right))
+      } else if delta < 0 {
+        Some(Scroll(Left))
+      } else {
+        None
+      }
+    }
+    _ => {
+      self.buttons = buttons
+      None
+    }
+  }
+}
+
+///|
+#cfg(platform="windows")
+fn Win32MouseRecord::win32_modifiers(
+  self : Win32MouseRecord,
+) -> @public_input.KeyModifiers {
+  win32_modifiers_from_control_key_state(self.control_key_state)
+}
+
+///|
+#cfg(platform="windows")
+fn win32_newly_pressed_mouse_button(
+  previous : Int,
+  buttons : Int,
+) -> @public_input.MouseButton? {
+  if (buttons & Win32MouseLeftButton) != 0 &&
+    (previous & Win32MouseLeftButton) == 0 {
+    Some(Left)
+  } else if (buttons & Win32MouseMiddleButton) != 0 &&
+    (previous & Win32MouseMiddleButton) == 0 {
+    Some(Middle)
+  } else if (buttons & Win32MouseRightButton) != 0 &&
+    (previous & Win32MouseRightButton) == 0 {
+    Some(Right)
+  } else {
+    None
+  }
+}
+
+///|
+#cfg(platform="windows")
+fn win32_newly_released_mouse_button(
+  previous : Int,
+  buttons : Int,
+) -> @public_input.MouseButton? {
+  if (previous & Win32MouseLeftButton) != 0 &&
+    (buttons & Win32MouseLeftButton) == 0 {
+    Some(Left)
+  } else if (previous & Win32MouseMiddleButton) != 0 &&
+    (buttons & Win32MouseMiddleButton) == 0 {
+    Some(Middle)
+  } else if (previous & Win32MouseRightButton) != 0 &&
+    (buttons & Win32MouseRightButton) == 0 {
+    Some(Right)
+  } else {
+    None
+  }
+}
+
+///|
+#cfg(platform="windows")
+fn win32_mouse_button_from_state(state : Int) -> @public_input.MouseButton? {
+  if (state & Win32MouseLeftButton) != 0 {
+    Some(Left)
+  } else if (state & Win32MouseMiddleButton) != 0 {
+    Some(Middle)
+  } else if (state & Win32MouseRightButton) != 0 {
+    Some(Right)
+  } else {
+    None
+  }
+}
+
+///|
+#cfg(platform="windows")
+fn win32_signed_high_word(value : Int) -> Int {
+  let low_word = value & 0xffff
+  (value - low_word) / 0x10000
+}
+
+///|
+#cfg(platform="windows")
+fn win32_modifiers_from_control_key_state(
+  state : Int,
+) -> @public_input.KeyModifiers {
+  @public_input.KeyModifiers::new(
+    shift=win32_has_state(state, Win32ShiftPressed),
+    alt=win32_has_state(state, Win32LeftAltPressed | Win32RightAltPressed),
+    ctrl=win32_has_state(state, Win32LeftCtrlPressed | Win32RightCtrlPressed),
+  )
+}
+
+///|
+#cfg(platform="windows")
+fn Win32KeyRecord::win32_repeat_count(self : Win32KeyRecord) -> Int {
   if self.repeat_count > 0 {
     self.repeat_count
   } else {
@@ -308,26 +543,20 @@ fn Win32InputRecord::win32_repeat_count(self : Win32InputRecord) -> Int {
 
 ///|
 #cfg(platform="windows")
-fn Win32InputRecord::win32_key_text_uses_decoder(
-  self : Win32InputRecord,
-) -> Bool {
+fn Win32KeyRecord::win32_key_text_uses_decoder(self : Win32KeyRecord) -> Bool {
   self.key_down != 0 && !self.win32_has_direct_key_metadata()
 }
 
 ///|
 #cfg(platform="windows")
-fn Win32InputRecord::win32_has_direct_key_metadata(
-  self : Win32InputRecord,
-) -> Bool {
+fn Win32KeyRecord::win32_has_direct_key_metadata(self : Win32KeyRecord) -> Bool {
   (self.win32_has_keyboard_modifier() && !self.win32_is_alt_gr_text()) ||
   self.win32_is_keypad()
 }
 
 ///|
 #cfg(platform="windows")
-fn Win32InputRecord::win32_has_keyboard_modifier(
-  self : Win32InputRecord,
-) -> Bool {
+fn Win32KeyRecord::win32_has_keyboard_modifier(self : Win32KeyRecord) -> Bool {
   win32_has_state(
     self.control_key_state,
     Win32ShiftPressed |
@@ -340,7 +569,7 @@ fn Win32InputRecord::win32_has_keyboard_modifier(
 
 ///|
 #cfg(platform="windows")
-fn Win32InputRecord::win32_is_alt_gr_text(self : Win32InputRecord) -> Bool {
+fn Win32KeyRecord::win32_is_alt_gr_text(self : Win32KeyRecord) -> Bool {
   let alt_gr_state = Win32RightAltPressed | Win32LeftCtrlPressed
   self.key_down != 0 &&
   self.unicode_char > 0x1f &&
@@ -353,8 +582,8 @@ fn Win32InputRecord::win32_is_alt_gr_text(self : Win32InputRecord) -> Bool {
 
 ///|
 #cfg(platform="windows")
-fn Win32InputRecord::win32_key_text(
-  self : Win32InputRecord,
+fn Win32KeyRecord::win32_key_text(
+  self : Win32KeyRecord,
   pending_surrogate : Ref[Int],
 ) -> String? {
   if self.key_down == 0 {
@@ -382,8 +611,8 @@ fn Win32InputRecord::win32_key_text(
 
 ///|
 #cfg(platform="windows")
-fn Win32InputRecord::win32_key_input(
-  self : Win32InputRecord,
+fn Win32KeyRecord::win32_key_input(
+  self : Win32KeyRecord,
   pending_surrogate : Ref[Int],
 ) -> @public_input.InputEvent? {
   guard self.win32_key_event(pending_surrogate) is Some(event) else {
@@ -394,8 +623,8 @@ fn Win32InputRecord::win32_key_input(
 
 ///|
 #cfg(platform="windows")
-fn Win32InputRecord::win32_key_kind(
-  self : Win32InputRecord,
+fn Win32KeyRecord::win32_key_kind(
+  self : Win32KeyRecord,
 ) -> @public_input.KeyEventKind {
   if self.key_down == 0 {
     Release
@@ -408,26 +637,16 @@ fn Win32InputRecord::win32_key_kind(
 
 ///|
 #cfg(platform="windows")
-fn Win32InputRecord::win32_modifiers(
-  self : Win32InputRecord,
+fn Win32KeyRecord::win32_modifiers(
+  self : Win32KeyRecord,
 ) -> @public_input.KeyModifiers {
-  @public_input.KeyModifiers::new(
-    shift=win32_has_state(self.control_key_state, Win32ShiftPressed),
-    alt=win32_has_state(
-      self.control_key_state,
-      Win32LeftAltPressed | Win32RightAltPressed,
-    ),
-    ctrl=win32_has_state(
-      self.control_key_state,
-      Win32LeftCtrlPressed | Win32RightCtrlPressed,
-    ),
-  )
+  win32_modifiers_from_control_key_state(self.control_key_state)
 }
 
 ///|
 #cfg(platform="windows")
-fn Win32InputRecord::win32_key_state(
-  self : Win32InputRecord,
+fn Win32KeyRecord::win32_key_state(
+  self : Win32KeyRecord,
 ) -> @public_input.KeyEventState {
   @public_input.KeyEventState::new(
     keypad=self.win32_is_keypad(),
@@ -438,8 +657,8 @@ fn Win32InputRecord::win32_key_state(
 
 ///|
 #cfg(platform="windows")
-fn Win32InputRecord::win32_key_event(
-  self : Win32InputRecord,
+fn Win32KeyRecord::win32_key_event(
+  self : Win32KeyRecord,
   pending_surrogate : Ref[Int],
 ) -> @public_input.KeyEvent? {
   let kind = self.win32_key_kind()
@@ -483,8 +702,8 @@ fn Win32InputRecord::win32_key_event(
 
 ///|
 #cfg(platform="windows")
-fn Win32InputRecord::win32_key_code_from_virtual_key(
-  self : Win32InputRecord,
+fn Win32KeyRecord::win32_key_code_from_virtual_key(
+  self : Win32KeyRecord,
 ) -> @public_input.KeyCode? {
   if self.win32_is_keypad_enter() {
     Some(KeypadEnter)
@@ -495,7 +714,7 @@ fn Win32InputRecord::win32_key_code_from_virtual_key(
 
 ///|
 #cfg(platform="windows")
-fn Win32InputRecord::win32_is_keypad(self : Win32InputRecord) -> Bool {
+fn Win32KeyRecord::win32_is_keypad(self : Win32KeyRecord) -> Bool {
   win32_virtual_key_is_keypad(self.virtual_key_code) ||
   self.win32_is_keypad_enter() ||
   self.win32_is_keypad_navigation()
@@ -503,24 +722,22 @@ fn Win32InputRecord::win32_is_keypad(self : Win32InputRecord) -> Bool {
 
 ///|
 #cfg(platform="windows")
-fn Win32InputRecord::win32_is_keypad_enter(self : Win32InputRecord) -> Bool {
+fn Win32KeyRecord::win32_is_keypad_enter(self : Win32KeyRecord) -> Bool {
   self.virtual_key_code == 0x0d &&
   win32_has_state(self.control_key_state, Win32EnhancedKey)
 }
 
 ///|
 #cfg(platform="windows")
-fn Win32InputRecord::win32_is_keypad_navigation(
-  self : Win32InputRecord,
-) -> Bool {
+fn Win32KeyRecord::win32_is_keypad_navigation(self : Win32KeyRecord) -> Bool {
   win32_virtual_key_is_navigation(self.virtual_key_code) &&
   !win32_has_state(self.control_key_state, Win32EnhancedKey)
 }
 
 ///|
 #cfg(platform="windows")
-fn Win32InputRecord::win32_char_key_event(
-  self : Win32InputRecord,
+fn Win32KeyRecord::win32_char_key_event(
+  self : Win32KeyRecord,
   char : Char,
   modifiers : @public_input.KeyModifiers,
   kind : @public_input.KeyEventKind,
@@ -535,7 +752,7 @@ fn Win32InputRecord::win32_char_key_event(
 
 ///|
 #cfg(platform="windows")
-fn win32_text_for_key(record : Win32InputRecord, char : Char) -> String? {
+fn win32_text_for_key(record : Win32KeyRecord, char : Char) -> String? {
   if record.key_down == 0 {
     None
   } else {
@@ -699,17 +916,152 @@ fn win32_decode_surrogate_pair(high : Int, low : Int) -> Char {
 }
 
 ///|
-#borrow(event_type, key_down, repeat_count, virtual_key_code, unicode_char, control_key_state, focus_set)
+#cfg(platform="windows")
+fn Win32RawInputRecord::new() -> Win32RawInputRecord {
+  Win32RawInputRecord(Bytes::make(sizeof_win32_input_record, 0))
+}
+
+///|
+#cfg(platform="windows")
+fn Win32RawInputRecord::parse(self : Win32RawInputRecord) -> Win32InputRecord {
+  let bytes = self.0[:]
+  guard win32_u16_at(bytes, 0) is Some(event_type) else {
+    return Unsupported(0)
+  }
+  match event_type {
+    Win32RecordKey => win32_parse_key_record(bytes)
+    Win32RecordMouse => win32_parse_mouse_record(bytes)
+    Win32RecordWindowBufferSize => win32_parse_window_buffer_size_record(bytes)
+    Win32RecordFocus => win32_parse_focus_record(bytes)
+    _ => Unsupported(event_type)
+  }
+}
+
+///|
+#cfg(platform="windows")
+fn win32_parse_key_record(bytes : BytesView) -> Win32InputRecord {
+  guard win32_bool_at(bytes, 4) is Some(key_down) else {
+    return Unsupported(Win32RecordKey)
+  }
+  guard win32_u16_at(bytes, 8) is Some(repeat_count) else {
+    return Unsupported(Win32RecordKey)
+  }
+  guard win32_u16_at(bytes, 10) is Some(virtual_key_code) else {
+    return Unsupported(Win32RecordKey)
+  }
+  guard win32_u16_at(bytes, 12) is Some(virtual_scan_code) else {
+    return Unsupported(Win32RecordKey)
+  }
+  guard win32_u16_at(bytes, 14) is Some(unicode_char) else {
+    return Unsupported(Win32RecordKey)
+  }
+  guard win32_dword_at(bytes, 16) is Some(control_key_state) else {
+    return Unsupported(Win32RecordKey)
+  }
+  Key({
+    key_down: if key_down {
+      1
+    } else {
+      0
+    },
+    repeat_count,
+    virtual_key_code,
+    virtual_scan_code,
+    unicode_char,
+    control_key_state,
+  })
+}
+
+///|
+#cfg(platform="windows")
+fn win32_parse_mouse_record(bytes : BytesView) -> Win32InputRecord {
+  guard win32_i16_at(bytes, 4) is Some(x) else {
+    return Unsupported(Win32RecordMouse)
+  }
+  guard win32_i16_at(bytes, 6) is Some(y) else {
+    return Unsupported(Win32RecordMouse)
+  }
+  guard win32_dword_at(bytes, 8) is Some(button_state) else {
+    return Unsupported(Win32RecordMouse)
+  }
+  guard win32_dword_at(bytes, 12) is Some(control_key_state) else {
+    return Unsupported(Win32RecordMouse)
+  }
+  guard win32_dword_at(bytes, 16) is Some(event_flags) else {
+    return Unsupported(Win32RecordMouse)
+  }
+  Mouse({ x, y, button_state, control_key_state, event_flags })
+}
+
+///|
+#cfg(platform="windows")
+fn win32_parse_window_buffer_size_record(bytes : BytesView) -> Win32InputRecord {
+  guard win32_i16_at(bytes, 4) is Some(x) else {
+    return Unsupported(Win32RecordWindowBufferSize)
+  }
+  guard win32_i16_at(bytes, 6) is Some(y) else {
+    return Unsupported(Win32RecordWindowBufferSize)
+  }
+  WindowBufferSize({ x, y })
+}
+
+///|
+#cfg(platform="windows")
+fn win32_parse_focus_record(bytes : BytesView) -> Win32InputRecord {
+  guard win32_bool_at(bytes, 4) is Some(focus_set) else {
+    return Unsupported(Win32RecordFocus)
+  }
+  Focus(focus_set)
+}
+
+///|
+#cfg(platform="windows")
+fn win32_bool_at(bytes : BytesView, offset : Int) -> Bool? {
+  win32_dword_at(bytes, offset).map(value => value != 0)
+}
+
+///|
+#cfg(platform="windows")
+fn win32_i16_at(bytes : BytesView, offset : Int) -> Int? {
+  guard win32_u16_at(bytes, offset) is Some(value) else { return None }
+  if value >= 0x8000 {
+    Some(value - 0x10000)
+  } else {
+    Some(value)
+  }
+}
+
+///|
+#cfg(platform="windows")
+fn win32_u16_at(bytes : BytesView, offset : Int) -> Int? {
+  if offset < 0 || offset + 1 >= bytes.length() {
+    return None
+  }
+  Some(bytes[offset].to_int() + bytes[offset + 1].to_int() * 0x100)
+}
+
+///|
+#cfg(platform="windows")
+fn win32_dword_at(bytes : BytesView, offset : Int) -> Int? {
+  guard win32_u16_at(bytes, offset) is Some(low) else { return None }
+  guard win32_i16_at(bytes, offset + 2) is Some(high) else { return None }
+  Some(low + high * 0x10000)
+}
+
+///|
+#cfg(platform="windows")
+extern "c" fn win32_sizeof_input_record() -> Int = "moonbit_tty_get_sizeof_input_record"
+
+///|
+#cfg(platform="windows")
+let sizeof_win32_input_record : Int = win32_sizeof_input_record()
+
+///|
+#borrow(record)
 #cfg(platform="windows")
 extern "c" fn win32_read_console_input_record_ffi(
   fd : @async/types.Fd,
-  event_type : Ref[Int],
-  key_down : Ref[Int],
-  repeat_count : Ref[Int],
-  virtual_key_code : Ref[Int],
-  unicode_char : Ref[Int],
-  control_key_state : Ref[Int],
-  focus_set : Ref[Int],
+  record : Win32RawInputRecord,
 ) -> Int = "moonbit_tty_read_console_input_record"
 
 ///|
@@ -717,31 +1069,14 @@ extern "c" fn win32_read_console_input_record_ffi(
 fn win32_read_console_input_record(
   fd : @async/types.Fd,
 ) -> Win32InputRecord? raise {
-  let event_type = Ref(0)
-  let key_down = Ref(0)
-  let repeat_count = Ref(0)
-  let virtual_key_code = Ref(0)
-  let unicode_char = Ref(0)
-  let control_key_state = Ref(0)
-  let focus_set = Ref(0)
-  let rc = win32_read_console_input_record_ffi(
-    fd, event_type, key_down, repeat_count, virtual_key_code, unicode_char, control_key_state,
-    focus_set,
-  )
+  let record = Win32RawInputRecord::new()
+  let rc = win32_read_console_input_record_ffi(fd, record)
   if rc < 0 {
     @os_error.check_errno("ReadConsoleInputW")
   }
   if rc == 0 {
     None
   } else {
-    Some({
-      event_type: event_type.val,
-      key_down: key_down.val,
-      repeat_count: repeat_count.val,
-      virtual_key_code: virtual_key_code.val,
-      unicode_char: unicode_char.val,
-      control_key_state: control_key_state.val,
-      focus_set: focus_set.val,
-    })
+    Some(record.parse())
   }
 }
