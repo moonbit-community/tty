@@ -74,6 +74,43 @@ async test "win32 console source decodes bracketed paste key records" {
 
 ///|
 #cfg(platform="windows")
+async test "win32 console source preserves native events during internal reads" {
+  let (dummy_input, dummy_output) = @async/pipe.pipe()
+  defer dummy_input.close()
+  defer dummy_output.close()
+  let source = Win32ConsoleInputSource::new(dummy_input.fd(), dummy_output.fd())
+  defer source.close()
+  @async.with_task_group() <| group => {
+    group.spawn_bg() <| () => {
+      source.read_record({
+        event_type: Win32RecordFocus,
+        key_down: 0,
+        repeat_count: 0,
+        virtual_key_code: 0,
+        unicode_char: 0,
+        control_key_state: 0,
+        focus_set: 1,
+      })
+      for char in "\u{1B}[7;9R" {
+        source.read_key_record(win32_test_key_record(char))
+      }
+    }
+    match source.read_internal_event(50) {
+      CursorPosition(row~, col~) => {
+        @debug.assert_eq(row, 7)
+        @debug.assert_eq(col, 9)
+      }
+      _ => fail("expected cursor position event")
+    }
+    match source.try_get_event() {
+      Some(Input(FocusIn)) => ()
+      _ => fail("expected native focus event to remain queued")
+    }
+  }
+}
+
+///|
+#cfg(platform="windows")
 async test "win32 console source preserves printable key modifiers" {
   let (dummy_input, dummy_output) = @async/pipe.pipe()
   defer dummy_input.close()

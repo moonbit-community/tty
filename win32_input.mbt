@@ -129,6 +129,31 @@ async fn Tty::read_win32_console_event(
 
 ///|
 #cfg(platform="windows")
+async fn Tty::read_internal_event_from_sources(
+  self : Self,
+  esc_timeout_ms : Int,
+) -> @input.Event {
+  match self.win32_console_input {
+    Some(source) =>
+      @async.with_task_group() <| group => {
+        group.spawn_bg(no_wait=true) <| () => { source.read_records() }
+        source.read_internal_event(esc_timeout_ms)
+      }
+    None => self.reader.read_event(esc_timeout_ms~)
+  }
+}
+
+///|
+#cfg(not(platform="windows"))
+async fn Tty::read_internal_event_from_sources(
+  self : Self,
+  esc_timeout_ms : Int,
+) -> @input.Event {
+  self.reader.read_event(esc_timeout_ms~)
+}
+
+///|
+#cfg(platform="windows")
 async fn Win32ConsoleInputSource::read_event(
   self : Win32ConsoleInputSource,
   esc_timeout_ms : Int,
@@ -153,7 +178,7 @@ async fn Win32ConsoleInputSource::read_decoded_input_event(
   esc_timeout_ms : Int,
 ) -> Event {
   for ;; {
-    match self.reader.read_event(esc_timeout_ms~) {
+    match self.read_internal_event(esc_timeout_ms) {
       Input(event) => return Input(event)
       CursorPosition(..) => ()
       KeyboardEnhancementFlags(_) => ()
@@ -161,6 +186,15 @@ async fn Win32ConsoleInputSource::read_decoded_input_event(
       DynamicColor(..) => ()
     }
   }
+}
+
+///|
+#cfg(platform="windows")
+async fn Win32ConsoleInputSource::read_internal_event(
+  self : Win32ConsoleInputSource,
+  esc_timeout_ms : Int,
+) -> @input.Event {
+  self.reader.read_event(esc_timeout_ms~)
 }
 
 ///|

@@ -308,6 +308,39 @@ Follow-up result:
   classification.
 - Added a Windows white-box regression test for keypad End versus enhanced End.
 
+## Follow-up: Route Query Reads Through Windows Console Source
+
+Automated review found that root request/response methods still read directly
+from the original byte reader on Windows console handles. That can consume and
+drop native console records such as resize or focus while waiting for cursor,
+kitty, or OSC replies.
+
+Accepted implementation shape:
+
+- Add a private `Tty::read_internal_event` helper for root query loops.
+- Keep the helper returning the internal `@input.Event` stream so query methods
+  can still observe cursor-position, kitty, primary device attributes, and OSC
+  dynamic-color replies.
+- On Windows console handles, route this helper through the private
+  `Win32ConsoleInputSource` decoder while its record reader preserves native
+  resize/focus/direct-key records in the source event queue for later
+  `Tty::read_event`.
+- On non-Windows and non-console Windows handles, keep the existing
+  `self.reader.read_event` behavior.
+- Keep the public API unchanged.
+
+Follow-up result:
+
+- Added private `Tty::read_internal_event` and platform-specific source
+  dispatch for root query loops.
+- Windows console queries now read terminal response events through the private
+  `Win32ConsoleInputSource` decoder while the source record reader preserves
+  native focus/resize/direct-key records in its event queue.
+- Cursor position, kitty keyboard support, and OSC dynamic color queries now
+  use the shared helper.
+- Added a Windows white-box regression test proving a native focus record stays
+  queued while an internal cursor-position response is decoded.
+
 ## Public API Audit
 
 - No public MoonBit API changed.
@@ -335,13 +368,16 @@ Follow-up result:
   passed, 1 test.
 - `moon test . --filter "win32 console source preserves keypad navigation metadata"`:
   passed, 1 test.
+- `moon test . --filter "win32 console source preserves native events during internal reads"`:
+  passed, 1 test.
 - `moon test . --filter "win32 console source preserves AltGr text input"`:
   passed, 1 test.
 - `moon test . --filter "win32 console source preserves keypad key metadata"`:
   passed, 1 test.
 - `moon test . --filter "win32 console source preserves keypad enter metadata"`:
   passed, 1 test.
-- `moon test`: passed, 158 tests.
+- `moon test .`: passed, 35 tests.
+- `moon test`: passed, 159 tests.
 - `moon check --target all`: passed with the same pre-existing warnings.
 - `moon info`: passed with the known Windows-generated `pkg.generated.mbti`
   `Fd::fd` drift; the generated drift was restored.

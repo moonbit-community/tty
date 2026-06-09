@@ -90,6 +90,14 @@ async fn Tty::read_decoded_input_event(
 }
 
 ///|
+async fn Tty::read_internal_event(
+  self : Self,
+  esc_timeout_ms? : Int = 50,
+) -> @input.Event {
+  self.read_internal_event_from_sources(esc_timeout_ms)
+}
+
+///|
 /// Write bytes to the terminal output handle.
 pub async fn Tty::write(self : Self, data : &@async/io.Data) -> Unit {
   self.output.write(data)
@@ -113,7 +121,7 @@ pub async fn Tty::query_cursor_position(
   @async.with_timeout_opt(timeout_ms, () => {
     self.write(@vt.request_cursor_position)
     for ;; {
-      match self.reader.read_event() {
+      match self.read_internal_event() {
         CursorPosition(row~, col~) => return { row, col }
         Input(event) => self.pending_input.push(event)
         KeyboardEnhancementFlags(_) => ()
@@ -138,7 +146,7 @@ pub async fn Tty::query_kitty_keyboard_support(
       self.write(@vt.query_keyboard_enhancement_flags)
       self.write(@vt.request_primary_device_attributes)
       for ;; {
-        match self.reader.read_event() {
+        match self.read_internal_event() {
           KeyboardEnhancementFlags(_) => return true
           PrimaryDeviceAttributes(_) => return false
           CursorPosition(..) => ()
@@ -201,7 +209,7 @@ async fn Tty::query_dynamic_color(
   @async.with_timeout_opt(timeout_ms, () => {
     self.write(request)
     for ;; {
-      match self.reader.read_event() {
+      match self.read_internal_event() {
         DynamicColor(code~, red~, green~, blue~) if code == expected_code =>
           return { red, green, blue }
         DynamicColor(..) => ()
