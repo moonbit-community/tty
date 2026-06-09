@@ -19,6 +19,7 @@ pub(all) enum Event {
 ///
 /// `Tty` is for terminal protocols that need to write a request and read the
 /// response from the same terminal input stream. It does not model a screen.
+#cfg(platform="windows")
 struct Tty {
   input : &Reader
   output : &Writer
@@ -28,7 +29,17 @@ struct Tty {
 }
 
 ///|
+#cfg(not(platform="windows"))
+struct Tty {
+  input : &Reader
+  output : &Writer
+  reader : @input.EventReader
+  pending_input : Array[@public_input.InputEvent]
+}
+
+///|
 /// Create a coordinated terminal handle from input and output handles.
+#cfg(platform="windows")
 pub fn[I : Reader, O : Writer] Tty::new(input : I, output : O) -> Tty {
   let input = input as &Reader
   let output = output as &Writer
@@ -43,6 +54,20 @@ pub fn[I : Reader, O : Writer] Tty::new(input : I, output : O) -> Tty {
 }
 
 ///|
+/// Create a coordinated terminal handle from input and output handles.
+#cfg(not(platform="windows"))
+pub fn[I : Reader, O : Writer] Tty::new(input : I, output : O) -> Tty {
+  let input = input as &Reader
+  let output = output as &Writer
+  {
+    input,
+    output,
+    reader: @input.EventReader::new(input as &@async/io.Reader),
+    pending_input: [],
+  }
+}
+
+///|
 /// Wrap process stdio as one coordinated terminal handle.
 pub fn Tty::stdio() -> Tty {
   Tty::new(@async/stdio.stdin, @async/stdio.stdout)
@@ -52,11 +77,22 @@ pub fn Tty::stdio() -> Tty {
 /// Close the underlying input and output handles.
 ///
 /// Closing stdio-backed handles is a no-op.
+#cfg(platform="windows")
 pub fn Tty::close(self : Self) -> Unit {
   match self.win32_console_input {
     Some(source) => source.close()
     None => ()
   }
+  self.input.close()
+  self.output.close()
+}
+
+///|
+/// Close the underlying input and output handles.
+///
+/// Closing stdio-backed handles is a no-op.
+#cfg(not(platform="windows"))
+pub fn Tty::close(self : Self) -> Unit {
   self.input.close()
   self.output.close()
 }

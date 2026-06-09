@@ -55,17 +55,19 @@ priv struct Win32InputRecord {
 }
 
 ///|
+#cfg(platform="windows")
 priv struct Win32ConsoleInputSource {
   input_fd : @async/types.Fd
   output_fd : @async/types.Fd
   byte_read : @async/io.PipeRead
   byte_write : @async/io.PipeWrite
   reader : @input.EventReader
-  events : @aqueue.Queue[Event]
+  events : @async.Queue[Event]
   pending_surrogate : Ref[Int]
 }
 
 ///|
+#cfg(platform="windows")
 fn Win32ConsoleInputSource::new(
   input_fd : @async/types.Fd,
   output_fd : @async/types.Fd,
@@ -83,6 +85,7 @@ fn Win32ConsoleInputSource::new(
 }
 
 ///|
+#cfg(platform="windows")
 fn Win32ConsoleInputSource::close(self : Win32ConsoleInputSource) -> Unit {
   ignore(self.input_fd)
   ignore(self.output_fd)
@@ -104,15 +107,6 @@ fn win32_console_input_source(
   } else {
     None
   }
-}
-
-///|
-#cfg(not(platform="windows"))
-fn win32_console_input_source(
-  _input_fd : @async/types.Fd,
-  _output_fd : @async/types.Fd,
-) -> Win32ConsoleInputSource? {
-  None
 }
 
 ///|
