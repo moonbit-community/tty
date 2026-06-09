@@ -219,7 +219,11 @@ Window size is exposed through `Tty` because callers usually need the visible
 screen buffer size while coordinating terminal input and output. The current
 query implementation uses the output-side handle. Unix resize notification is a
 process-global `SIGWINCH` source surfaced as coalesced root `Tty::read_event`
-resize events. Windows resize events need a later console-input backend.
+resize events. Windows resize notification comes from native console input
+records. Resize/focus native events and decoded byte-stream input each preserve
+their own source order, but `Tty::read_event` does not guarantee a strict total
+order between native resize/focus notifications and terminal byte sequences;
+this matches the Unix signal-backed resize model.
 
 ## Raw Mode
 

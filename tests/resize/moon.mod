@@ -1,10 +1,9 @@
-name = "moonbit-community/tty/tests"
+name = "moonbit-community/tty/tests/resize"
 
 version = "0.1.0"
 
 import {
   "moonbit-community/tty@0.1.0",
-  "moonbit-community/pty@0.2.1",
   "moonbitlang/async@0.19.1",
 }
 

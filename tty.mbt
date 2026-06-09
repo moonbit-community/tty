@@ -23,6 +23,7 @@ struct Tty {
   input : &Reader
   output : &Writer
   reader : @input.EventReader
+  win32_console_input : Win32ConsoleInputSource?
   pending_input : Array[@public_input.InputEvent]
 }
 
@@ -31,10 +32,12 @@ struct Tty {
 pub fn[I : Reader, O : Writer] Tty::new(input : I, output : O) -> Tty {
   let input = input as &Reader
   let output = output as &Writer
+  let win32_console_input = win32_console_input_source(input.fd(), output.fd())
   {
     input,
     output,
     reader: @input.EventReader::new(input as &@async/io.Reader),
+    win32_console_input,
     pending_input: [],
   }
 }
@@ -50,6 +53,10 @@ pub fn Tty::stdio() -> Tty {
 ///
 /// Closing stdio-backed handles is a no-op.
 pub fn Tty::close(self : Self) -> Unit {
+  match self.win32_console_input {
+    Some(source) => source.close()
+    None => ()
+  }
   self.input.close()
   self.output.close()
 }
@@ -83,6 +90,14 @@ async fn Tty::read_decoded_input_event(
 }
 
 ///|
+async fn Tty::read_internal_event(
+  self : Self,
+  esc_timeout_ms? : Int = 50,
+) -> @input.Event {
+  self.read_internal_event_from_sources(esc_timeout_ms)
+}
+
+///|
 /// Write bytes to the terminal output handle.
 pub async fn Tty::write(self : Self, data : &@async/io.Data) -> Unit {
   self.output.write(data)
@@ -106,7 +121,7 @@ pub async fn Tty::query_cursor_position(
   @async.with_timeout_opt(timeout_ms, () => {
     self.write(@vt.request_cursor_position)
     for ;; {
-      match self.reader.read_event() {
+      match self.read_internal_event() {
         CursorPosition(row~, col~) => return { row, col }
         Input(event) => self.pending_input.push(event)
         KeyboardEnhancementFlags(_) => ()
@@ -131,7 +146,7 @@ pub async fn Tty::query_kitty_keyboard_support(
       self.write(@vt.query_keyboard_enhancement_flags)
       self.write(@vt.request_primary_device_attributes)
       for ;; {
-        match self.reader.read_event() {
+        match self.read_internal_event() {
           KeyboardEnhancementFlags(_) => return true
           PrimaryDeviceAttributes(_) => return false
           CursorPosition(..) => ()
@@ -194,7 +209,7 @@ async fn Tty::query_dynamic_color(
   @async.with_timeout_opt(timeout_ms, () => {
     self.write(request)
     for ;; {
-      match self.reader.read_event() {
+      match self.read_internal_event() {
         DynamicColor(code~, red~, green~, blue~) if code == expected_code =>
           return { red, green, blue }
         DynamicColor(..) => ()

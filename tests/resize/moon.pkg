@@ -1,0 +1,11 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/stdio",
+  "moonbit-community/tty",
+}
+
+options(
+  "is-main": true,
+)
+
+supported_targets = "native"

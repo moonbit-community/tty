@@ -7,5 +7,4 @@ async fn main {
   @stdio.stdout.write("rows: \{size.rows}\n")
   @stdio.stdout.write("cols: \{size.cols}\n")
   tty.write_string("open-write: ok\n")
-  @stdio.stdout.write(b"\x00")
 }
