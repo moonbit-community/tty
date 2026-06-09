@@ -48,11 +48,30 @@ fn win32_test_mouse_record(
 
 ///|
 #cfg(platform="windows")
-fn win32_test_try_get_event(source : Win32ConsoleInputSource) -> Event? {
-  try source.events.try_get() catch {
-    _ => None
-  } noraise {
-    event => event
+fn[I : Reader, O : Writer] win32_test_console_tty(input : I, output : O) -> Tty {
+  let input = input as &Reader
+  let output = output as &Writer
+  let input_backend = WindowsInput::console(input.fd())
+  {
+    input,
+    output,
+    reader: input_backend.event_reader(input as &@async/io.Reader),
+    input_backend,
+    pending_input: [],
+  }
+}
+
+///|
+#cfg(platform="windows")
+fn win32_test_try_get_event(tty : Tty) -> Event? {
+  match tty.input_backend {
+    Console(events~, ..) =>
+      try events.try_get() catch {
+        _ => None
+      } noraise {
+        event => event
+      }
+    ByteStream => None
   }
 }
 
@@ -153,9 +172,7 @@ test "win32 raw input record parses focus records" {
 #cfg(platform="windows")
 async test "win32 console source ignores key-up records" {
   let (dummy_input, dummy_output) = @async/pipe.pipe()
-  defer dummy_input.close()
-  defer dummy_output.close()
-  let source = Win32ConsoleInputSource::new(dummy_input.fd(), dummy_output.fd())
+  let source = win32_test_console_tty(dummy_input, dummy_output)
   defer source.close()
   source.read_key_record(win32_test_key_record('a', key_down=0))
   match win32_test_try_get_event(source) {
@@ -168,9 +185,7 @@ async test "win32 console source ignores key-up records" {
 #cfg(platform="windows")
 async test "win32 console source decodes bracketed paste key records" {
   let (dummy_input, dummy_output) = @async/pipe.pipe()
-  defer dummy_input.close()
-  defer dummy_output.close()
-  let source = Win32ConsoleInputSource::new(dummy_input.fd(), dummy_output.fd())
+  let source = win32_test_console_tty(dummy_input, dummy_output)
   defer source.close()
   @async.with_task_group() <| group => {
     group.spawn_bg() <| () => {
@@ -189,9 +204,7 @@ async test "win32 console source decodes bracketed paste key records" {
 #cfg(platform="windows")
 async test "win32 console source preserves native events during internal reads" {
   let (dummy_input, dummy_output) = @async/pipe.pipe()
-  defer dummy_input.close()
-  defer dummy_output.close()
-  let source = Win32ConsoleInputSource::new(dummy_input.fd(), dummy_output.fd())
+  let source = win32_test_console_tty(dummy_input, dummy_output)
   defer source.close()
   @async.with_task_group() <| group => {
     group.spawn_bg() <| () => {
@@ -200,7 +213,7 @@ async test "win32 console source preserves native events during internal reads" 
         source.read_key_record(win32_test_key_record(char))
       }
     }
-    match source.read_internal_event(50) {
+    match source.reader.read_event(esc_timeout_ms=50) {
       CursorPosition(row~, col~) => {
         @debug.assert_eq(row, 7)
         @debug.assert_eq(col, 9)
@@ -218,9 +231,7 @@ async test "win32 console source preserves native events during internal reads" 
 #cfg(platform="windows")
 async test "win32 console source maps native mouse records" {
   let (dummy_input, dummy_output) = @async/pipe.pipe()
-  defer dummy_input.close()
-  defer dummy_output.close()
-  let source = Win32ConsoleInputSource::new(dummy_input.fd(), dummy_output.fd())
+  let source = win32_test_console_tty(dummy_input, dummy_output)
   defer source.close()
   source.read_mouse_record(
     win32_test_mouse_record(x=30, y=2, event_flags=Win32MouseMoved),
@@ -288,9 +299,7 @@ async test "win32 console source maps native mouse records" {
 #cfg(platform="windows")
 async test "win32 console source preserves printable key modifiers" {
   let (dummy_input, dummy_output) = @async/pipe.pipe()
-  defer dummy_input.close()
-  defer dummy_output.close()
-  let source = Win32ConsoleInputSource::new(dummy_input.fd(), dummy_output.fd())
+  let source = win32_test_console_tty(dummy_input, dummy_output)
   defer source.close()
   source.read_key_record(
     win32_test_key_record('a', control_key_state=Win32LeftAltPressed),
@@ -331,9 +340,7 @@ async test "win32 console source preserves printable key modifiers" {
 #cfg(platform="windows")
 async test "win32 console source preserves ctrl left bracket" {
   let (dummy_input, dummy_output) = @async/pipe.pipe()
-  defer dummy_input.close()
-  defer dummy_output.close()
-  let source = Win32ConsoleInputSource::new(dummy_input.fd(), dummy_output.fd())
+  let source = win32_test_console_tty(dummy_input, dummy_output)
   defer source.close()
   source.read_key_record(
     win32_test_key_record(
@@ -359,9 +366,7 @@ async test "win32 console source preserves ctrl left bracket" {
 #cfg(platform="windows")
 async test "win32 console source preserves ctrl space" {
   let (dummy_input, dummy_output) = @async/pipe.pipe()
-  defer dummy_input.close()
-  defer dummy_output.close()
-  let source = Win32ConsoleInputSource::new(dummy_input.fd(), dummy_output.fd())
+  let source = win32_test_console_tty(dummy_input, dummy_output)
   defer source.close()
   source.read_key_record(
     win32_test_key_record_charcode(
@@ -387,9 +392,7 @@ async test "win32 console source preserves ctrl space" {
 #cfg(platform="windows")
 async test "win32 console source preserves AltGr text input" {
   let (dummy_input, dummy_output) = @async/pipe.pipe()
-  defer dummy_input.close()
-  defer dummy_output.close()
-  let source = Win32ConsoleInputSource::new(dummy_input.fd(), dummy_output.fd())
+  let source = win32_test_console_tty(dummy_input, dummy_output)
   defer source.close()
   @async.with_task_group() <| group => {
     group.spawn_bg() <| () => {
@@ -415,9 +418,7 @@ async test "win32 console source preserves AltGr text input" {
 #cfg(platform="windows")
 async test "win32 console source preserves keypad key metadata" {
   let (dummy_input, dummy_output) = @async/pipe.pipe()
-  defer dummy_input.close()
-  defer dummy_output.close()
-  let source = Win32ConsoleInputSource::new(dummy_input.fd(), dummy_output.fd())
+  let source = win32_test_console_tty(dummy_input, dummy_output)
   defer source.close()
   source.read_key_record(
     win32_test_key_record(
@@ -455,9 +456,7 @@ async test "win32 console source preserves keypad key metadata" {
 #cfg(platform="windows")
 async test "win32 console source preserves keypad enter metadata" {
   let (dummy_input, dummy_output) = @async/pipe.pipe()
-  defer dummy_input.close()
-  defer dummy_output.close()
-  let source = Win32ConsoleInputSource::new(dummy_input.fd(), dummy_output.fd())
+  let source = win32_test_console_tty(dummy_input, dummy_output)
   defer source.close()
   source.read_key_record(
     win32_test_key_record(
@@ -483,9 +482,7 @@ async test "win32 console source preserves keypad enter metadata" {
 #cfg(platform="windows")
 async test "win32 console source preserves keypad navigation metadata" {
   let (dummy_input, dummy_output) = @async/pipe.pipe()
-  defer dummy_input.close()
-  defer dummy_output.close()
-  let source = Win32ConsoleInputSource::new(dummy_input.fd(), dummy_output.fd())
+  let source = win32_test_console_tty(dummy_input, dummy_output)
   defer source.close()
   source.read_key_record(
     win32_test_key_record_charcode(0, virtual_key_code=0x23),

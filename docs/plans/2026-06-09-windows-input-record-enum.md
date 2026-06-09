@@ -120,3 +120,60 @@ record enum, and handle native mouse records produced by `ReadConsoleInputW`.
 
 - No public MoonBit API change intended.
 - `moon info` produced no intended `.mbti` public API diff.
+
+## Follow-up: Flatten Windows Input Backend
+
+### Goal
+
+Make `Tty.reader` the single byte-stream `EventReader` owner on Windows by
+flattening the Windows console input source state into a private Windows input
+backend stored by `Tty`.
+
+### Accepted Design
+
+- Keep the change Windows-only and private to the root package.
+- Replace `Win32ConsoleInputSource` with a private `WindowsInput` enum:
+  - `ByteStream` for non-console Windows handles that should read directly from
+    the original input byte stream.
+  - `Console(...)` for Win32 console handles that use `ReadConsoleInputW`,
+    pipe text bytes into `Tty.reader`, and queue direct events.
+- Keep `Tty.reader` as the only `@input.EventReader` field.
+- In the console case, construct `Tty.reader` from the console byte pipe read
+  end; in the fallback case, construct it from the original input reader.
+- Keep existing pipe-based byte delivery and current cancellation behavior; do
+  not introduce a queue-backed byte reader in this refactor.
+- Do not add Windows prefixes to `Tty` field names solely because the struct is
+  under `#cfg(platform="windows")`.
+
+### Public API / Interface Diff
+
+- No public MoonBit API change intended.
+- `pkg.generated.mbti` should remain unchanged after `moon info`.
+
+### Validation Plan
+
+- `moon fmt`
+- `moon test . --filter "win32*" --target-dir .moon-test-win32-flatten-build`
+- `moon check --target-dir .moon-check-flatten-build`
+- `moon info --target-dir .moon-info-flatten-build`
+- Review `.mbti` diff.
+
+### Result
+
+- Replaced `Win32ConsoleInputSource` with the private Windows-only
+  `WindowsInput` backend enum.
+- `Tty` now owns the active `EventReader` on Windows:
+  - `ByteStream` uses the original input byte reader.
+  - `Console` uses the console byte pipe read end.
+- Moved Windows console record reading and record dispatch helpers onto `Tty`.
+- Kept existing pipe-based text-byte delivery and direct event queue behavior.
+
+### Validation Results
+
+- Passed: `moon fmt`
+- Passed: `moon check --target-dir .moon-check-flatten-build`
+- Passed: `moon test . --filter "win32*" --target-dir .moon-test-win32-flatten-build`
+- Passed: `moon info --target-dir .moon-info-flatten-build`
+- Note: `moon info` still rewrites the pre-existing `Fd::fd` generated mbti
+  spelling from `Int` to `@types.Fd`; this flatten refactor does not intend to
+  include that generated public-interface churn.

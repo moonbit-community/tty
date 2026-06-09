@@ -128,59 +128,75 @@ priv struct Win32MouseButtonState {
 
 ///|
 #cfg(platform="windows")
-priv struct Win32ConsoleInputSource {
-  input_fd : @async/types.Fd
-  output_fd : @async/types.Fd
-  byte_read : @async/io.PipeRead
-  byte_write : @async/io.PipeWrite
-  reader : @input.EventReader
-  events : @async.Queue[Event]
-  pending_surrogate : Ref[Int]
-  mouse_button_state : Win32MouseButtonState
+priv enum WindowsInput {
+  ByteStream
+  Console(
+    input_fd~ : @async/types.Fd,
+    byte_read~ : @async/io.PipeRead,
+    byte_write~ : @async/io.PipeWrite,
+    events~ : @async.Queue[Event],
+    pending_surrogate~ : Ref[Int],
+    mouse_button_state~ : Win32MouseButtonState
+  )
 }
 
 ///|
 #cfg(platform="windows")
-fn Win32ConsoleInputSource::new(
-  input_fd : @async/types.Fd,
-  output_fd : @async/types.Fd,
-) -> Win32ConsoleInputSource {
-  let (byte_read, byte_write) = @async/io.pipe()
-  {
-    input_fd,
-    output_fd,
-    byte_read,
-    byte_write,
-    reader: @input.EventReader::new(byte_read as &@async/io.Reader),
-    events: Queue(kind=Unbounded),
-    pending_surrogate: Ref(0),
-    mouse_button_state: { buttons: 0 },
+fn WindowsInput::new(input_fd : @async/types.Fd) -> WindowsInput {
+  if tty_isatty(input_fd) > 0 {
+    WindowsInput::console(input_fd)
+  } else {
+    ByteStream
   }
 }
 
 ///|
 #cfg(platform="windows")
-fn Win32ConsoleInputSource::close(self : Win32ConsoleInputSource) -> Unit {
-  ignore(self.input_fd)
-  ignore(self.output_fd)
-  ignore(self.reader)
-  ignore(self.pending_surrogate.val)
-  ignore(self.mouse_button_state.buttons)
-  self.byte_read.close()
-  self.byte_write.close()
-  self.events.close(clear=true)
+fn WindowsInput::console(input_fd : @async/types.Fd) -> WindowsInput {
+  let (byte_read, byte_write) = @async/io.pipe()
+  Console(
+    input_fd~,
+    byte_read~,
+    byte_write~,
+    events=Queue(kind=Unbounded),
+    pending_surrogate=Ref(0),
+    mouse_button_state={ buttons: 0 },
+  )
 }
 
 ///|
 #cfg(platform="windows")
-fn win32_console_input_source(
-  input_fd : @async/types.Fd,
-  output_fd : @async/types.Fd,
-) -> Win32ConsoleInputSource? {
-  if tty_isatty(input_fd) > 0 {
-    Some(Win32ConsoleInputSource::new(input_fd, output_fd))
-  } else {
-    None
+fn WindowsInput::event_reader(
+  self : WindowsInput,
+  fallback : &@async/io.Reader,
+) -> @input.EventReader {
+  match self {
+    ByteStream => @input.EventReader::new(fallback)
+    Console(byte_read~, ..) =>
+      @input.EventReader::new(byte_read as &@async/io.Reader)
+  }
+}
+
+///|
+#cfg(platform="windows")
+fn WindowsInput::close(self : WindowsInput) -> Unit {
+  match self {
+    ByteStream => ()
+    Console(
+      input_fd~,
+      byte_read~,
+      byte_write~,
+      events~,
+      pending_surrogate~,
+      mouse_button_state~
+    ) => {
+      ignore(input_fd)
+      ignore(pending_surrogate.val)
+      ignore(mouse_button_state.buttons)
+      byte_read.close()
+      byte_write.close()
+      events.close(clear=true)
+    }
   }
 }
 
@@ -190,9 +206,9 @@ async fn Tty::read_win32_console_event(
   self : Self,
   esc_timeout_ms : Int,
 ) -> Event {
-  match self.win32_console_input {
-    Some(source) => source.read_event(esc_timeout_ms)
-    None => self.read_decoded_input_event(esc_timeout_ms)
+  match self.input_backend {
+    Console(..) => self.read_console_event(esc_timeout_ms)
+    ByteStream => self.read_decoded_input_event(esc_timeout_ms)
   }
 }
 
@@ -202,13 +218,13 @@ async fn Tty::read_internal_event_from_sources(
   self : Self,
   esc_timeout_ms : Int,
 ) -> @input.Event {
-  match self.win32_console_input {
-    Some(source) =>
+  match self.input_backend {
+    Console(..) =>
       @async.with_task_group() <| group => {
-        group.spawn_bg(no_wait=true) <| () => { source.read_records() }
-        source.read_internal_event(esc_timeout_ms)
+        group.spawn_bg(no_wait=true) <| () => { self.read_records() }
+        self.reader.read_event(esc_timeout_ms~)
       }
-    None => self.reader.read_event(esc_timeout_ms~)
+    ByteStream => self.reader.read_event(esc_timeout_ms~)
   }
 }
 
@@ -223,171 +239,142 @@ async fn Tty::read_internal_event_from_sources(
 
 ///|
 #cfg(platform="windows")
-async fn Win32ConsoleInputSource::read_event(
-  self : Win32ConsoleInputSource,
-  esc_timeout_ms : Int,
-) -> Event {
+async fn Tty::read_console_event(self : Self, esc_timeout_ms : Int) -> Event {
   @async.with_task_group() <| group => {
     group.spawn_bg(no_wait=true) <| () => { self.read_records() }
-    self.read_decoded_input_event(esc_timeout_ms)
+    self.read_console_input_event(esc_timeout_ms)
   }
 }
 
 ///|
 #cfg(platform="windows")
-async fn Win32ConsoleInputSource::read_decoded_input_event(
-  self : Win32ConsoleInputSource,
+async fn Tty::read_console_input_event(
+  self : Self,
   esc_timeout_ms : Int,
 ) -> Event {
-  @async.with_task_group() <| group => {
-    group.spawn_bg(no_wait=true) <| () => {
-      group.return_immediately(
-        self.read_input_event_from_decoder(esc_timeout_ms),
-      )
-    }
-    self.events.get()
+  match self.input_backend {
+    Console(events~, ..) =>
+      @async.with_task_group() <| group => {
+        group.spawn_bg(no_wait=true) <| () => {
+          group.return_immediately(
+            self.read_decoded_input_event(esc_timeout_ms),
+          )
+        }
+        events.get()
+      }
+    ByteStream => self.read_decoded_input_event(esc_timeout_ms)
   }
 }
 
 ///|
 #cfg(platform="windows")
-async fn Win32ConsoleInputSource::read_input_event_from_decoder(
-  self : Win32ConsoleInputSource,
-  esc_timeout_ms : Int,
-) -> Event {
-  for ;; {
-    match self.read_internal_event(esc_timeout_ms) {
-      Input(event) => return Input(event)
-      CursorPosition(..) => ()
-      KeyboardEnhancementFlags(_) => ()
-      PrimaryDeviceAttributes(_) => ()
-      DynamicColor(..) => ()
-    }
+async fn Tty::read_records(self : Self) -> Unit {
+  match self.input_backend {
+    Console(input_fd~, ..) =>
+      for ;; {
+        match win32_read_console_input_record(input_fd) {
+          None => @async.sleep(10)
+          Some(record) => self.read_record(record)
+        }
+      }
+    ByteStream => ()
   }
 }
 
 ///|
 #cfg(platform="windows")
-async fn Win32ConsoleInputSource::read_internal_event(
-  self : Win32ConsoleInputSource,
-  esc_timeout_ms : Int,
-) -> @input.Event {
-  self.reader.read_event(esc_timeout_ms~)
-}
-
-///|
-#cfg(platform="windows")
-async fn Win32ConsoleInputSource::read_records(
-  self : Win32ConsoleInputSource,
-) -> Unit {
-  for ;; {
-    match win32_read_console_input_record(self.input_fd) {
-      None => @async.sleep(10)
-      Some(record) => self.read_record(record)
-    }
+async fn Tty::read_record(self : Self, record : Win32InputRecord) -> Unit {
+  match self.input_backend {
+    Console(events~, pending_surrogate~, ..) =>
+      match record {
+        Key(record) => self.read_key_record(record)
+        Mouse(record) => self.read_mouse_record(record)
+        WindowBufferSize(_) => {
+          pending_surrogate.val = 0
+          try self.window_size() catch {
+            _ => ()
+          } noraise {
+            size => events.put(Resize(size))
+          }
+        }
+        Focus(focus_set) => {
+          pending_surrogate.val = 0
+          if focus_set {
+            events.put(Input(FocusIn))
+          } else {
+            events.put(Input(FocusOut))
+          }
+        }
+        Unsupported(_) => pending_surrogate.val = 0
+      }
+    ByteStream => ()
   }
 }
 
 ///|
 #cfg(platform="windows")
-async fn Win32ConsoleInputSource::read_record(
-  self : Win32ConsoleInputSource,
-  record : Win32InputRecord,
-) -> Unit {
-  match record {
-    Key(record) => self.read_key_record(record)
-    Mouse(record) => self.read_mouse_record(record)
-    WindowBufferSize(_) => {
-      self.pending_surrogate.val = 0
-      if self.window_size() is Some(size) {
-        self.events.put(Resize(size))
+async fn Tty::read_key_record(self : Self, record : Win32KeyRecord) -> Unit {
+  match self.input_backend {
+    Console(byte_write~, pending_surrogate~, ..) => {
+      ignore(record.virtual_scan_code)
+      if record.key_down == 0 {
+        return
+      }
+      if !record.win32_key_text_uses_decoder() {
+        return self.queue_key_input(record)
+      }
+      match record.win32_key_text(pending_surrogate) {
+        Some(text) =>
+          for _ in 0..<record.win32_repeat_count() {
+            byte_write.write(text)
+          }
+        None => self.queue_key_input(record)
       }
     }
-    Focus(focus_set) => {
-      self.pending_surrogate.val = 0
-      if focus_set {
-        self.events.put(Input(FocusIn))
-      } else {
-        self.events.put(Input(FocusOut))
-      }
-    }
-    Unsupported(_) => self.pending_surrogate.val = 0
+    ByteStream => ()
   }
 }
 
 ///|
 #cfg(platform="windows")
-async fn Win32ConsoleInputSource::read_key_record(
-  self : Win32ConsoleInputSource,
-  record : Win32KeyRecord,
-) -> Unit {
-  ignore(record.virtual_scan_code)
-  if record.key_down == 0 {
-    return
-  }
-  if !record.win32_key_text_uses_decoder() {
-    return self.queue_key_input(record)
-  }
-  match record.win32_key_text(self.pending_surrogate) {
-    Some(text) =>
-      for _ in 0..<record.win32_repeat_count() {
-        self.byte_write.write(text)
+async fn Tty::queue_key_input(self : Self, record : Win32KeyRecord) -> Unit {
+  match self.input_backend {
+    Console(events~, pending_surrogate~, ..) =>
+      match record.win32_key_input(pending_surrogate) {
+        Some(input) =>
+          for _ in 0..<record.win32_repeat_count() {
+            events.put(Input(input))
+          }
+        None => ()
       }
-    None => self.queue_key_input(record)
+    ByteStream => ()
   }
 }
 
 ///|
 #cfg(platform="windows")
-async fn Win32ConsoleInputSource::queue_key_input(
-  self : Win32ConsoleInputSource,
-  record : Win32KeyRecord,
-) -> Unit {
-  match record.win32_key_input(self.pending_surrogate) {
-    Some(input) =>
-      for _ in 0..<record.win32_repeat_count() {
-        self.events.put(Input(input))
-      }
-    None => ()
-  }
-}
-
-///|
-#cfg(platform="windows")
-async fn Win32ConsoleInputSource::read_mouse_record(
-  self : Win32ConsoleInputSource,
-  record : Win32MouseRecord,
-) -> Unit {
-  self.pending_surrogate.val = 0
-  match self.mouse_button_state.event_kind(record) {
-    Some(kind) =>
-      self.events.put(
-        Input(
-          Mouse(
-            @public_input.MouseEvent::new(
-              kind,
-              record.y + 1,
-              record.x + 1,
-              modifiers=record.win32_modifiers(),
+async fn Tty::read_mouse_record(self : Self, record : Win32MouseRecord) -> Unit {
+  match self.input_backend {
+    Console(events~, pending_surrogate~, mouse_button_state~, ..) => {
+      pending_surrogate.val = 0
+      match mouse_button_state.event_kind(record) {
+        Some(kind) =>
+          events.put(
+            Input(
+              Mouse(
+                @public_input.MouseEvent::new(
+                  kind,
+                  record.y + 1,
+                  record.x + 1,
+                  modifiers=record.win32_modifiers(),
+                ),
+              ),
             ),
-          ),
-        ),
-      )
-    None => ()
-  }
-}
-
-///|
-#cfg(platform="windows")
-fn Win32ConsoleInputSource::window_size(
-  self : Win32ConsoleInputSource,
-) -> WindowSize? {
-  let rows = Ref(0)
-  let cols = Ref(0)
-  if tty_get_window_size(self.output_fd, rows, cols) < 0 {
-    None
-  } else {
-    Some({ rows: rows.val, cols: cols.val })
+          )
+        None => ()
+      }
+    }
+    ByteStream => ()
   }
 }
 
