@@ -5,15 +5,29 @@ let number_to_xdigit : ReadOnlyArray[Byte] = [
 ]
 
 ///|
-fn byte_to_hex_line(byte : Byte) -> Bytes {
-  let buf : FixedArray[Byte] = FixedArray::make(6, 0)
-  buf[0] = b'0'
-  buf[1] = b'x'
-  buf[2] = number_to_xdigit[byte.to_int() / 16]
-  buf[3] = number_to_xdigit[byte.to_int() % 16]
-  buf[4] = b'\r'
-  buf[5] = b'\n'
-  buf.unsafe_reinterpret_as_bytes()
+fn byte_to_printable_char(byte : Byte) -> Char? {
+  if byte >= b' ' && byte <= b'~' {
+    Some(byte.to_char())
+  } else {
+    None
+  }
+}
+
+///|
+fn byte_to_raw_line(byte : Byte) -> String {
+  let line = StringBuilder(size_hint=16)
+  line.write_string("0x")
+  line.write_char(number_to_xdigit[byte.to_int() / 16].to_char())
+  line.write_char(number_to_xdigit[byte.to_int() % 16].to_char())
+  match byte_to_printable_char(byte) {
+    Some(char) => {
+      line.write_string(" ")
+      line.write_string(char.escape(quote=true))
+    }
+    None => ()
+  }
+  line.write_string("\r\n")
+  line.to_string()
 }
 
 ///|
@@ -34,7 +48,7 @@ async fn run_raw_loop(tty : @tty.Tty) -> Unit {
       break
     }
     tty.write("read ")
-    tty.write(byte_to_hex_line(byte))
+    tty.write(byte_to_raw_line(byte))
   }
 }
 

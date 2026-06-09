@@ -263,3 +263,141 @@ platform FFI.
 - Passed: `moon test internal/win32 --target-dir .moon-test-internal-win32-parse-bytes-build`
 - Passed: `moon test . --filter "win32*" --target-dir .moon-test-win32-parse-bytes-build`
 - Passed: `moon info --target-dir .moon-info-win32-parse-bytes-build`
+
+## Follow-up: Drain Windows Console Records
+
+### Goal
+
+Reduce split VT input tails on Windows console input by draining the currently
+available `ReadConsoleInputW` records before a short-lived record producer can
+be cancelled by the direct-event vs decoded-byte race.
+
+### Accepted Design
+
+- Keep the change Windows-only and private to the root package.
+- Keep the existing byte pipe and shared `EventReader`; do not introduce a new
+  byte-reader abstraction or persistent producer in this follow-up.
+- In the Windows record producer, treat one polling cycle as:
+  - read records with the existing non-blocking `PeekConsoleInputW` /
+    `ReadConsoleInputW` FFI wrapper until it returns `None`;
+  - dispatch each record through the existing key, mouse, focus, resize, and
+    unsupported handlers in record order;
+  - sleep only when no record was available in that cycle.
+- Queue direct events with synchronous `Queue::try_put` on the existing
+  unbounded direct-event queue, so putting a native mouse/focus/resize/key event
+  is not itself an async cancellation point.
+- This reduces cancellation leaving an already-available VT sequence tail in
+  the Win32 console queue. It still does not guarantee none-or-all delivery if
+  the terminal or ConPTY delivers later records after the escape timeout.
+
+### Public API / Interface Diff
+
+- No public MoonBit API change intended.
+- `pkg.generated.mbti` should remain unchanged after `moon info`.
+
+### Validation Plan
+
+- `moon fmt`
+- `moon test . --filter "win32*" --target-dir .moon-test-win32-drain-build`
+- `moon test internal/input --filter "decode delayed *mouse*" --target-dir .moon-test-input-delayed-mouse-drain-build`
+- `moon check --target-dir .moon-check-win32-drain-build`
+- `moon info --target-dir .moon-info-win32-drain-build`
+- Review `.mbti` diff.
+- `git diff --check`
+
+### Result
+
+- Added a private `Tty::drain_records` helper for Windows console input.
+- The record producer now drains all currently available `INPUT_RECORD` values
+  before sleeping on an empty poll.
+- Direct native events are queued with synchronous `Queue::try_put` on the
+  existing unbounded event queue, so native event delivery no longer introduces
+  an async cancellation point.
+- Kept byte delivery on the existing pipe and did not change the input decoder
+  public or private API.
+
+### Validation Results
+
+- Passed: `moon fmt`
+- Passed: `moon test . --filter "win32*" --target-dir .moon-test-win32-drain-build`
+- Passed: `moon test internal/input --filter "decode delayed *mouse*" --target-dir .moon-test-input-delayed-mouse-drain-build`
+- Passed: `moon check --target-dir .moon-check-win32-drain-build`
+- Passed: `moon info --target-dir .moon-info-win32-drain-build`
+- Passed: `git diff --check`
+- Note: `moon info` still rewrites the pre-existing root `Fd::fd` generated
+  mbti spelling from `Int` to `@types.Fd`; this follow-up restored the root
+  generated interface to avoid unrelated public API churn.
+
+## Follow-up: Use ByteQueue Source For Windows Console Input
+
+### Goal
+
+Stop Windows console input from exposing VT sequence tails such as `[3;20M`
+when `ReadConsoleInputW` key records are translated to bytes for the shared
+input decoder.
+
+### Accepted Design
+
+- Add a separate internal package at `internal/io`.
+- Expose an opaque internal `ByteQueue` that implements `@async/io.Reader` and
+  also provides synchronous byte enqueue helpers for producers.
+- Keep the queue unbounded for the Windows console byte path so producer-side
+  `try_put` calls are synchronous and do not suspend.
+- The reader blocks on `Queue::get` for the first byte, then drains any
+  immediately queued bytes with `try_get` into the caller's buffer.
+- Replace the Windows console byte pipe with a single stored
+  `byte_queue : @internal_io.ByteQueue`.
+- Use the same `ByteQueue` as the reader passed to the single `Tty.reader` and
+  as the producer-side byte sink for Windows key records.
+- Keep direct native events on the existing event queue.
+- Keep the existing drain loop over currently available `INPUT_RECORD` values.
+- Close the byte queue with `@async/io.ReaderClosed` so the reader reports EOF
+  to `EventReader` callers.
+
+### Public API / Interface Diff
+
+- No root public MoonBit API change intended.
+- Root `pkg.generated.mbti` should remain unchanged after `moon info`.
+- `internal/io` exposes an internal-only reader type for use by root Windows
+  input code and tests.
+
+### Validation Plan
+
+- `moon fmt`
+- `moon test internal/io --target-dir .moon-test-internal-io-bytequeue-build`
+- `moon test . --filter "win32*" --target-dir .moon-test-win32-bytequeue-shape-build`
+- `moon test internal/input --filter "decode delayed *mouse*" --target-dir .moon-test-input-delayed-mouse-bytequeue-shape-build`
+- `moon check --target-dir .moon-check-bytequeue-shape-build`
+- `moon info --target-dir .moon-info-bytequeue-shape-build`
+- Review `.mbti` diff.
+- `git diff --check`
+
+### Result
+
+- Added `internal/io` with an opaque internal `ByteQueue`.
+- `ByteQueue` implements `@async/io.Reader`, blocks for the first byte, and
+  drains already queued bytes with `try_get`.
+- `ByteQueue` also exposes producer-side `put_byte`, `put_data`, and `close`
+  helpers.
+- Windows console input now stores one `ByteQueue` instead of an unbuffered pipe
+  or separate queue/reader fields.
+- Key records that should go through the shared input decoder now enqueue UTF-8
+  bytes synchronously through `ByteQueue`.
+- Record dispatch for key, mouse, focus, resize, and unsupported records is now
+  synchronous after the `ReadConsoleInputW` poll succeeds, removing the pipe
+  write cancellation point that could leave VT mouse tails in the console queue.
+- Added Windows white-box coverage proving native direct events can be queued
+  before a complete SGR mouse byte sequence without splitting the sequence.
+
+### Validation Results
+
+- Passed: `moon fmt`
+- Passed: `moon test internal/io --target-dir .moon-test-internal-io-bytequeue-build`
+- Passed: `moon test . --filter "win32*" --target-dir .moon-test-win32-bytequeue-shape-build`
+- Passed: `moon test internal/input --filter "decode delayed *mouse*" --target-dir .moon-test-input-delayed-mouse-bytequeue-shape-build`
+- Passed: `moon check --target-dir .moon-check-bytequeue-shape-build`
+- Passed: `moon info --target-dir .moon-info-bytequeue-shape-build`
+- Passed: `git diff --check`
+- Note: `moon info` still rewrites the pre-existing root `Fd::fd` generated
+  mbti spelling from `Int` to `@types.Fd`; this follow-up restored the root
+  generated interface to avoid unrelated public API churn.

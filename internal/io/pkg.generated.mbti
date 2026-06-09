@@ -1,0 +1,21 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbit-community/tty/internal/io"
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct ByteQueue {
+  // private fields
+}
+pub fn ByteQueue::close(Self) -> Unit
+pub fn ByteQueue::new() -> Self
+pub fn ByteQueue::put_byte(Self, Byte) -> Unit
+pub fn ByteQueue::put_data(Self, &@moonbitlang/async/io.Data) -> Unit
+pub impl @moonbitlang/async/io.Reader for ByteQueue
+
+// Type aliases
+
+// Traits
+

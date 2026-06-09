@@ -142,6 +142,27 @@ async test "win32 console source preserves native events during internal reads" 
 
 ///|
 #cfg(platform="windows")
+async test "win32 console source keeps queued bytes after native event" {
+  let (dummy_input, dummy_output) = @async/pipe.pipe()
+  let source = win32_test_console_tty(dummy_input, dummy_output)
+  defer source.close()
+  source.read_record(Focus(true))
+  for char in "\u{1B}[<0;20;4M" {
+    source.read_key_record(win32_test_key_record(char))
+  }
+  match win32_test_try_get_event(source) {
+    Some(Input(FocusIn)) => ()
+    _ => fail("expected native focus event to remain queued")
+  }
+  match source.read_decoded_input_event(50) {
+    Input(Mouse(event)) =>
+      @debug.assert_eq(event, @public_input.MouseEvent::new(Press(Left), 4, 20))
+    _ => fail("expected complete queued SGR mouse event")
+  }
+}
+
+///|
+#cfg(platform="windows")
 async test "win32 console source maps native mouse records" {
   let (dummy_input, dummy_output) = @async/pipe.pipe()
   let source = win32_test_console_tty(dummy_input, dummy_output)
