@@ -3,6 +3,18 @@
 extern "C" fn open_controlling_terminal() -> @async/types.Fd = "moonbit_tty_open_controlling_terminal"
 
 ///|
+#cfg(platform="windows")
+fn use_raw_fd_import() -> @async/raw_fd.RawFd {
+  abort("unreachable")
+}
+
+///|
+#cfg(platform="windows")
+fn init {
+  ignore(use_raw_fd_import)
+}
+
+///|
 #warnings("-14")
 #cfg(not(platform="windows"))
 priv struct ControllingTerminal {
