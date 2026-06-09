@@ -341,6 +341,41 @@ Follow-up result:
 - Added a Windows white-box regression test proving a native focus record stays
   queued while an internal cursor-position response is decoded.
 
+## Follow-up: Windows Deny-Warn RawFd Import
+
+Windows CI failed after enabling `moon check --deny-warn` because the root
+package imports `moonbitlang/async/raw_fd`, but Windows `#cfg` removes the
+Unix-only `ControllingTerminal` uses before unused-package analysis runs.
+
+Accepted implementation shape:
+
+- Keep the existing Unix `Tty::open` `RawFd` behavior unchanged.
+- Add a Windows-only private helper whose return type references
+  `@async/raw_fd.RawFd`.
+- Reference that helper as a function value from a Windows-only `fn init`
+  without calling it, so the helper and package alias are both considered used
+  while its `abort` body remains unreachable.
+- Do not suppress warning 29 and do not change Unix behavior, public API, or
+  `.mbti` output.
+
+Validation plan:
+
+- `moon check --deny-warn`
+- Manual root-package `moonc check ... -cfg platform=windows`
+- `moon test --deny-warn`
+- `moon fmt`
+- `moon info`
+- `git diff --check`
+
+Follow-up result:
+
+- Added a Windows-only private `use_raw_fd_import` helper and `fn init`
+  reference to keep `moonbitlang/async/raw_fd` visible to Windows unused-import
+  analysis.
+- Reproduced the Windows root-package check locally with `moonc ... -cfg
+  platform=windows`; the unused-package error is fixed.
+- No public interface files changed after `moon info`.
+
 ## Public API Audit
 
 - No public MoonBit API changed.
