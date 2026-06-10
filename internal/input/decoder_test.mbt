@@ -437,6 +437,54 @@ async test "flush escape key" {
 }
 
 ///|
+async test "decode delayed escape exposes csi mouse tail as text" {
+  with_delayed_input(b"\x1b", b"[3;71M", 50, events => {
+    @debug.assert_eq(
+      events.read_event(esc_timeout_ms=10),
+      input_key(@public_input.KeyEvent::new(Escape)),
+    )
+    for char in "[3;71M" {
+      @debug.assert_eq(
+        events.read_event(esc_timeout_ms=10),
+        input_key(@public_input.KeyEvent::new(Char(char), text=[char])),
+      )
+    }
+  })
+}
+
+///|
+async test "decode delayed escape exposes sgr mouse tail as text" {
+  with_delayed_input(b"\x1b", b"[<3;71;12M", 50, events => {
+    @debug.assert_eq(
+      events.read_event(esc_timeout_ms=10),
+      input_key(@public_input.KeyEvent::new(Escape)),
+    )
+    for char in "[<3;71;12M" {
+      @debug.assert_eq(
+        events.read_event(esc_timeout_ms=10),
+        input_key(@public_input.KeyEvent::new(Char(char), text=[char])),
+      )
+    }
+  })
+}
+
+///|
+async test "decode delayed sgr mouse prefix consumes csi prefix as unknown" {
+  with_delayed_input(b"\x1b[<", b"3;71;12M", 50, events => {
+    @debug.assert_eq(
+      events.read_event(esc_timeout_ms=10),
+      input_unknown(b"\x1b[<"),
+    )
+    for char in "3;71;12M" {
+      @debug.assert_eq(
+        events.read_event(esc_timeout_ms=10),
+        input_key(@public_input.KeyEvent::new(Char(char), text=[char])),
+      )
+    }
+  })
+}
+
+///|
 async test "decode escape followed by non printable byte" {
   with_input(b"\x1b\x80", events => {
     @debug.assert_eq(events.read_event(), input_unknown(b"\x1b\x80"))
