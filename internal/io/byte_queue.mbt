@@ -1,8 +1,8 @@
 ///|
 #warnings("-14")
-pub struct ByteQueue {
-  priv queue : @async.Queue[Byte]
-  priv read_buf : @async/io.ReaderBuffer
+struct ByteQueue {
+  queue : @async.Queue[Byte]
+  read_buf : @async/io.ReaderBuffer
 }
 
 ///|

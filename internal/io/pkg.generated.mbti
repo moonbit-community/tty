@@ -6,9 +6,7 @@ package "moonbit-community/tty/internal/io"
 // Errors
 
 // Types and methods
-pub struct ByteQueue {
-  // private fields
-}
+type ByteQueue
 pub fn ByteQueue::close(Self) -> Unit
 pub fn ByteQueue::new() -> Self
 pub fn ByteQueue::put_byte(Self, Byte) -> Unit
