@@ -49,23 +49,21 @@ pub impl @async/io.Reader for ByteQueue with fn _direct_read(
   } noraise {
     byte => byte
   }
-  @async.protect_from_cancel() <| () => {
-    dst[offset] = first
-    let mut len = 1
-    while len < max_len {
-      let next = try self.queue.try_get() catch {
-        @async/io.ReaderClosed => None
-        error => raise error
-      } noraise {
-        byte => byte
-      }
-      if next is Some(byte) {
-        dst[offset + len] = byte
-        len += 1
-      } else {
-        break
-      }
+  dst[offset] = first
+  let mut len = 1
+  while len < max_len {
+    let next = try self.queue.try_get() catch {
+      @async/io.ReaderClosed => None
+      error => raise error
+    } noraise {
+      byte => byte
     }
-    len
+    if next is Some(byte) {
+      dst[offset + len] = byte
+      len += 1
+    } else {
+      break
+    }
   }
+  len
 }
