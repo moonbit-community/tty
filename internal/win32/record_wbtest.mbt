@@ -1,5 +1,4 @@
 ///|
-#cfg(platform="windows")
 fn test_raw_record(event_type : Int) -> FixedArray[Byte] {
   let buf = FixedArray::make(20, b'\x00')
   test_set_u16_le(buf, 0, event_type)
@@ -7,20 +6,17 @@ fn test_raw_record(event_type : Int) -> FixedArray[Byte] {
 }
 
 ///|
-#cfg(platform="windows")
 fn test_input_record(buf : FixedArray[Byte]) -> InputRecord {
   InputRecord::parse(buf.unsafe_reinterpret_as_bytes())
 }
 
 ///|
-#cfg(platform="windows")
 fn test_set_u16_le(buf : FixedArray[Byte], offset : Int, value : Int) -> Unit {
   buf[offset] = (value & 0xff).to_byte()
   buf[offset + 1] = ((value / 0x100) & 0xff).to_byte()
 }
 
 ///|
-#cfg(platform="windows")
 fn test_set_u32_le(buf : FixedArray[Byte], offset : Int, value : Int) -> Unit {
   buf[offset] = (value & 0xff).to_byte()
   buf[offset + 1] = ((value / 0x100) & 0xff).to_byte()
@@ -29,7 +25,6 @@ fn test_set_u32_le(buf : FixedArray[Byte], offset : Int, value : Int) -> Unit {
 }
 
 ///|
-#cfg(platform="windows")
 test "win32 raw input record parses key records" {
   let buf = test_raw_record(RecordKey)
   test_set_u32_le(buf, 4, 1)
@@ -52,7 +47,6 @@ test "win32 raw input record parses key records" {
 }
 
 ///|
-#cfg(platform="windows")
 test "win32 raw input record parses mouse records" {
   let buf = test_raw_record(RecordMouse)
   test_set_u16_le(buf, 4, 30)

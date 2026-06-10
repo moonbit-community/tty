@@ -1,5 +1,4 @@
 ///|
-#cfg(platform="windows")
 pub fn MouseButtonState::input_event(
   self : MouseButtonState,
   record : MouseRecord,
@@ -21,7 +20,6 @@ pub fn MouseButtonState::input_event(
 }
 
 ///|
-#cfg(platform="windows")
 fn MouseButtonState::event_kind(
   self : MouseButtonState,
   record : MouseRecord,
@@ -80,13 +78,11 @@ fn MouseButtonState::event_kind(
 }
 
 ///|
-#cfg(platform="windows")
 fn MouseRecord::modifiers(self : MouseRecord) -> @public_input.KeyModifiers {
   modifiers_from_control_key_state(self.control_key_state)
 }
 
 ///|
-#cfg(platform="windows")
 fn newly_pressed_mouse_button(
   previous : Int,
   buttons : Int,
@@ -105,7 +101,6 @@ fn newly_pressed_mouse_button(
 }
 
 ///|
-#cfg(platform="windows")
 fn newly_released_mouse_button(
   previous : Int,
   buttons : Int,
@@ -124,7 +119,6 @@ fn newly_released_mouse_button(
 }
 
 ///|
-#cfg(platform="windows")
 fn mouse_button_from_state(state : Int) -> @public_input.MouseButton? {
   if (state & MouseLeftButton) != 0 {
     Some(Left)
@@ -138,14 +132,12 @@ fn mouse_button_from_state(state : Int) -> @public_input.MouseButton? {
 }
 
 ///|
-#cfg(platform="windows")
 fn signed_high_word(value : Int) -> Int {
   let low_word = value & 0xffff
   (value - low_word) / 0x10000
 }
 
 ///|
-#cfg(platform="windows")
 fn modifiers_from_control_key_state(state : Int) -> @public_input.KeyModifiers {
   @public_input.KeyModifiers::new(
     shift=has_state(state, ShiftPressed),

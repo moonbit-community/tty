@@ -1,85 +1,64 @@
 ///|
-#cfg(platform="windows")
 pub const RecordKey : Int = 0x0001
 
 ///|
-#cfg(platform="windows")
 pub const RecordMouse : Int = 0x0002
 
 ///|
-#cfg(platform="windows")
 pub const RecordWindowBufferSize : Int = 0x0004
 
 ///|
-#cfg(platform="windows")
 pub const RecordFocus : Int = 0x0010
 
 ///|
-#cfg(platform="windows")
 pub const RightAltPressed : Int = 0x0001
 
 ///|
-#cfg(platform="windows")
 pub const LeftAltPressed : Int = 0x0002
 
 ///|
-#cfg(platform="windows")
 pub const RightCtrlPressed : Int = 0x0004
 
 ///|
-#cfg(platform="windows")
 pub const LeftCtrlPressed : Int = 0x0008
 
 ///|
-#cfg(platform="windows")
 pub const ShiftPressed : Int = 0x0010
 
 ///|
-#cfg(platform="windows")
 pub const NumLockOn : Int = 0x0020
 
 ///|
-#cfg(platform="windows")
 pub const CapsLockOn : Int = 0x0080
 
 ///|
-#cfg(platform="windows")
 pub const EnhancedKey : Int = 0x0100
 
 ///|
-#cfg(platform="windows")
 pub const MouseMoved : Int = 0x0001
 
 ///|
-#cfg(platform="windows")
 pub const MouseDoubleClick : Int = 0x0002
 
 ///|
-#cfg(platform="windows")
 pub const MouseWheeled : Int = 0x0004
 
 ///|
-#cfg(platform="windows")
 pub const MouseHorizontalWheeled : Int = 0x0008
 
 ///|
-#cfg(platform="windows")
 pub const MouseLeftButton : Int = 0x0001
 
 ///|
-#cfg(platform="windows")
 pub const MouseRightButton : Int = 0x0002
 
 ///|
-#cfg(platform="windows")
 pub const MouseMiddleButton : Int = 0x0004
 
 ///|
-#cfg(platform="windows")
 const MouseButtonMask : Int = 0x0007
 
 ///|
-#cfg(platform="windows")
 pub(all) enum InputRecord {
   Key(KeyRecord)
   Mouse(MouseRecord)
@@ -89,14 +68,12 @@ pub(all) enum InputRecord {
 }
 
 ///|
-#cfg(platform="windows")
 pub struct Coord {
   x : Int
   y : Int
 }
 
 ///|
-#cfg(platform="windows")
 pub struct KeyRecord {
   key_down : Int
   repeat_count : Int
@@ -107,7 +84,6 @@ pub struct KeyRecord {
 }
 
 ///|
-#cfg(platform="windows")
 pub struct MouseRecord {
   x : Int
   y : Int
@@ -117,13 +93,11 @@ pub struct MouseRecord {
 }
 
 ///|
-#cfg(platform="windows")
 pub struct MouseButtonState {
   mut buttons : Int
 }
 
 ///|
-#cfg(platform="windows")
 pub fn KeyRecord::new(
   key_down? : Int = 1,
   repeat_count? : Int = 1,
@@ -143,7 +117,6 @@ pub fn KeyRecord::new(
 }
 
 ///|
-#cfg(platform="windows")
 pub fn MouseRecord::new(
   x? : Int = 0,
   y? : Int = 0,
@@ -155,13 +128,11 @@ pub fn MouseRecord::new(
 }
 
 ///|
-#cfg(platform="windows")
 pub fn MouseButtonState::new() -> MouseButtonState {
   { buttons: 0 }
 }
 
 ///|
-#cfg(platform="windows")
 pub fn InputRecord::parse(record : Bytes) -> InputRecord {
   let bytes = record[:]
   guard u16_at(bytes, 0) is Some(event_type) else { return Unsupported(0) }
@@ -175,7 +146,6 @@ pub fn InputRecord::parse(record : Bytes) -> InputRecord {
 }
 
 ///|
-#cfg(platform="windows")
 fn parse_key_record(bytes : BytesView) -> InputRecord {
   guard bool_at(bytes, 4) is Some(key_down) else {
     return Unsupported(RecordKey)
@@ -208,7 +178,6 @@ fn parse_key_record(bytes : BytesView) -> InputRecord {
 }
 
 ///|
-#cfg(platform="windows")
 fn parse_mouse_record(bytes : BytesView) -> InputRecord {
   guard i16_at(bytes, 4) is Some(x) else { return Unsupported(RecordMouse) }
   guard i16_at(bytes, 6) is Some(y) else { return Unsupported(RecordMouse) }
@@ -227,7 +196,6 @@ fn parse_mouse_record(bytes : BytesView) -> InputRecord {
 }
 
 ///|
-#cfg(platform="windows")
 fn parse_window_buffer_size_record(bytes : BytesView) -> InputRecord {
   guard i16_at(bytes, 4) is Some(x) else {
     return Unsupported(RecordWindowBufferSize)
@@ -239,7 +207,6 @@ fn parse_window_buffer_size_record(bytes : BytesView) -> InputRecord {
 }
 
 ///|
-#cfg(platform="windows")
 fn parse_focus_record(bytes : BytesView) -> InputRecord {
   guard bool_at(bytes, 4) is Some(focus_set) else {
     return Unsupported(RecordFocus)
@@ -248,13 +215,11 @@ fn parse_focus_record(bytes : BytesView) -> InputRecord {
 }
 
 ///|
-#cfg(platform="windows")
 fn bool_at(bytes : BytesView, offset : Int) -> Bool? {
   dword_at(bytes, offset).map(value => value != 0)
 }
 
 ///|
-#cfg(platform="windows")
 fn i16_at(bytes : BytesView, offset : Int) -> Int? {
   guard u16_at(bytes, offset) is Some(value) else { return None }
   if value >= 0x8000 {
@@ -265,7 +230,6 @@ fn i16_at(bytes : BytesView, offset : Int) -> Int? {
 }
 
 ///|
-#cfg(platform="windows")
 fn u16_at(bytes : BytesView, offset : Int) -> Int? {
   if offset < 0 || offset + 1 >= bytes.length() {
     return None
@@ -274,7 +238,6 @@ fn u16_at(bytes : BytesView, offset : Int) -> Int? {
 }
 
 ///|
-#cfg(platform="windows")
 fn dword_at(bytes : BytesView, offset : Int) -> Int? {
   guard u16_at(bytes, offset) is Some(low) else { return None }
   guard i16_at(bytes, offset + 2) is Some(high) else { return None }

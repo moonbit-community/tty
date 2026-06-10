@@ -1,11 +1,9 @@
 ///|
-#cfg(platform="windows")
 pub fn KeyRecord::is_down(self : KeyRecord) -> Bool {
   self.key_down != 0
 }
 
 ///|
-#cfg(platform="windows")
 pub fn KeyRecord::repeat_count(self : KeyRecord) -> Int {
   if self.repeat_count > 0 {
     self.repeat_count
@@ -15,19 +13,16 @@ pub fn KeyRecord::repeat_count(self : KeyRecord) -> Int {
 }
 
 ///|
-#cfg(platform="windows")
 pub fn KeyRecord::text_uses_decoder(self : KeyRecord) -> Bool {
   self.key_down != 0 && !self.has_direct_key_metadata()
 }
 
 ///|
-#cfg(platform="windows")
 fn KeyRecord::has_direct_key_metadata(self : KeyRecord) -> Bool {
   (self.has_keyboard_modifier() && !self.is_alt_gr_text()) || self.is_keypad()
 }
 
 ///|
-#cfg(platform="windows")
 fn KeyRecord::has_keyboard_modifier(self : KeyRecord) -> Bool {
   has_state(
     self.control_key_state,
@@ -40,7 +35,6 @@ fn KeyRecord::has_keyboard_modifier(self : KeyRecord) -> Bool {
 }
 
 ///|
-#cfg(platform="windows")
 fn KeyRecord::is_alt_gr_text(self : KeyRecord) -> Bool {
   let alt_gr_state = RightAltPressed | LeftCtrlPressed
   self.key_down != 0 &&
@@ -50,7 +44,6 @@ fn KeyRecord::is_alt_gr_text(self : KeyRecord) -> Bool {
 }
 
 ///|
-#cfg(platform="windows")
 pub fn KeyRecord::text(
   self : KeyRecord,
   pending_surrogate : Ref[Int],
@@ -79,7 +72,6 @@ pub fn KeyRecord::text(
 }
 
 ///|
-#cfg(platform="windows")
 pub fn KeyRecord::input(
   self : KeyRecord,
   pending_surrogate : Ref[Int],
@@ -89,7 +81,6 @@ pub fn KeyRecord::input(
 }
 
 ///|
-#cfg(platform="windows")
 fn KeyRecord::key_kind(self : KeyRecord) -> @public_input.KeyEventKind {
   if self.key_down == 0 {
     Release
@@ -101,13 +92,11 @@ fn KeyRecord::key_kind(self : KeyRecord) -> @public_input.KeyEventKind {
 }
 
 ///|
-#cfg(platform="windows")
 fn KeyRecord::modifiers(self : KeyRecord) -> @public_input.KeyModifiers {
   modifiers_from_control_key_state(self.control_key_state)
 }
 
 ///|
-#cfg(platform="windows")
 fn KeyRecord::key_state(self : KeyRecord) -> @public_input.KeyEventState {
   @public_input.KeyEventState::new(
     keypad=self.is_keypad(),
@@ -117,7 +106,6 @@ fn KeyRecord::key_state(self : KeyRecord) -> @public_input.KeyEventState {
 }
 
 ///|
-#cfg(platform="windows")
 fn KeyRecord::key_event(
   self : KeyRecord,
   pending_surrogate : Ref[Int],
@@ -162,7 +150,6 @@ fn KeyRecord::key_event(
 }
 
 ///|
-#cfg(platform="windows")
 fn KeyRecord::key_code_from_virtual_key(
   self : KeyRecord,
 ) -> @public_input.KeyCode? {
@@ -174,7 +161,6 @@ fn KeyRecord::key_code_from_virtual_key(
 }
 
 ///|
-#cfg(platform="windows")
 fn KeyRecord::is_keypad(self : KeyRecord) -> Bool {
   virtual_key_is_keypad(self.virtual_key_code) ||
   self.is_keypad_enter() ||
@@ -182,21 +168,18 @@ fn KeyRecord::is_keypad(self : KeyRecord) -> Bool {
 }
 
 ///|
-#cfg(platform="windows")
 fn KeyRecord::is_keypad_enter(self : KeyRecord) -> Bool {
   self.virtual_key_code == 0x0d &&
   has_state(self.control_key_state, EnhancedKey)
 }
 
 ///|
-#cfg(platform="windows")
 fn KeyRecord::is_keypad_navigation(self : KeyRecord) -> Bool {
   virtual_key_is_navigation(self.virtual_key_code) &&
   !has_state(self.control_key_state, EnhancedKey)
 }
 
 ///|
-#cfg(platform="windows")
 fn KeyRecord::char_key_event(
   self : KeyRecord,
   char : Char,
@@ -212,7 +195,6 @@ fn KeyRecord::char_key_event(
 }
 
 ///|
-#cfg(platform="windows")
 fn text_for_key(record : KeyRecord, char : Char) -> String? {
   if record.key_down == 0 {
     None
@@ -222,7 +204,6 @@ fn text_for_key(record : KeyRecord, char : Char) -> String? {
 }
 
 ///|
-#cfg(platform="windows")
 fn key_code_from_virtual_key(vk : Int) -> @public_input.KeyCode? {
   if vk >= 0x70 && vk <= 0x87 {
     return function_key(vk - 0x6f)
@@ -258,7 +239,6 @@ fn key_code_from_virtual_key(vk : Int) -> @public_input.KeyCode? {
 }
 
 ///|
-#cfg(platform="windows")
 fn control_code_from_char(charcode : Int) -> @public_input.KeyCode? {
   match charcode {
     0x00 => Some(Char(' '))
@@ -270,7 +250,6 @@ fn control_code_from_char(charcode : Int) -> @public_input.KeyCode? {
 }
 
 ///|
-#cfg(platform="windows")
 fn control_code_from_virtual_key(vk : Int) -> @public_input.KeyCode? {
   if vk == 0x20 {
     Some(Char(' '))
@@ -282,7 +261,6 @@ fn control_code_from_virtual_key(vk : Int) -> @public_input.KeyCode? {
 }
 
 ///|
-#cfg(platform="windows")
 fn function_key(number : Int) -> @public_input.KeyCode? {
   match number {
     1 => Some(F1)
@@ -314,7 +292,6 @@ fn function_key(number : Int) -> @public_input.KeyCode? {
 }
 
 ///|
-#cfg(platform="windows")
 fn keypad_digit(number : Int) -> @public_input.KeyCode? {
   match number {
     0 => Some(Keypad0)
@@ -332,13 +309,11 @@ fn keypad_digit(number : Int) -> @public_input.KeyCode? {
 }
 
 ///|
-#cfg(platform="windows")
 fn virtual_key_is_keypad(vk : Int) -> Bool {
   vk >= 0x60 && vk <= 0x6f
 }
 
 ///|
-#cfg(platform="windows")
 fn virtual_key_is_navigation(vk : Int) -> Bool {
   match vk {
     0x21 | 0x22 | 0x23 | 0x24 | 0x25 | 0x26 | 0x27 | 0x28 | 0x2d | 0x2e => true
@@ -347,25 +322,21 @@ fn virtual_key_is_navigation(vk : Int) -> Bool {
 }
 
 ///|
-#cfg(platform="windows")
 fn has_state(state : Int, mask : Int) -> Bool {
   (state & mask) != 0
 }
 
 ///|
-#cfg(platform="windows")
 fn is_high_surrogate(code : Int) -> Bool {
   code >= 0xd800 && code <= 0xdbff
 }
 
 ///|
-#cfg(platform="windows")
 fn is_low_surrogate(code : Int) -> Bool {
   code >= 0xdc00 && code <= 0xdfff
 }
 
 ///|
-#cfg(platform="windows")
 fn decode_surrogate_pair(high : Int, low : Int) -> Char {
   let code = 0x10000 + (high - 0xd800) * 0x400 + (low - 0xdc00)
   code.unsafe_to_char()

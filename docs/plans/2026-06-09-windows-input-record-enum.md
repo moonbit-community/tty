@@ -401,3 +401,67 @@ input decoder.
 - Note: `moon info` still rewrites the pre-existing root `Fd::fd` generated
   mbti spelling from `Int` to `@types.Fd`; this follow-up restored the root
   generated interface to avoid unrelated public API churn.
+
+## Follow-up: Keep Win32 Parser Imports Used On Non-Windows CI
+
+### Goal
+
+Fix `moon check --deny-warn` on macOS and Ubuntu after adding the Windows
+console byte queue, without suppressing unused-package warnings.
+
+### Accepted Design
+
+- Treat `internal/win32` as a pure parser/mapping package that can compile on
+  all native platforms.
+- Remove Windows platform gates from the pure `internal/win32` record, key, and
+  mouse parser/mapping declarations and tests.
+- Keep root Windows console backend, `ReadConsoleInputW` FFI, and actual tty
+  dispatch Windows-only.
+- Remove the previous non-Windows `internal/win32` import anchor files because
+  the package will now use `@public_input` directly on every platform.
+- Add a root non-Windows private import anchor that references
+  `@internal_io.ByteQueue::new` and `@win32.InputRecord::parse`.
+- Do not add warning suppression and do not change the root public API.
+
+### Public API / Interface Diff
+
+- No root public MoonBit API change intended.
+- `internal/win32` generated interface should stay on the same parser/mapping
+  API across platforms.
+
+### Validation Plan
+
+- `moon fmt`
+- `moon check --deny-warn`
+- `moon check --deny-warn --target all`
+- `moon test internal/win32 --target-dir .moon-test-internal-win32-ci-anchor-build`
+- `moon test internal/io --target-dir .moon-test-internal-io-ci-anchor-build`
+- `moon test . --filter "win32*" --target-dir .moon-test-win32-ci-anchor-build`
+- `moon info --target-dir .moon-info-ci-anchor-build`
+- Review `.mbti` diff.
+- `git diff --check`
+
+### Result
+
+- Removed Windows platform gates from the pure `internal/win32` parser,
+  key-mapping, mouse-mapping, and parser test declarations.
+- Removed the earlier non-Windows `internal/win32` import anchor files.
+- Added a root non-Windows private import anchor for `@internal_io` and
+  `@win32`.
+- Kept root Windows console backend and `ReadConsoleInputW` FFI code
+  Windows-only.
+
+### Validation Results
+
+- Passed: `moon fmt`
+- Passed: `moon check --deny-warn --target-dir .moon-check-deny-ci-anchor-build`
+- Passed: `moon check --deny-warn --target all --target-dir .moon-check-all-deny-ci-anchor-build`
+- Passed: `moon test internal/win32 --target-dir .moon-test-internal-win32-ci-anchor-build`
+- Passed: `moon test internal/io --target-dir .moon-test-internal-io-ci-anchor-build`
+- Passed: `moon test . --filter "win32*" --target-dir .moon-test-win32-ci-anchor-build`
+- Passed: `moon info --target-dir .moon-info-ci-anchor-build`
+- Passed: `git diff --check`
+- `.mbti` review: `internal/win32` and `internal/io` generated interfaces did
+  not change. `moon info` still rewrites the pre-existing root `Fd::fd`
+  generated mbti spelling from `Int` to `@types.Fd`; this follow-up restored
+  the root generated interface to avoid unrelated public API churn.
