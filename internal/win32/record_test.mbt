@@ -67,22 +67,21 @@ test "win32 raw input record parses key records to input events" {
   test_set_u16_le(buf, 12, 0x1e)
   test_set_u16_le(buf, 14, 'A'.to_int())
   test_set_u32_le(buf, 16, ShiftPressed)
-  match test_input_record(buf) {
-    Key(record) =>
-      @debug.assert_eq(
-        record.input(Ref(0)),
-        Some(
-          Key(
-            @public_input.KeyEvent::new(
-              Char('A'),
-              modifiers=@public_input.KeyModifiers::new(shift=true),
-              text="A",
-            ),
-          ),
-        ),
-      )
-    _ => fail("expected key record")
+  guard test_input_record(buf) is Key(record) else {
+    fail("expected key record")
   }
+  @debug.assert_eq(
+    record.input(Ref(0)),
+    Some(
+      Key(
+        @public_input.KeyEvent::new(
+          Char('A'),
+          modifiers=@public_input.KeyModifiers::new(shift=true),
+          text="A",
+        ),
+      ),
+    ),
+  )
 }
 
 ///|
@@ -92,21 +91,20 @@ test "win32 raw input record parses mouse records to input events" {
   test_set_u16_le(buf, 6, 2)
   test_set_u32_le(buf, 12, ShiftPressed)
   test_set_u32_le(buf, 16, MouseMoved)
-  match test_input_record(buf) {
-    Mouse(record) =>
-      @debug.assert_eq(
-        MouseButtonState::new().input_event(record),
-        Some(
-          Mouse(
-            @public_input.MouseEvent::new(
-              Move,
-              3,
-              31,
-              modifiers=@public_input.KeyModifiers::new(shift=true),
-            ),
-          ),
-        ),
-      )
-    _ => fail("expected mouse record")
+  guard test_input_record(buf) is Mouse(record) else {
+    fail("expected mouse record")
   }
+  @debug.assert_eq(
+    MouseButtonState::new().input_event(record),
+    Some(
+      Mouse(
+        @public_input.MouseEvent::new(
+          Move,
+          3,
+          31,
+          modifiers=@public_input.KeyModifiers::new(shift=true),
+        ),
+      ),
+    ),
+  )
 }

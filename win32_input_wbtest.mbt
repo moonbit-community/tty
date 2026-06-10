@@ -100,16 +100,12 @@ async test "win32 console source decodes bracketed paste key records" {
   let (dummy_input, dummy_output) = @async/pipe.pipe()
   let source = win32_test_console_tty(dummy_input, dummy_output)
   defer source.close()
-  @async.with_task_group() <| group => {
-    group.spawn_bg() <| () => {
-      for char in "\u{1B}[200~hello\u{1B}[201~" {
-        source.read_key_record(win32_test_key_record(char))
-      }
-    }
-    match source.read_decoded_input_event(50) {
-      Input(Paste(text)) => @debug.assert_eq(text, "hello")
-      _ => fail("expected bracketed paste event")
-    }
+  for char in "\u{1B}[200~hello\u{1B}[201~" {
+    source.read_key_record(win32_test_key_record(char))
+  }
+  match source.read_decoded_input_event(50) {
+    Input(Paste(text)) => @debug.assert_eq(text, "hello")
+    _ => fail("expected bracketed paste event")
   }
 }
 
@@ -119,24 +115,20 @@ async test "win32 console source preserves native events during internal reads" 
   let (dummy_input, dummy_output) = @async/pipe.pipe()
   let source = win32_test_console_tty(dummy_input, dummy_output)
   defer source.close()
-  @async.with_task_group() <| group => {
-    group.spawn_bg() <| () => {
-      source.read_record(Focus(true))
-      for char in "\u{1B}[7;9R" {
-        source.read_key_record(win32_test_key_record(char))
-      }
+  source.read_record(Focus(true))
+  for char in "\u{1B}[7;9R" {
+    source.read_key_record(win32_test_key_record(char))
+  }
+  match source.reader.read_event(esc_timeout_ms=50) {
+    CursorPosition(row~, col~) => {
+      @debug.assert_eq(row, 7)
+      @debug.assert_eq(col, 9)
     }
-    match source.reader.read_event(esc_timeout_ms=50) {
-      CursorPosition(row~, col~) => {
-        @debug.assert_eq(row, 7)
-        @debug.assert_eq(col, 9)
-      }
-      _ => fail("expected cursor position event")
-    }
-    match win32_test_try_get_event(source) {
-      Some(Input(FocusIn)) => ()
-      _ => fail("expected native focus event to remain queued")
-    }
+    _ => fail("expected cursor position event")
+  }
+  match win32_test_try_get_event(source) {
+    Some(Input(FocusIn)) => ()
+    _ => fail("expected native focus event to remain queued")
   }
 }
 
@@ -328,23 +320,16 @@ async test "win32 console source preserves AltGr text input" {
   let (dummy_input, dummy_output) = @async/pipe.pipe()
   let source = win32_test_console_tty(dummy_input, dummy_output)
   defer source.close()
-  @async.with_task_group() <| group => {
-    group.spawn_bg() <| () => {
-      source.read_key_record(
-        win32_test_key_record(
-          '@',
-          control_key_state=@win32.RightAltPressed | @win32.LeftCtrlPressed,
-        ),
-      )
-    }
-    match source.read_decoded_input_event(50) {
-      Input(Key(event)) =>
-        @debug.assert_eq(
-          event,
-          @public_input.KeyEvent::new(Char('@'), text="@"),
-        )
-      _ => fail("expected decoded AltGr text key event")
-    }
+  source.read_key_record(
+    win32_test_key_record(
+      '@',
+      control_key_state=@win32.RightAltPressed | @win32.LeftCtrlPressed,
+    ),
+  )
+  match source.read_decoded_input_event(50) {
+    Input(Key(event)) =>
+      @debug.assert_eq(event, @public_input.KeyEvent::new(Char('@'), text="@"))
+    _ => fail("expected decoded AltGr text key event")
   }
 }
 

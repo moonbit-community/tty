@@ -68,7 +68,7 @@ pub fn KeyRecord::text(
     return Some([char])
   }
   pending_surrogate.val = 0
-  Some([charcode.unsafe_to_char()])
+  Some([codepoint_to_char(charcode)])
 }
 
 ///|
@@ -145,7 +145,7 @@ fn KeyRecord::key_event(
     return Some(self.char_key_event(char, modifiers, kind, state))
   }
   pending_surrogate.val = 0
-  let char = charcode.unsafe_to_char()
+  let char = codepoint_to_char(charcode)
   Some(self.char_key_event(char, modifiers, kind, state))
 }
 
@@ -242,9 +242,9 @@ fn key_code_from_virtual_key(vk : Int) -> @public_input.KeyCode? {
 fn control_code_from_char(charcode : Int) -> @public_input.KeyCode? {
   match charcode {
     0x00 => Some(Char(' '))
-    0x01..=0x1a => Some(Char((charcode - 1 + 'a'.to_int()).unsafe_to_char()))
+    0x01..=0x1a => Some(Char(codepoint_to_char(charcode - 1 + 'a'.to_int())))
     0x1b => Some(Escape)
-    0x1c..=0x1f => Some(Char((charcode - 0x1c + '4'.to_int()).unsafe_to_char()))
+    0x1c..=0x1f => Some(Char(codepoint_to_char(charcode - 0x1c + '4'.to_int())))
     _ => None
   }
 }
@@ -254,7 +254,7 @@ fn control_code_from_virtual_key(vk : Int) -> @public_input.KeyCode? {
   if vk == 0x20 {
     Some(Char(' '))
   } else if vk >= 0x41 && vk <= 0x5a {
-    Some(Char((vk - 0x41 + 'a'.to_int()).unsafe_to_char()))
+    Some(Char(codepoint_to_char(vk - 0x41 + 'a'.to_int())))
   } else {
     None
   }
@@ -339,5 +339,10 @@ fn is_low_surrogate(code : Int) -> Bool {
 ///|
 fn decode_surrogate_pair(high : Int, low : Int) -> Char {
   let code = 0x10000 + (high - 0xd800) * 0x400 + (low - 0xdc00)
-  code.unsafe_to_char()
+  codepoint_to_char(code)
+}
+
+///|
+fn codepoint_to_char(code : Int) -> Char {
+  code.to_char().unwrap_or('\u{FFFD}')
 }

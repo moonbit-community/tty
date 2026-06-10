@@ -18,11 +18,7 @@ pub fn ByteQueue::close(self : ByteQueue) -> Unit {
 
 ///|
 pub fn ByteQueue::put_byte(self : ByteQueue, byte : Byte) -> Unit {
-  try self.queue.try_put(byte) catch {
-    _ => ()
-  } noraise {
-    _ => ()
-  }
+  guard (try! self.queue.try_put(byte))
 }
 
 ///|
@@ -53,22 +49,23 @@ pub impl @async/io.Reader for ByteQueue with fn _direct_read(
   } noraise {
     byte => byte
   }
-  dst[offset] = first
-  let mut len = 1
-  while len < max_len {
-    let next = try self.queue.try_get() catch {
-      @async/io.ReaderClosed => None
-      error => raise error
-    } noraise {
-      byte => byte
-    }
-    match next {
-      Some(byte) => {
+  @async.protect_from_cancel() <| () => {
+    dst[offset] = first
+    let mut len = 1
+    while len < max_len {
+      let next = try self.queue.try_get() catch {
+        @async/io.ReaderClosed => None
+        error => raise error
+      } noraise {
+        byte => byte
+      }
+      if next is Some(byte) {
         dst[offset + len] = byte
         len += 1
+      } else {
+        break
       }
-      None => break
     }
+    len
   }
-  len
 }

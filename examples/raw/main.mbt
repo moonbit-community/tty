@@ -19,12 +19,9 @@ fn byte_to_raw_line(byte : Byte) -> String {
   line.write_string("0x")
   line.write_char(number_to_xdigit[byte.to_int() / 16].to_char())
   line.write_char(number_to_xdigit[byte.to_int() % 16].to_char())
-  match byte_to_printable_char(byte) {
-    Some(char) => {
-      line.write_string(" ")
-      line.write_string(char.escape(quote=true))
-    }
-    None => ()
+  if byte_to_printable_char(byte) is Some(char) {
+    line.write_string(" ")
+    line.write_string(char.escape(quote=true))
   }
   line.write_string("\r\n")
   line.to_string()

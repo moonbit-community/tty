@@ -3,20 +3,17 @@ pub fn MouseButtonState::input_event(
   self : MouseButtonState,
   record : MouseRecord,
 ) -> @public_input.InputEvent? {
-  match self.event_kind(record) {
-    Some(kind) =>
-      Some(
-        Mouse(
-          @public_input.MouseEvent::new(
-            kind,
-            record.y + 1,
-            record.x + 1,
-            modifiers=record.modifiers(),
-          ),
-        ),
-      )
-    None => None
-  }
+  guard self.event_kind(record) is Some(kind) else { return None }
+  Some(
+    Mouse(
+      @public_input.MouseEvent::new(
+        kind,
+        record.y + 1,
+        record.x + 1,
+        modifiers=record.modifiers(),
+      ),
+    ),
+  )
 }
 
 ///|
@@ -29,19 +26,20 @@ fn MouseButtonState::event_kind(
     0 => {
       let previous = self.buttons
       self.buttons = buttons
-      match newly_pressed_mouse_button(previous, buttons) {
-        Some(button) => Some(Press(button))
-        None =>
-          newly_released_mouse_button(previous, buttons).map(button => {
-            Release(button)
-          })
+      if newly_pressed_mouse_button(previous, buttons) is Some(button) {
+        Some(Press(button))
+      } else if newly_released_mouse_button(previous, buttons) is Some(button) {
+        Some(Release(button))
+      } else {
+        None
       }
     }
     MouseMoved => {
       self.buttons = buttons
-      match mouse_button_from_state(buttons) {
-        Some(button) => Some(Drag(button))
-        None => Some(Move)
+      if mouse_button_from_state(buttons) is Some(button) {
+        Some(Drag(button))
+      } else {
+        Some(Move)
       }
     }
     MouseDoubleClick => {

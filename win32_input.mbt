@@ -128,14 +128,11 @@ async fn Tty::read_console_input_event(
 ///|
 #cfg(platform="windows")
 async fn Tty::read_records(self : Self) -> Unit {
-  match self.input_backend {
-    Console(input_fd~, ..) =>
-      for ;; {
-        if !self.drain_records(input_fd) {
-          @async.sleep(10)
-        }
-      }
-    ByteStream => ()
+  guard self.input_backend is Console(input_fd~, ..) else { return }
+  for ;; {
+    if !self.drain_records(input_fd) {
+      @async.sleep(10)
+    }
   }
 }
 
@@ -144,12 +141,11 @@ async fn Tty::read_records(self : Self) -> Unit {
 fn Tty::drain_records(self : Self, input_fd : @async/types.Fd) -> Bool raise {
   let mut read_any = false
   for ;; {
-    match win32_read_console_input_record(input_fd) {
-      None => return read_any
-      Some(record) => {
-        read_any = true
-        self.read_record(record)
-      }
+    if win32_read_console_input_record(input_fd) is Some(record) {
+      read_any = true
+      self.read_record(record)
+    } else {
+      return read_any
     }
   }
 }
@@ -157,94 +153,85 @@ fn Tty::drain_records(self : Self, input_fd : @async/types.Fd) -> Bool raise {
 ///|
 #cfg(platform="windows")
 fn queue_console_event(events : @async.Queue[Event], event : Event) -> Unit {
-  try events.try_put(event) catch {
-    _ => ()
-  } noraise {
-    _ => ()
-  }
+  guard (try! events.try_put(event))
 }
 
 ///|
 #cfg(platform="windows")
 fn Tty::read_record(self : Self, record : @win32.InputRecord) -> Unit {
-  match self.input_backend {
-    Console(events~, pending_surrogate~, ..) =>
-      match record {
-        Key(record) => self.read_key_record(record)
-        Mouse(record) => self.read_mouse_record(record)
-        WindowBufferSize(_) => {
-          pending_surrogate.val = 0
-          try self.window_size() catch {
-            _ => ()
-          } noraise {
-            size => queue_console_event(events, Resize(size))
-          }
-        }
-        Focus(focus_set) => {
-          pending_surrogate.val = 0
-          if focus_set {
-            queue_console_event(events, Input(FocusIn))
-          } else {
-            queue_console_event(events, Input(FocusOut))
-          }
-        }
-        Unsupported(_) => pending_surrogate.val = 0
+  guard self.input_backend is Console(events~, pending_surrogate~, ..) else {
+    return
+  }
+  match record {
+    Key(record) => self.read_key_record(record)
+    Mouse(record) => self.read_mouse_record(record)
+    WindowBufferSize(_) => {
+      pending_surrogate.val = 0
+      try self.window_size() catch {
+        _ => ()
+      } noraise {
+        size => queue_console_event(events, Resize(size))
       }
-    ByteStream => ()
+    }
+    Focus(focus_set) => {
+      pending_surrogate.val = 0
+      if focus_set {
+        queue_console_event(events, Input(FocusIn))
+      } else {
+        queue_console_event(events, Input(FocusOut))
+      }
+    }
+    Unsupported(_) => pending_surrogate.val = 0
   }
 }
 
 ///|
 #cfg(platform="windows")
 fn Tty::read_key_record(self : Self, record : @win32.KeyRecord) -> Unit {
-  match self.input_backend {
-    Console(byte_queue~, pending_surrogate~, ..) => {
-      if !record.is_down() {
-        return
+  guard self.input_backend is Console(byte_queue~, pending_surrogate~, ..) else {
+    return
+  }
+  if !record.is_down() {
+    return
+  }
+  if !record.text_uses_decoder() {
+    return self.queue_key_input(record)
+  }
+  match record.text(pending_surrogate) {
+    Some(text) =>
+      for _ in 0..<record.repeat_count() {
+        byte_queue.put_data(text)
       }
-      if !record.text_uses_decoder() {
-        return self.queue_key_input(record)
-      }
-      match record.text(pending_surrogate) {
-        Some(text) =>
-          for _ in 0..<record.repeat_count() {
-            byte_queue.put_data(text)
-          }
-        None => self.queue_key_input(record)
-      }
-    }
-    ByteStream => ()
+    None => self.queue_key_input(record)
   }
 }
 
 ///|
 #cfg(platform="windows")
 fn Tty::queue_key_input(self : Self, record : @win32.KeyRecord) -> Unit {
-  match self.input_backend {
-    Console(events~, pending_surrogate~, ..) =>
-      match record.input(pending_surrogate) {
-        Some(input) =>
-          for _ in 0..<record.repeat_count() {
-            queue_console_event(events, Input(input))
-          }
-        None => ()
+  guard self.input_backend is Console(events~, pending_surrogate~, ..) else {
+    return
+  }
+  match record.input(pending_surrogate) {
+    Some(input) =>
+      for _ in 0..<record.repeat_count() {
+        queue_console_event(events, Input(input))
       }
-    ByteStream => ()
+    None => ()
   }
 }
 
 ///|
 #cfg(platform="windows")
 fn Tty::read_mouse_record(self : Self, record : @win32.MouseRecord) -> Unit {
-  match self.input_backend {
-    Console(events~, pending_surrogate~, mouse_button_state~, ..) => {
-      pending_surrogate.val = 0
-      match mouse_button_state.input_event(record) {
-        Some(input) => queue_console_event(events, Input(input))
-        None => ()
-      }
-    }
-    ByteStream => ()
+  guard self.input_backend
+    is Console(events~, pending_surrogate~, mouse_button_state~, ..) else {
+    return
+  }
+  pending_surrogate.val = 0
+  match mouse_button_state.input_event(record) {
+    Some(input) => queue_console_event(events, Input(input))
+    None => ()
   }
 }
 
