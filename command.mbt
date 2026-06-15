@@ -107,7 +107,7 @@ pub async fn Tty::execute(self : Self, commands : Array[Command]) -> Unit {
   if commands.length() == 0 {
     return
   }
-  let buf = @buffer.Buffer::Buffer()
+  let buf = @buffer.Buffer()
   for command in commands {
     command.write_to(buf)
   }
