@@ -35,7 +35,9 @@ write.
   erase/cursor-visibility commands, style/color commands, scroll margins,
   synchronized updates, bracketed paste/focus/auto-wrap modes, kitty keyboard
   enhancement push/pop, and `Print(StringView)`.
-- `internal/vt/pkg.generated.mbti` should remain unchanged.
+- This command task should not add further `internal/vt` API. The same PR also
+  includes the prior VT write-helper task; its `internal/vt` API diff is tracked
+  in `docs/plans/2026-06-15-vt-write-helpers.md`.
 
 ## Open Questions
 
@@ -67,7 +69,7 @@ behavior.
 - `moon check`: passed.
 - `moon info`: passed.
 - `git diff --cached --check`: passed.
-- `Print(String)` addendum:
+- `Print(StringView)` addendum:
   - `moon fmt`: passed.
   - `moon test .`: passed, 27 tests.
   - `moon test`: passed, 172 tests.
@@ -80,4 +82,7 @@ behavior.
   and `pub async fn Tty::execute(Self, Array[Command]) -> Unit`.
 - The `Print(StringView)` addendum changes only the accepted command enum
   surface.
-- `internal/vt/pkg.generated.mbti` remained unchanged.
+- Relative to the command task, `internal/vt/pkg.generated.mbti` remained
+  unchanged. The PR-level `internal/vt` API additions from the earlier
+  destination-passing VT work are audited in
+  `docs/plans/2026-06-15-vt-write-helpers.md`.
