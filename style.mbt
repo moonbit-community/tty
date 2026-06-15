@@ -448,7 +448,8 @@ pub async fn Tty::reset_background(self : Self) -> Unit {
 
 ///|
 /// Set bold or increased intensity.
-pub async fn Tty::bold(self : Self) -> Unit {
+#alias(bold, deprecated)
+pub async fn Tty::set_bold(self : Self) -> Unit {
   self.write(@vt.bold)
 }
 
@@ -460,7 +461,8 @@ pub async fn Tty::reset_bold(self : Self) -> Unit {
 
 ///|
 /// Set italic text.
-pub async fn Tty::italic(self : Self) -> Unit {
+#alias(italic, deprecated)
+pub async fn Tty::set_italic(self : Self) -> Unit {
   self.write(@vt.italic)
 }
 
@@ -472,7 +474,8 @@ pub async fn Tty::reset_italic(self : Self) -> Unit {
 
 ///|
 /// Set underlined text.
-pub async fn Tty::underline(self : Self) -> Unit {
+#alias(underline, deprecated)
+pub async fn Tty::set_underline(self : Self) -> Unit {
   self.write(@vt.underline)
 }
 
@@ -484,7 +487,8 @@ pub async fn Tty::reset_underline(self : Self) -> Unit {
 
 ///|
 /// Set reverse video.
-pub async fn Tty::reverse(self : Self) -> Unit {
+#alias(reverse, deprecated)
+pub async fn Tty::set_reverse(self : Self) -> Unit {
   self.write(@vt.reverse)
 }
 

@@ -50,7 +50,6 @@ pub fn State::make_raw(Self) -> Self
 
 type Tty
 pub async fn Tty::begin_synchronized_update(Self) -> Unit
-pub async fn Tty::bold(Self) -> Unit
 pub fn Tty::close(Self) -> Unit
 pub async fn Tty::cursor_back(Self, Int) -> Unit
 pub async fn Tty::cursor_forward(Self, Int) -> Unit
@@ -71,7 +70,6 @@ pub async fn Tty::erase_line_all(Self) -> Unit
 pub async fn Tty::erase_scrollback(Self) -> Unit
 pub fn Tty::get_state(Self) -> State raise @os_error.OSError
 pub async fn Tty::hide_cursor(Self) -> Unit
-pub async fn Tty::italic(Self) -> Unit
 pub async fn Tty::leave_alt_screen(Self) -> Unit
 pub fn Tty::leave_raw_mode(Self, State) -> Unit raise @os_error.OSError
 pub fn[I : Reader, O : Writer] Tty::new(I, O) -> Self
@@ -92,16 +90,22 @@ pub async fn Tty::reset_reverse(Self) -> Unit
 pub async fn Tty::reset_style(Self) -> Unit
 pub async fn Tty::reset_top_bottom_margins(Self) -> Unit
 pub async fn Tty::reset_underline(Self) -> Unit
-pub async fn Tty::reverse(Self) -> Unit
 pub async fn Tty::reverse_index(Self) -> Unit
 pub async fn Tty::set_background(Self, @color.Color) -> Unit
+#alias(bold, deprecated)
+pub async fn Tty::set_bold(Self) -> Unit
 pub async fn Tty::set_cursor_position(Self, Int, Int) -> Unit
 pub async fn Tty::set_foreground(Self, @color.Color) -> Unit
+#alias(italic, deprecated)
+pub async fn Tty::set_italic(Self) -> Unit
+#alias(reverse, deprecated)
+pub async fn Tty::set_reverse(Self) -> Unit
 pub fn Tty::set_state(Self, State) -> State raise @os_error.OSError
 pub async fn Tty::set_top_bottom_margins(Self, Int, Int) -> Unit
+#alias(underline, deprecated)
+pub async fn Tty::set_underline(Self) -> Unit
 pub async fn Tty::show_cursor(Self) -> Unit
 pub fn Tty::stdio() -> Self
-pub async fn Tty::underline(Self) -> Unit
 pub fn Tty::window_size(Self) -> WindowSize raise @os_error.OSError
 pub async fn[T] Tty::with_alt_screen(Self, async () -> T) -> T
 pub async fn[T] Tty::with_bracketed_paste(Self, async () -> T) -> T
