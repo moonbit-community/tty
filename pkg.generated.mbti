@@ -8,6 +8,7 @@ import {
   "moonbitlang/async/io",
   "moonbitlang/async/os_error",
   "moonbitlang/async/pipe",
+  "moonbitlang/async/raw_fd",
   "moonbitlang/async/stdio",
 }
 
@@ -128,6 +129,7 @@ pub(open) trait Fd {
 pub impl Fd for @fs.File
 pub impl Fd for @pipe.PipeRead
 pub impl Fd for @pipe.PipeWrite
+pub impl Fd for @raw_fd.RawFdStream
 pub impl Fd for @stdio.Input
 pub impl Fd for @stdio.Output
 
@@ -136,6 +138,7 @@ pub(open) trait Reader : @io.Reader + Fd {
 }
 pub impl Reader for @fs.File
 pub impl Reader for @pipe.PipeRead
+pub impl Reader for @raw_fd.RawFdStream
 pub impl Reader for @stdio.Input
 
 pub(open) trait Writer : @io.Writer + Fd {
@@ -143,5 +146,6 @@ pub(open) trait Writer : @io.Writer + Fd {
 }
 pub impl Writer for @fs.File
 pub impl Writer for @pipe.PipeWrite
+pub impl Writer for @raw_fd.RawFdStream
 pub impl Writer for @stdio.Output
 

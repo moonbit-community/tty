@@ -3,100 +3,15 @@
 extern "C" fn open_controlling_terminal() -> @async/types.Fd = "moonbit_tty_open_controlling_terminal"
 
 ///|
-#cfg(platform="windows")
-fn use_raw_fd_import() -> @async/raw_fd.RawFd {
-  abort("unreachable")
-}
-
-///|
-#cfg(platform="windows")
-fn init {
-  ignore(use_raw_fd_import)
-}
-
-///|
-#warnings("-14")
+/// Open the controlling terminal (`/dev/tty`) as one coordinated terminal
+/// handle. The single bidirectional handle is wrapped as a raw stream and used
+/// for both input and output.
 #cfg(not(platform="windows"))
-priv struct ControllingTerminal {
-  raw : @async/raw_fd.RawFd
-  read_buf : @async/io.ReaderBuffer
-}
-
-///|
-#warnings("-14")
-#cfg(not(platform="windows"))
-async fn ControllingTerminal::open() -> ControllingTerminal {
+pub async fn Tty::open() -> Tty {
   let fd = open_controlling_terminal()
   if fd < 0 {
     @os_error.check_errno("Tty::open")
   }
-  { raw: RawFd(fd), read_buf: @async/io.ReaderBuffer::new() }
-}
-
-///|
-#cfg(not(platform="windows"))
-impl @async/io.Reader for ControllingTerminal with fn _direct_read(
-  self,
-  buf,
-  offset~,
-  max_len~,
-) {
-  self.raw.read(buf, offset~, max_len~)
-}
-
-///|
-#cfg(not(platform="windows"))
-impl @async/io.Reader for ControllingTerminal with fn _get_internal_buffer(self) {
-  self.read_buf
-}
-
-///|
-#cfg(not(platform="windows"))
-impl @async/io.Writer for ControllingTerminal with fn write_once(
-  self,
-  buf,
-  offset~,
-  len~,
-) {
-  self.raw.write(buf, offset~, len~)
-}
-
-///|
-#cfg(not(platform="windows"))
-impl Fd for ControllingTerminal with fn fd(self) {
-  self.raw.fd
-}
-
-///|
-#cfg(not(platform="windows"))
-impl Reader for ControllingTerminal with fn close(self) {
-  self.raw.close()
-}
-
-///|
-#cfg(not(platform="windows"))
-impl Writer for ControllingTerminal with fn close(self) {
-  self.raw.close()
-}
-
-///|
-/// Open the controlling terminal as one coordinated terminal handle.
-#cfg(not(platform="windows"))
-pub async fn Tty::open() -> Tty {
-  let terminal = ControllingTerminal::open()
+  let terminal = @async/raw_fd.RawFdStream(fd)
   Tty::new(terminal, terminal)
-}
-
-///|
-/// Open the controlling terminal as one coordinated terminal handle.
-#cfg(platform="windows")
-pub async fn Tty::open() -> Tty {
-  let input = @async/fs.open("CONIN$", mode=ReadWrite)
-  let output = @async/fs.open("CONOUT$", mode=ReadWrite) catch {
-    error => {
-      input.close()
-      raise error
-    }
-  }
-  Tty::new(input, output)
 }
