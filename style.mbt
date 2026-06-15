@@ -1,102 +1,4 @@
 ///|
-let reset_style_sequence : Bytes = @vt.sgr1(0)
-
-///|
-let reset_foreground_sequence : Bytes = @vt.sgr1(39)
-
-///|
-let reset_background_sequence : Bytes = @vt.sgr1(49)
-
-///|
-fn clamp_byte_value(value : Int) -> Int {
-  if value < 0 {
-    0
-  } else if value > 255 {
-    255
-  } else {
-    value
-  }
-}
-
-///|
-fn basic_foreground_code(color : @color.BasicColor) -> Int {
-  match color {
-    Black => 30
-    Red => 31
-    Green => 32
-    Yellow => 33
-    Blue => 34
-    Magenta => 35
-    Cyan => 36
-    White => 37
-    BrightBlack => 90
-    BrightRed => 91
-    BrightGreen => 92
-    BrightYellow => 93
-    BrightBlue => 94
-    BrightMagenta => 95
-    BrightCyan => 96
-    BrightWhite => 97
-  }
-}
-
-///|
-fn basic_background_code(color : @color.BasicColor) -> Int {
-  match color {
-    Black => 40
-    Red => 41
-    Green => 42
-    Yellow => 43
-    Blue => 44
-    Magenta => 45
-    Cyan => 46
-    White => 47
-    BrightBlack => 100
-    BrightRed => 101
-    BrightGreen => 102
-    BrightYellow => 103
-    BrightBlue => 104
-    BrightMagenta => 105
-    BrightCyan => 106
-    BrightWhite => 107
-  }
-}
-
-///|
-fn foreground_sequence(color : @color.Color) -> Bytes {
-  match color {
-    Default => reset_foreground_sequence
-    Basic(color) => @vt.sgr1(basic_foreground_code(color))
-    Indexed(index) => @vt.sgr3(38, 5, clamp_byte_value(index))
-    Rgb(r, g, b) =>
-      @vt.sgr5(
-        38,
-        2,
-        clamp_byte_value(r),
-        clamp_byte_value(g),
-        clamp_byte_value(b),
-      )
-  }
-}
-
-///|
-fn background_sequence(color : @color.Color) -> Bytes {
-  match color {
-    Default => reset_background_sequence
-    Basic(color) => @vt.sgr1(basic_background_code(color))
-    Indexed(index) => @vt.sgr3(48, 5, clamp_byte_value(index))
-    Rgb(r, g, b) =>
-      @vt.sgr5(
-        48,
-        2,
-        clamp_byte_value(r),
-        clamp_byte_value(g),
-        clamp_byte_value(b),
-      )
-  }
-}
-
-///|
 /// Enter the alternate screen buffer.
 pub async fn Tty::enter_alt_screen(self : Self) -> Unit {
   self.write(@vt.enter_alt_screen)
@@ -523,25 +425,25 @@ pub async fn Tty::reverse_index(self : Self) -> Unit {
 ///|
 /// Set the foreground color.
 pub async fn Tty::set_foreground(self : Self, color : @color.Color) -> Unit {
-  self.write(foreground_sequence(color))
+  self.write(@vt.set_foreground(color))
 }
 
 ///|
 /// Set the background color.
 pub async fn Tty::set_background(self : Self, color : @color.Color) -> Unit {
-  self.write(background_sequence(color))
+  self.write(@vt.set_background(color))
 }
 
 ///|
 /// Reset the foreground color to the terminal default.
 pub async fn Tty::reset_foreground(self : Self) -> Unit {
-  self.write(reset_foreground_sequence)
+  self.write(@vt.reset_foreground)
 }
 
 ///|
 /// Reset the background color to the terminal default.
 pub async fn Tty::reset_background(self : Self) -> Unit {
-  self.write(reset_background_sequence)
+  self.write(@vt.reset_background)
 }
 
 ///|
@@ -595,5 +497,5 @@ pub async fn Tty::reset_reverse(self : Self) -> Unit {
 ///|
 /// Reset all SGR style attributes.
 pub async fn Tty::reset_style(self : Self) -> Unit {
-  self.write(reset_style_sequence)
+  self.write(@vt.reset_style)
 }

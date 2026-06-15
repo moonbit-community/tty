@@ -1,4 +1,16 @@
 ///|
+/// Reset all SGR style attributes (SGR 0), ECMA-48.
+pub let reset_style : Bytes = b"\x1b[0m"
+
+///|
+/// Reset foreground color to terminal default (SGR 39), ECMA-48.
+pub let reset_foreground : Bytes = b"\x1b[39m"
+
+///|
+/// Reset background color to terminal default (SGR 49), ECMA-48.
+pub let reset_background : Bytes = b"\x1b[49m"
+
+///|
 /// Bold or increased intensity (SGR 1), ECMA-48.
 pub let bold : Bytes = b"\x1b[1m"
 
@@ -79,4 +91,83 @@ pub fn sgr5(p1 : Int, p2 : Int, p3 : Int, p4 : Int, p5 : Int) -> Bytes {
   let offset = write_decimal_digits(buf, p5, offset=offset + 1, length=len5)
   buf[offset] = b'm'
   buf.unsafe_reinterpret_as_bytes()
+}
+
+///|
+fn clamp_byte_value(value : Int) -> Int {
+  if value < 0 {
+    0
+  } else if value > 255 {
+    255
+  } else {
+    value
+  }
+}
+
+///|
+fn basic_foreground_code(color : @color.BasicColor) -> Int {
+  match color {
+    Black => 30
+    Red => 31
+    Green => 32
+    Yellow => 33
+    Blue => 34
+    Magenta => 35
+    Cyan => 36
+    White => 37
+    BrightBlack => 90
+    BrightRed => 91
+    BrightGreen => 92
+    BrightYellow => 93
+    BrightBlue => 94
+    BrightMagenta => 95
+    BrightCyan => 96
+    BrightWhite => 97
+  }
+}
+
+///|
+fn basic_background_code(color : @color.BasicColor) -> Int {
+  match color {
+    Black => 40
+    Red => 41
+    Green => 42
+    Yellow => 43
+    Blue => 44
+    Magenta => 45
+    Cyan => 46
+    White => 47
+    BrightBlack => 100
+    BrightRed => 101
+    BrightGreen => 102
+    BrightYellow => 103
+    BrightBlue => 104
+    BrightMagenta => 105
+    BrightCyan => 106
+    BrightWhite => 107
+  }
+}
+
+///|
+/// Construct the SGR sequence for a foreground color command.
+pub fn set_foreground(color : @color.Color) -> Bytes {
+  match color {
+    Default => reset_foreground
+    Basic(color) => sgr1(basic_foreground_code(color))
+    Indexed(index) => sgr3(38, 5, clamp_byte_value(index))
+    Rgb(r, g, b) =>
+      sgr5(38, 2, clamp_byte_value(r), clamp_byte_value(g), clamp_byte_value(b))
+  }
+}
+
+///|
+/// Construct the SGR sequence for a background color command.
+pub fn set_background(color : @color.Color) -> Bytes {
+  match color {
+    Default => reset_background
+    Basic(color) => sgr1(basic_background_code(color))
+    Indexed(index) => sgr3(48, 5, clamp_byte_value(index))
+    Rgb(r, g, b) =>
+      sgr5(48, 2, clamp_byte_value(r), clamp_byte_value(g), clamp_byte_value(b))
+  }
 }

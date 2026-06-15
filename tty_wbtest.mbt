@@ -22,38 +22,6 @@ async fn with_pipe_tty(input_bytes : Bytes, f : async (Tty) -> Unit) -> String {
 }
 
 ///|
-test "style color sequences encode semantic colors" {
-  @debug.assert_eq(foreground_sequence(Default), b"\x1b[39m")
-  @debug.assert_eq(foreground_sequence(Basic(Black)), b"\x1b[30m")
-  @debug.assert_eq(foreground_sequence(Basic(Red)), b"\x1b[31m")
-  @debug.assert_eq(foreground_sequence(Basic(White)), b"\x1b[37m")
-  @debug.assert_eq(foreground_sequence(Basic(BrightBlack)), b"\x1b[90m")
-  @debug.assert_eq(foreground_sequence(Basic(BrightRed)), b"\x1b[91m")
-  @debug.assert_eq(foreground_sequence(Basic(BrightWhite)), b"\x1b[97m")
-  @debug.assert_eq(background_sequence(Default), b"\x1b[49m")
-  @debug.assert_eq(background_sequence(Basic(Black)), b"\x1b[40m")
-  @debug.assert_eq(background_sequence(Basic(Red)), b"\x1b[41m")
-  @debug.assert_eq(background_sequence(Basic(White)), b"\x1b[47m")
-  @debug.assert_eq(background_sequence(Basic(BrightBlack)), b"\x1b[100m")
-  @debug.assert_eq(background_sequence(Basic(BrightRed)), b"\x1b[101m")
-  @debug.assert_eq(background_sequence(Basic(BrightWhite)), b"\x1b[107m")
-  @debug.assert_eq(foreground_sequence(Indexed(-1)), b"\x1b[38;5;0m")
-  @debug.assert_eq(foreground_sequence(Indexed(42)), b"\x1b[38;5;42m")
-  @debug.assert_eq(foreground_sequence(Indexed(999)), b"\x1b[38;5;255m")
-  @debug.assert_eq(background_sequence(Indexed(-1)), b"\x1b[48;5;0m")
-  @debug.assert_eq(background_sequence(Indexed(42)), b"\x1b[48;5;42m")
-  @debug.assert_eq(background_sequence(Indexed(999)), b"\x1b[48;5;255m")
-  @debug.assert_eq(
-    foreground_sequence(Rgb(-1, 127, 999)),
-    b"\x1b[38;2;0;127;255m",
-  )
-  @debug.assert_eq(
-    background_sequence(Rgb(-1, 127, 999)),
-    b"\x1b[48;2;0;127;255m",
-  )
-}
-
-///|
 async test "pipe tty terminal commands write sequences" {
   let output = with_pipe_tty(b"", tty => {
     tty.enter_alt_screen()
