@@ -54,3 +54,10 @@ pub impl Fd for @async/stdio.Input with fn fd(self) {
 pub impl Fd for @async/stdio.Output with fn fd(self) {
   @async/stdio.Output::fd(self)
 }
+
+///|
+/// Allow raw file-descriptor streams (used for the controlling terminal and
+/// Windows console devices) to be used with file-descriptor based terminal APIs.
+pub impl Fd for @async/raw_fd.RawFdStream with fn fd(self) {
+  self.fd
+}

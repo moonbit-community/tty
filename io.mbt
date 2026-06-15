@@ -51,3 +51,17 @@ pub impl Reader for @async/stdio.Input with fn close(_) {
 pub impl Writer for @async/stdio.Output with fn close(_) {
   ()
 }
+
+///|
+/// Allow raw file-descriptor streams to serve as terminal input handles.
+/// Used for the controlling terminal (`/dev/tty`) and Windows console devices.
+pub impl Reader for @async/raw_fd.RawFdStream with fn close(self) {
+  @async/raw_fd.RawFdStream::close(self)
+}
+
+///|
+/// Allow raw file-descriptor streams to serve as terminal output handles.
+/// Used for the controlling terminal (`/dev/tty`) and Windows console devices.
+pub impl Writer for @async/raw_fd.RawFdStream with fn close(self) {
+  @async/raw_fd.RawFdStream::close(self)
+}
