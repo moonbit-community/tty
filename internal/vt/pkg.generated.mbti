@@ -1,6 +1,10 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "moonbit-community/tty/internal/vt"
 
+import {
+  "moonbit-community/tty/color",
+}
+
 // Values
 pub let begin_synchronized_update : Bytes
 
@@ -86,11 +90,17 @@ pub let request_cursor_position : Bytes
 
 pub let request_primary_device_attributes : Bytes
 
+pub let reset_background : Bytes
+
 pub let reset_bold : Bytes
+
+pub let reset_foreground : Bytes
 
 pub let reset_italic : Bytes
 
 pub let reset_reverse : Bytes
+
+pub let reset_style : Bytes
 
 pub let reset_top_bottom_margins : Bytes
 
@@ -99,6 +109,10 @@ pub let reset_underline : Bytes
 pub let reverse : Bytes
 
 pub let reverse_index : Bytes
+
+pub fn set_background(@color.Color) -> Bytes
+
+pub fn set_foreground(@color.Color) -> Bytes
 
 pub fn set_top_bottom_margins(Int, Int) -> Bytes
 

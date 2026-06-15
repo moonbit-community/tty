@@ -1,4 +1,8 @@
 import {
+  "moonbit-community/tty/color",
+}
+
+import {
   "moonbitlang/core/bench",
   "moonbitlang/core/debug",
   "moonbitlang/core/encoding/utf8",

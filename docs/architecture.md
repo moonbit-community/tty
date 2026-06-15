@@ -74,6 +74,8 @@ It should:
 - construct DEC auto wrap enable/disable sequences
 - construct scrolling-margin and reverse-index sequences
 - construct low-level SGR sequences and fixed SGR attribute bytes
+- construct foreground and background SGR sequences from semantic
+  `@color.Color` values for root `Tty` methods
 - document the standard or terminal family each sequence comes from
 
 It should not:
@@ -107,8 +109,8 @@ It should not:
 - decide whether colors should be enabled
 - mutate terminal palettes or query terminal color state
 
-Root `Tty` methods map color values onto SGR byte sequences when writing to a
-terminal.
+Root `Tty` methods delegate color-to-SGR byte encoding to `internal/vt` when
+writing to a terminal.
 
 OSC dynamic color queries for the terminal default foreground, default
 background, and text cursor color belong on root `Tty` because they write a

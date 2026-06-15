@@ -20,6 +20,9 @@ import {
   "moonbitlang/async",
   "moonbitlang/async/pipe" @async/pipe,
   "moonbitlang/async/stdio" @async/stdio,
+  "moonbitlang/core/debug",
+  "moonbit-community/tty/color",
+  "moonbit-community/tty/input" @public_input,
 } for "test"
 
 import {
