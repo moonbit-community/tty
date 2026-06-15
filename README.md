@@ -93,7 +93,7 @@ async fn main {
   let tty = @tty.Tty::stdio()
   tty.hide_cursor()
   tty.set_cursor_position(1, 1)
-  tty.bold()
+  tty.set_bold()
   tty.set_foreground(Basic(Green))
   tty.write("hello from tty\r\n")
   tty.reset_style()
