@@ -26,6 +26,9 @@ struct Tty {
   reader : @input.EventReader
   input_backend : WindowsInput
   pending_input : Array[@public_input.InputEvent]
+  // Serializes output writes so a single `write`/`write_string` call lands on
+  // the terminal atomically with respect to other concurrent writers.
+  write_lock : @lock.Lock
 }
 
 ///|
@@ -35,6 +38,9 @@ struct Tty {
   output : &Writer
   reader : @input.EventReader
   pending_input : Array[@public_input.InputEvent]
+  // Serializes output writes so a single `write`/`write_string` call lands on
+  // the terminal atomically with respect to other concurrent writers.
+  write_lock : @lock.Lock
 }
 
 ///|
@@ -50,6 +56,7 @@ pub fn[I : Reader, O : Writer] Tty::new(input : I, output : O) -> Tty {
     reader: input_backend.event_reader(input as &@async/io.Reader),
     input_backend,
     pending_input: [],
+    write_lock: @lock.Lock::new(),
   }
 }
 
@@ -64,6 +71,7 @@ pub fn[I : Reader, O : Writer] Tty::new(input : I, output : O) -> Tty {
     output,
     reader: @input.EventReader::new(input as &@async/io.Reader),
     pending_input: [],
+    write_lock: @lock.Lock::new(),
   }
 }
 
@@ -132,14 +140,24 @@ async fn Tty::read_internal_event(
 
 ///|
 /// Write bytes to the terminal output handle.
+///
+/// The write is serialized through an internal lock, so a single call lands on
+/// the terminal atomically even when multiple tasks write concurrently. To make
+/// a multi-call sequence atomic, assemble it into one buffer and issue a single
+/// `write`.
 pub async fn Tty::write(self : Self, data : &@async/io.Data) -> Unit {
-  self.output.write(data)
+  self.write_lock.with_lock(() => self.output.write(data))
 }
 
 ///|
 /// Write a string to the terminal output handle.
+///
+/// The write is serialized through an internal lock, so a single call lands on
+/// the terminal atomically even when multiple tasks write concurrently. To make
+/// a multi-call sequence atomic, assemble it into one string and issue a single
+/// `write_string`.
 pub async fn Tty::write_string(self : Self, string : String) -> Unit {
-  self.output.write(string)
+  self.write_lock.with_lock(() => self.output.write(string))
 }
 
 ///|

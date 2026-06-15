@@ -1,0 +1,19 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbit-community/tty/internal/lock"
+
+// Values
+
+// Errors
+
+// Types and methods
+type Lock
+pub async fn Lock::acquire(Self) -> Unit
+pub fn Lock::new() -> Self
+pub fn Lock::release(Self) -> Unit
+pub fn Lock::try_acquire(Self) -> Bool
+pub async fn[X] Lock::with_lock(Self, async () -> X) -> X
+
+// Type aliases
+
+// Traits
+
