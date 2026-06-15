@@ -4,7 +4,7 @@
 /// A `Command` is inert data. It only writes bytes when passed to
 /// `Tty::execute`.
 pub(all) enum Command {
-  Print(String)
+  Print(StringView)
   EnterAltScreen
   LeaveAltScreen
   BeginSynchronizedUpdate

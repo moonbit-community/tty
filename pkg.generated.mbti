@@ -19,7 +19,7 @@ pub fn[T : Fd] isatty(T) -> Bool raise @os_error.OSError
 
 // Types and methods
 pub(all) enum Command {
-  Print(String)
+  Print(StringView)
   EnterAltScreen
   LeaveAltScreen
   BeginSynchronizedUpdate

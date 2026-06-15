@@ -16,9 +16,9 @@ write.
   order, and calls `Tty::write` once. An empty command array is a no-op.
 - Only include pure write-only commands in this batch. Exclude terminal query
   operations, `with_*` scope helpers, and mouse composite commands for now.
-- Add `Print(String)` as the text-output command. It writes the string as UTF-8
-  into the command batch buffer and does not escape or sanitize terminal control
-  bytes embedded in the string.
+- Add `Print(StringView)` as the text-output command. It writes the string view
+  as UTF-8 into the command batch buffer and does not escape or sanitize
+  terminal control bytes embedded in the text.
 
 ## Target Files / Surfaces
 
@@ -34,7 +34,7 @@ write.
 - `Command` variants cover cursor movement, screen mode constants,
   erase/cursor-visibility commands, style/color commands, scroll margins,
   synchronized updates, bracketed paste/focus/auto-wrap modes, kitty keyboard
-  enhancement push/pop, and `Print(String)`.
+  enhancement push/pop, and `Print(StringView)`.
 - `internal/vt/pkg.generated.mbti` should remain unchanged.
 
 ## Open Questions
@@ -78,5 +78,6 @@ behavior.
 
 - Root `pkg.generated.mbti` gained only the accepted `pub(all) enum Command`
   and `pub async fn Tty::execute(Self, Array[Command]) -> Unit`.
-- The `Print(String)` addendum changes only the accepted command enum surface.
+- The `Print(StringView)` addendum changes only the accepted command enum
+  surface.
 - `internal/vt/pkg.generated.mbti` remained unchanged.
