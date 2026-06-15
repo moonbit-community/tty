@@ -64,6 +64,7 @@ fn[I : Reader, O : Writer] win32_test_console_tty(input : I, output : O) -> Tty 
     reader: input_backend.event_reader(input as &@async/io.Reader),
     input_backend,
     pending_input: [],
+    write_lock: @lock.Lock::new(),
   }
 }
 
