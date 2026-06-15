@@ -64,16 +64,26 @@ pub let query_cursor_color : Bytes = b"\x1b]12;?\x1b\\"
 
 ///|
 /// Push kitty keyboard protocol progressive enhancement flags.
+pub fn write_push_keyboard_enhancement_flags(
+  buf : @buffer.Buffer,
+  flags : Int,
+) -> Unit {
+  let flags = if flags < 0 { 0 } else { flags }
+  buf.write_byte(b'\x1b')
+  buf.write_byte(b'[')
+  buf.write_byte(b'>')
+  write_decimal(buf, flags)
+  buf.write_byte(b'u')
+}
+
+///|
+/// Push kitty keyboard protocol progressive enhancement flags.
 pub fn push_keyboard_enhancement_flags(flags : Int) -> Bytes {
   let flags = if flags < 0 { 0 } else { flags }
   let len = count_decimal_digits(flags)
-  let buf : FixedArray[Byte] = FixedArray::make(4 + len, 0)
-  buf[0] = b'\x1b'
-  buf[1] = b'['
-  buf[2] = b'>'
-  let offset = write_decimal_digits(buf, flags, offset=3, length=len)
-  buf[offset] = b'u'
-  buf.unsafe_reinterpret_as_bytes()
+  bytes_from_buffer(4 + len, buf => {
+    write_push_keyboard_enhancement_flags(buf, flags)
+  })
 }
 
 ///|

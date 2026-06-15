@@ -44,8 +44,20 @@ pub let reset_reverse : Bytes = b"\x1b[27m"
 
 ///|
 /// Construct an SGR sequence with one parameter.
+pub fn write_sgr1(buf : @buffer.Buffer, p1 : Int) -> Unit {
+  write_csi1(buf, p1, b'm')
+}
+
+///|
+/// Construct an SGR sequence with one parameter.
 pub fn sgr1(p1 : Int) -> Bytes {
   csi1(p1, b'm')
+}
+
+///|
+/// Construct an SGR sequence with three parameters.
+pub fn write_sgr3(buf : @buffer.Buffer, p1 : Int, p2 : Int, p3 : Int) -> Unit {
+  write_csi3(buf, p1, p2, p3, b'm')
 }
 
 ///|
@@ -54,16 +66,20 @@ pub fn sgr3(p1 : Int, p2 : Int, p3 : Int) -> Bytes {
   let len1 = count_decimal_digits(p1)
   let len2 = count_decimal_digits(p2)
   let len3 = count_decimal_digits(p3)
-  let buf : FixedArray[Byte] = FixedArray::make(5 + len1 + len2 + len3, 0)
-  buf[0] = Esc
-  buf[1] = b'['
-  let offset = write_decimal_digits(buf, p1, offset=2, length=len1)
-  buf[offset] = b';'
-  let offset = write_decimal_digits(buf, p2, offset=offset + 1, length=len2)
-  buf[offset] = b';'
-  let offset = write_decimal_digits(buf, p3, offset=offset + 1, length=len3)
-  buf[offset] = b'm'
-  buf.unsafe_reinterpret_as_bytes()
+  bytes_from_buffer(5 + len1 + len2 + len3, buf => write_sgr3(buf, p1, p2, p3))
+}
+
+///|
+/// Construct an SGR sequence with five parameters.
+pub fn write_sgr5(
+  buf : @buffer.Buffer,
+  p1 : Int,
+  p2 : Int,
+  p3 : Int,
+  p4 : Int,
+  p5 : Int,
+) -> Unit {
+  write_csi5(buf, p1, p2, p3, p4, p5, b'm')
 }
 
 ///|
@@ -74,23 +90,9 @@ pub fn sgr5(p1 : Int, p2 : Int, p3 : Int, p4 : Int, p5 : Int) -> Bytes {
   let len3 = count_decimal_digits(p3)
   let len4 = count_decimal_digits(p4)
   let len5 = count_decimal_digits(p5)
-  let buf : FixedArray[Byte] = FixedArray::make(
-    7 + len1 + len2 + len3 + len4 + len5,
-    0,
-  )
-  buf[0] = Esc
-  buf[1] = b'['
-  let offset = write_decimal_digits(buf, p1, offset=2, length=len1)
-  buf[offset] = b';'
-  let offset = write_decimal_digits(buf, p2, offset=offset + 1, length=len2)
-  buf[offset] = b';'
-  let offset = write_decimal_digits(buf, p3, offset=offset + 1, length=len3)
-  buf[offset] = b';'
-  let offset = write_decimal_digits(buf, p4, offset=offset + 1, length=len4)
-  buf[offset] = b';'
-  let offset = write_decimal_digits(buf, p5, offset=offset + 1, length=len5)
-  buf[offset] = b'm'
-  buf.unsafe_reinterpret_as_bytes()
+  bytes_from_buffer(7 + len1 + len2 + len3 + len4 + len5, buf => {
+    write_sgr5(buf, p1, p2, p3, p4, p5)
+  })
 }
 
 ///|
@@ -150,13 +152,48 @@ fn basic_background_code(color : @color.BasicColor) -> Int {
 
 ///|
 /// Construct the SGR sequence for a foreground color command.
+pub fn write_set_foreground(buf : @buffer.Buffer, color : @color.Color) -> Unit {
+  match color {
+    Default => buf.write_bytes(reset_foreground)
+    Basic(color) => write_sgr1(buf, basic_foreground_code(color))
+    Indexed(index) => write_sgr3(buf, 38, 5, clamp_byte_value(index))
+    Rgb(r, g, b) =>
+      write_sgr5(
+        buf,
+        38,
+        2,
+        clamp_byte_value(r),
+        clamp_byte_value(g),
+        clamp_byte_value(b),
+      )
+  }
+}
+
+///|
+/// Construct the SGR sequence for a foreground color command.
 pub fn set_foreground(color : @color.Color) -> Bytes {
   match color {
     Default => reset_foreground
-    Basic(color) => sgr1(basic_foreground_code(color))
-    Indexed(index) => sgr3(38, 5, clamp_byte_value(index))
+    _ => bytes_from_buffer(20, buf => write_set_foreground(buf, color))
+  }
+}
+
+///|
+/// Construct the SGR sequence for a background color command.
+pub fn write_set_background(buf : @buffer.Buffer, color : @color.Color) -> Unit {
+  match color {
+    Default => buf.write_bytes(reset_background)
+    Basic(color) => write_sgr1(buf, basic_background_code(color))
+    Indexed(index) => write_sgr3(buf, 48, 5, clamp_byte_value(index))
     Rgb(r, g, b) =>
-      sgr5(38, 2, clamp_byte_value(r), clamp_byte_value(g), clamp_byte_value(b))
+      write_sgr5(
+        buf,
+        48,
+        2,
+        clamp_byte_value(r),
+        clamp_byte_value(g),
+        clamp_byte_value(b),
+      )
   }
 }
 
@@ -165,9 +202,6 @@ pub fn set_foreground(color : @color.Color) -> Bytes {
 pub fn set_background(color : @color.Color) -> Bytes {
   match color {
     Default => reset_background
-    Basic(color) => sgr1(basic_background_code(color))
-    Indexed(index) => sgr3(48, 5, clamp_byte_value(index))
-    Rgb(r, g, b) =>
-      sgr5(48, 2, clamp_byte_value(r), clamp_byte_value(g), clamp_byte_value(b))
+    _ => bytes_from_buffer(20, buf => write_set_background(buf, color))
   }
 }

@@ -3,6 +3,7 @@ package "moonbit-community/tty/internal/vt"
 
 import {
   "moonbit-community/tty/color",
+  "moonbitlang/core/buffer",
 }
 
 // Values
@@ -125,6 +126,36 @@ pub fn sgr5(Int, Int, Int, Int, Int) -> Bytes
 pub let show_cursor : Bytes
 
 pub let underline : Bytes
+
+pub fn write_cursor_back(@buffer.Buffer, Int) -> Unit
+
+pub fn write_cursor_down(@buffer.Buffer, Int) -> Unit
+
+pub fn write_cursor_forward(@buffer.Buffer, Int) -> Unit
+
+pub fn write_cursor_horizontal_absolute(@buffer.Buffer, Int) -> Unit
+
+pub fn write_cursor_next_line(@buffer.Buffer, Int) -> Unit
+
+pub fn write_cursor_position(@buffer.Buffer, Int, Int) -> Unit
+
+pub fn write_cursor_prev_line(@buffer.Buffer, Int) -> Unit
+
+pub fn write_cursor_up(@buffer.Buffer, Int) -> Unit
+
+pub fn write_push_keyboard_enhancement_flags(@buffer.Buffer, Int) -> Unit
+
+pub fn write_set_background(@buffer.Buffer, @color.Color) -> Unit
+
+pub fn write_set_foreground(@buffer.Buffer, @color.Color) -> Unit
+
+pub fn write_set_top_bottom_margins(@buffer.Buffer, Int, Int) -> Unit
+
+pub fn write_sgr1(@buffer.Buffer, Int) -> Unit
+
+pub fn write_sgr3(@buffer.Buffer, Int, Int, Int) -> Unit
+
+pub fn write_sgr5(@buffer.Buffer, Int, Int, Int, Int, Int) -> Unit
 
 // Errors
 
