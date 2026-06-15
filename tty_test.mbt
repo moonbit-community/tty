@@ -63,6 +63,72 @@ async test "pipe tty terminal commands write sequences" {
 }
 
 ///|
+async test "pipe tty execute command batch writes sequences" {
+  let output = with_pipe_tty(b"", tty => {
+    tty.execute([
+      EnterAltScreen,
+      BeginSynchronizedUpdate,
+      EnableBracketedPaste,
+      EnableFocusTracking,
+      EnableAutoWrap,
+      HideCursor,
+      CursorUp(2),
+      CursorDown(3),
+      CursorForward(4),
+      CursorBack(5),
+      CursorNextLine(6),
+      CursorPrevLine(7),
+      CursorHorizontalAbsolute(8),
+      CursorPosition(3, 4),
+      EraseLineAll,
+      EraseLineLeft,
+      EraseLineRight,
+      EraseDisplay,
+      EraseScrollback,
+      SetTopBottomMargins(1, 5),
+      ReverseIndex,
+      ResetTopBottomMargins,
+      SetForeground(Basic(Red)),
+      ResetForeground,
+      SetBackground(Indexed(42)),
+      ResetBackground,
+      SetBold,
+      ResetBold,
+      SetItalic,
+      ResetItalic,
+      SetUnderline,
+      ResetUnderline,
+      SetReverse,
+      ResetReverse,
+      ResetStyle,
+      PushKeyboardEnhancementFlags(
+        @tty.KeyboardEnhancementFlags::new(
+          disambiguate_escape_codes=true,
+          report_event_types=true,
+        ),
+      ),
+      PopKeyboardEnhancementFlags,
+      ShowCursor,
+      DisableAutoWrap,
+      DisableFocusTracking,
+      DisableBracketedPaste,
+      EndSynchronizedUpdate,
+      LeaveAltScreen,
+    ])
+  })
+  inspect(
+    output,
+    content="\u{1B}[?1049h\u{1B}[?2026h\u{1B}[?2004h\u{1B}[?1004h\u{1B}[?7h\u{1B}[?25l\u{1B}[2A\u{1B}[3B\u{1B}[4C\u{1B}[5D\u{1B}[6E\u{1B}[7F\u{1B}[8G\u{1B}[3;4H\u{1B}[2K\u{1B}[1K\u{1B}[K\u{1B}[2J\u{1B}[3J\u{1B}[1;5r\u{1B}M\u{1B}[r\u{1B}[31m\u{1B}[39m\u{1B}[48;5;42m\u{1B}[49m\u{1B}[1m\u{1B}[22m\u{1B}[3m\u{1B}[23m\u{1B}[4m\u{1B}[24m\u{1B}[7m\u{1B}[27m\u{1B}[0m\u{1B}[>3u\u{1B}[<1u\u{1B}[?25h\u{1B}[?7l\u{1B}[?1004l\u{1B}[?2004l\u{1B}[?2026l\u{1B}[?1049l",
+  )
+}
+
+///|
+async test "pipe tty execute empty command batch writes nothing" {
+  let output = with_pipe_tty(b"", tty => tty.execute([]))
+  inspect(output, content="")
+}
+
+///|
 async test "pipe tty mouse mode commands write sequences" {
   let output = with_pipe_tty(b"", tty => {
     tty.enable_mouse(Click)

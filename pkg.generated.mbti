@@ -18,6 +18,52 @@ pub fn[T : Fd] isatty(T) -> Bool raise @os_error.OSError
 // Errors
 
 // Types and methods
+pub(all) enum Command {
+  EnterAltScreen
+  LeaveAltScreen
+  BeginSynchronizedUpdate
+  EndSynchronizedUpdate
+  EnableBracketedPaste
+  DisableBracketedPaste
+  EnableFocusTracking
+  DisableFocusTracking
+  EnableAutoWrap
+  DisableAutoWrap
+  PushKeyboardEnhancementFlags(KeyboardEnhancementFlags)
+  PopKeyboardEnhancementFlags
+  HideCursor
+  ShowCursor
+  CursorUp(Int)
+  CursorDown(Int)
+  CursorForward(Int)
+  CursorBack(Int)
+  CursorNextLine(Int)
+  CursorPrevLine(Int)
+  CursorHorizontalAbsolute(Int)
+  CursorPosition(Int, Int)
+  EraseLineAll
+  EraseLineLeft
+  EraseLineRight
+  EraseDisplay
+  EraseScrollback
+  SetTopBottomMargins(Int, Int)
+  ResetTopBottomMargins
+  ReverseIndex
+  SetForeground(@color.Color)
+  SetBackground(@color.Color)
+  ResetForeground
+  ResetBackground
+  SetBold
+  ResetBold
+  SetItalic
+  ResetItalic
+  SetUnderline
+  ResetUnderline
+  SetReverse
+  ResetReverse
+  ResetStyle
+}
+
 pub struct CursorPosition {
   row : Int
   col : Int
@@ -68,6 +114,7 @@ pub fn Tty::enter_raw_mode(Self) -> State raise @os_error.OSError
 pub async fn Tty::erase_display(Self) -> Unit
 pub async fn Tty::erase_line_all(Self) -> Unit
 pub async fn Tty::erase_scrollback(Self) -> Unit
+pub async fn Tty::execute(Self, Array[Command]) -> Unit
 pub fn Tty::get_state(Self) -> State raise @os_error.OSError
 pub async fn Tty::hide_cursor(Self) -> Unit
 pub async fn Tty::leave_alt_screen(Self) -> Unit
