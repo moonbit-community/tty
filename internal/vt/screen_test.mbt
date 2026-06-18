@@ -35,6 +35,9 @@ test "terminal response query sequences" {
   @debug.assert_eq(@vt.query_default_foreground_color, b"\x1b]10;?\x1b\\")
   @debug.assert_eq(@vt.query_default_background_color, b"\x1b]11;?\x1b\\")
   @debug.assert_eq(@vt.query_cursor_color, b"\x1b]12;?\x1b\\")
+  @debug.assert_eq(
+    @vt.query_kitty_graphics_support, b"\x1b_Gi=2147483647,s=1,v=1,a=q,t=d,f=24;AAAA\x1b\\",
+  )
 }
 
 ///|
@@ -55,4 +58,12 @@ test "mouse mode sequences" {
   @debug.assert_eq(@vt.disable_mouse_motion, b"\x1b[?1003l")
   @debug.assert_eq(@vt.enable_sgr_mouse, b"\x1b[?1006h")
   @debug.assert_eq(@vt.disable_sgr_mouse, b"\x1b[?1006l")
+}
+
+///|
+test "kitty graphics png display sequence" {
+  @debug.assert_eq(
+    @vt.display_kitty_png(b"abc", image_id=7, columns=4, rows=2),
+    b"\x1b_Ga=T,f=100,t=d,q=1,m=0,i=7,c=4,r=2,C=1;YWJj\x1b\\",
+  )
 }

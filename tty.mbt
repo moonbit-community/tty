@@ -126,6 +126,7 @@ async fn Tty::read_decoded_input_event(
       KeyboardEnhancementFlags(_) => ()
       PrimaryDeviceAttributes(_) => ()
       DynamicColor(..) => ()
+      KittyGraphicsResponse(..) => ()
     }
   }
 }
@@ -178,6 +179,7 @@ pub async fn Tty::query_cursor_position(
         KeyboardEnhancementFlags(_) => ()
         PrimaryDeviceAttributes(_) => ()
         DynamicColor(..) => ()
+        KittyGraphicsResponse(..) => ()
       }
     }
   })
@@ -202,6 +204,7 @@ pub async fn Tty::query_kitty_keyboard_support(
           PrimaryDeviceAttributes(_) => return false
           CursorPosition(..) => ()
           DynamicColor(..) => ()
+          KittyGraphicsResponse(..) => ()
           Input(event) => self.pending_input.push(event)
         }
       }
@@ -267,6 +270,7 @@ async fn Tty::query_dynamic_color(
         CursorPosition(..) => ()
         KeyboardEnhancementFlags(_) => ()
         PrimaryDeviceAttributes(_) => ()
+        KittyGraphicsResponse(..) => ()
         Input(event) => self.pending_input.push(event)
       }
     }

@@ -274,6 +274,29 @@ async test "osc dynamic color responses are stream events" {
 }
 
 ///|
+async test "kitty graphics response is a stream event" {
+  with_input(b"\x1b_Gi=31,I=7,p=4;OK\x1b\\", events => {
+    @debug.assert_eq(
+      events.read_event(),
+      KittyGraphicsResponse(
+        image_id=31,
+        image_number=7,
+        placement_id=4,
+        message="OK",
+      ),
+    )
+  })
+}
+
+///|
+async test "invalid apc shapes remain unknown input" {
+  with_input(b"\x1b_Xignored\x1b\\\x1b_Gbad;OK\x1b\\", events => {
+    @debug.assert_eq(events.read_event(), input_unknown(b"\x1b_Xignored\x1b\\"))
+    @debug.assert_eq(events.read_event(), input_unknown(b"\x1b_Gbad;OK\x1b\\"))
+  })
+}
+
+///|
 async test "invalid osc dynamic color shapes remain unknown input" {
   with_input(
     b"\x1b]10;?\x07\x1b]10;rgb:fffff/0/0\x07\x1b]13;rgb:ffff/0/0\x07\x1b]110;rgb:ffff/0/0\x07",
@@ -293,6 +316,21 @@ async test "invalid osc dynamic color shapes remain unknown input" {
       )
     },
   )
+}
+
+///|
+async test "flush apc introducer as alt underscore" {
+  with_delayed_input(b"\x1b_", b"", 50, events => {
+    @debug.assert_eq(
+      events.read_event(esc_timeout_ms=10),
+      input_key(
+        @public_input.KeyEvent::new(
+          Char('_'),
+          modifiers=@public_input.KeyModifiers::new(alt=true),
+        ),
+      ),
+    )
+  })
 }
 
 ///|
