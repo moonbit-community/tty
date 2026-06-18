@@ -16,42 +16,107 @@ fn count_decimal_digits(n : Int) -> Int {
 }
 
 ///|
-fn write_decimal_digits(
-  buf : FixedArray[Byte],
-  n : Int,
-  offset? : Int = 0,
-  length? : Int = count_decimal_digits(n),
-) -> Int {
-  let mut value = n
-  for i in 0..<length {
-    let index = offset + length - i - 1
-    buf[index] = (value % 10 + b'0'.to_int()).to_byte()
-    value = value / 10
+fn bytes_from_buffer(
+  size_hint : Int,
+  write : (@buffer.Buffer) -> Unit,
+) -> Bytes {
+  let buf = @buffer.Buffer::Buffer(size_hint~)
+  write(buf)
+  buf.to_bytes()
+}
+
+///|
+fn write_decimal_nonnegative(buf : @buffer.Buffer, n : Int) -> Unit {
+  if n >= 10 {
+    write_decimal_nonnegative(buf, n / 10)
   }
-  offset + length
+  buf.write_byte((n % 10 + b'0'.to_int()).to_byte())
+}
+
+///|
+fn write_decimal(buf : @buffer.Buffer, n : Int) -> Unit {
+  guard n >= 0 else {
+    abort(
+      "@moonbit-community/tty/internal/vt.write_decimal: n should be greater or equal to 0",
+    )
+  }
+  write_decimal_nonnegative(buf, n)
+}
+
+///|
+fn write_csi1(buf : @buffer.Buffer, n : Int, final_byte : Byte) -> Unit {
+  buf.write_byte(Esc)
+  buf.write_byte(b'[')
+  write_decimal(buf, n)
+  buf.write_byte(final_byte)
 }
 
 ///|
 fn csi1(n : Int, final_byte : Byte) -> Bytes {
   let len = count_decimal_digits(n)
-  let buf : FixedArray[Byte] = FixedArray::make(3 + len, 0)
-  buf[0] = Esc
-  buf[1] = b'['
-  let offset = write_decimal_digits(buf, n, offset=2, length=len)
-  buf[offset] = final_byte
-  buf.unsafe_reinterpret_as_bytes()
+  bytes_from_buffer(3 + len, buf => write_csi1(buf, n, final_byte))
+}
+
+///|
+fn write_csi2(
+  buf : @buffer.Buffer,
+  n1 : Int,
+  n2 : Int,
+  final_byte : Byte,
+) -> Unit {
+  buf.write_byte(Esc)
+  buf.write_byte(b'[')
+  write_decimal(buf, n1)
+  buf.write_byte(b';')
+  write_decimal(buf, n2)
+  buf.write_byte(final_byte)
 }
 
 ///|
 fn csi2(n1 : Int, n2 : Int, final_byte : Byte) -> Bytes {
   let len1 = count_decimal_digits(n1)
   let len2 = count_decimal_digits(n2)
-  let buf : FixedArray[Byte] = FixedArray::make(4 + len1 + len2, 0)
-  buf[0] = Esc
-  buf[1] = b'['
-  let offset = write_decimal_digits(buf, n1, offset=2, length=len1)
-  buf[offset] = b';'
-  let offset = write_decimal_digits(buf, n2, offset=offset + 1, length=len2)
-  buf[offset] = final_byte
-  buf.unsafe_reinterpret_as_bytes()
+  bytes_from_buffer(4 + len1 + len2, buf => write_csi2(buf, n1, n2, final_byte))
+}
+
+///|
+fn write_csi3(
+  buf : @buffer.Buffer,
+  n1 : Int,
+  n2 : Int,
+  n3 : Int,
+  final_byte : Byte,
+) -> Unit {
+  buf.write_byte(Esc)
+  buf.write_byte(b'[')
+  write_decimal(buf, n1)
+  buf.write_byte(b';')
+  write_decimal(buf, n2)
+  buf.write_byte(b';')
+  write_decimal(buf, n3)
+  buf.write_byte(final_byte)
+}
+
+///|
+fn write_csi5(
+  buf : @buffer.Buffer,
+  n1 : Int,
+  n2 : Int,
+  n3 : Int,
+  n4 : Int,
+  n5 : Int,
+  final_byte : Byte,
+) -> Unit {
+  buf.write_byte(Esc)
+  buf.write_byte(b'[')
+  write_decimal(buf, n1)
+  buf.write_byte(b';')
+  write_decimal(buf, n2)
+  buf.write_byte(b';')
+  write_decimal(buf, n3)
+  buf.write_byte(b';')
+  write_decimal(buf, n4)
+  buf.write_byte(b';')
+  write_decimal(buf, n5)
+  buf.write_byte(final_byte)
 }
