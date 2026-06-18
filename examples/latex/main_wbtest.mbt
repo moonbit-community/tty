@@ -21,7 +21,7 @@ test "renderer command arguments" {
   )
   inspect(
     pdftocairo_args("/tmp/demo").join("|"),
-    content="-png|-singlefile|-r|180|/tmp/demo/formula.pdf|/tmp/demo/formula",
+    content="-png|-singlefile|-r|600|/tmp/demo/formula.pdf|/tmp/demo/formula",
   )
 }
 

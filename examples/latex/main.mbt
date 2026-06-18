@@ -75,7 +75,7 @@ fn pdflatex_args(tmp_dir : String) -> Array[String] {
 
 ///|
 fn pdftocairo_args(tmp_dir : String) -> Array[String] {
-  ["-png", "-singlefile", "-r", "180", pdf_path(tmp_dir), png_prefix(tmp_dir)]
+  ["-png", "-singlefile", "-r", "600", pdf_path(tmp_dir), png_prefix(tmp_dir)]
 }
 
 ///|

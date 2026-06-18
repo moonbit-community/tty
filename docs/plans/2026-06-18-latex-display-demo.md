@@ -68,6 +68,19 @@ Done.
   `moon test examples/latex`, `moon check`, `moon test`, `moon info`,
   `git diff --check`, and a tmux smoke of `moon run examples/latex`.
 
+## Follow-up DPI Correction
+
+- Problem: after tight cropping, the formula PNG was only `137x62` at 180 DPI
+  and became blurry when scaled to a multi-cell Kitty graphics placement.
+- Accepted design: keep the terminal image area unchanged and raise the
+  `pdftocairo` rasterization DPI from 180 to 600 so the source PNG has enough
+  pixels before terminal scaling.
+- Public API diff: none. The correction is contained to `examples/latex` and
+  its white-box tests.
+- Validation plan: run `moon fmt`, `moon check examples/latex`,
+  `moon test examples/latex`, `moon check`, `moon test`, `moon info`,
+  `git diff --check`, and a tmux smoke of `moon run examples/latex`.
+
 ## Target Files And Surfaces
 
 - `internal/vt/*`: Kitty graphics command encoding and tests.
@@ -197,6 +210,17 @@ moon run examples/latex
   - tmux smoke with `E = mc^2` produced a tight `137x62` PNG instead of the
     previous wide `900x70` image, kept status/PNG-path rows visible, and cleaned
     the temporary render directory after `Ctrl-C`
+- Follow-up DPI correction validation passed:
+  - `moon fmt`
+  - `moon check examples/latex`
+  - `moon test examples/latex` (4 tests)
+  - `moon check`
+  - `moon test` (193 tests)
+  - `moon info`
+  - `git diff --check`
+  - tmux smoke with `E = mc^2` produced a `456x205` PNG at 600 DPI, kept
+    status/PNG-path rows visible, exited via `Ctrl-C`, and cleaned the temporary
+    render directory
 
 ## Open Questions
 
