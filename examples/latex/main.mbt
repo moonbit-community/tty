@@ -2,13 +2,13 @@
 const EscTimeoutMs : Int = 50
 
 ///|
-const ImageTopRow : Int = 9
+const ImageTopRow : Int = 13
 
 ///|
-const ImageColumns : Int = 72
+const ImageColumns : Int = 40
 
 ///|
-const ImageRows : Int = 14
+const ImageRows : Int = 8
 
 ///|
 priv struct ProcessResult {
@@ -29,14 +29,12 @@ fn latex_document(formula : String) -> String {
     #|\usepackage{amsmath}
     #|\usepackage{amssymb}
     #|\begin{document}
-    #|\[
     #|
   let suffix =
-    #|
-    #|\]
+    #|$
     #|\end{document}
     #|
-  prefix + formula + suffix
+  prefix + "$\\displaystyle " + formula + suffix
 }
 
 ///|

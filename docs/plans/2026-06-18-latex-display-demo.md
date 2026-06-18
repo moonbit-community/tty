@@ -50,6 +50,24 @@ Done.
   - `Ctrl-C` exits. Enter renders the current formula. Errors are shown in the
     demo instead of panicking when an external tool is missing or fails.
 
+## Follow-up Visual Correction
+
+- Problem: the first live Kitty graphics screenshot showed a tiny blurred
+  formula centered in a large blank image, and the image overlapped the status
+  text. Local reproduction showed the `\[ ... \]` display-math wrapper produced
+  a wide PNG (`900x70`) even for `E = mc^2`.
+- Accepted design:
+  - Wrap formulas as `$\\displaystyle ...$` so the `standalone` document crops to
+    the formula instead of a display-math line width.
+  - Start the image below the status and PNG-path rows.
+  - Use a smaller requested terminal image area that better matches a tight
+    formula PNG.
+- Public API diff: none. The correction is contained to `examples/latex` and
+  its white-box tests.
+- Validation plan: run `moon fmt`, `moon check examples/latex`,
+  `moon test examples/latex`, `moon check`, `moon test`, `moon info`,
+  `git diff --check`, and a tmux smoke of `moon run examples/latex`.
+
 ## Target Files And Surfaces
 
 - `internal/vt/*`: Kitty graphics command encoding and tests.
@@ -168,6 +186,17 @@ moon run examples/latex
     fallback, produced `/tmp/tty-latex-*/formula.png`, and reported
     `Rendered PNG. Terminal graphics are not available.`
   - sending `Ctrl-C` exited and left no tmux session running
+- Follow-up visual correction validation passed:
+  - `moon fmt`
+  - `moon check examples/latex`
+  - `moon test examples/latex` (4 tests)
+  - `moon check`
+  - `moon test` (193 tests)
+  - `moon info`
+  - `git diff --check`
+  - tmux smoke with `E = mc^2` produced a tight `137x62` PNG instead of the
+    previous wide `900x70` image, kept status/PNG-path rows visible, and cleaned
+    the temporary render directory after `Ctrl-C`
 
 ## Open Questions
 

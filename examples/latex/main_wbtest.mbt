@@ -2,7 +2,11 @@
 test "latex document wraps formula" {
   let document = latex_document("\\alpha^2 + \\beta")
   inspect(document.contains("\\usepackage{amsmath}"), content="true")
-  inspect(document.contains("\\alpha^2 + \\beta"), content="true")
+  inspect(
+    document.contains("$\\displaystyle \\alpha^2 + \\beta$"),
+    content="true",
+  )
+  inspect(document.contains("\\["), content="false")
 }
 
 ///|
