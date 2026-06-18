@@ -201,6 +201,9 @@ module:
 - `examples/latex` validates root terminal image display by rendering a typed
   LaTeX formula through external tools and displaying it through Kitty graphics
   or Sixel when supported
+- `examples/bad_apple` validates continuous terminal image display by extracting
+  Bad Apple video frames with external tools and playing them through Kitty
+  graphics or Sixel when supported
 - `examples/pager` validates primary-screen paging with a fixed status row and
   scrolling margins
 - `examples/color` validates SGR color output visually

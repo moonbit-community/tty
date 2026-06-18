@@ -139,6 +139,7 @@ Examples live in a separate workspace member under `examples/`.
 moon run examples/raw
 moon run examples/input
 moon run examples/latex
+moon run examples/bad_apple
 moon run examples/color
 moon run examples/cursor
 moon run examples/pager -- README.md
@@ -152,6 +153,8 @@ The examples are manual validation tools, not framework APIs:
   as they arrive.
 - `examples/latex` renders a typed LaTeX formula with external tools and displays
   it through Kitty graphics or Sixel when the terminal supports one of them.
+- `examples/bad_apple` plays Bad Apple frames through Kitty graphics or Sixel
+  when the terminal supports one of them.
 - `examples/color` prints a color specimen.
 - `examples/cursor` draws with cursor movement and erase sequences.
 - `examples/pager` demonstrates primary-screen paging with a fixed status row.
