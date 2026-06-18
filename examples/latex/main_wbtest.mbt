@@ -23,6 +23,20 @@ test "renderer command arguments" {
     pdftocairo_args("/tmp/demo").join("|"),
     content="-png|-singlefile|-r|600|/tmp/demo/formula.pdf|/tmp/demo/formula",
   )
+  inspect(
+    magick_sixel_args("/tmp/demo/formula.png").join("|"),
+    content="/tmp/demo/formula.png|sixel:-",
+  )
+}
+
+///|
+test "support label reports graphics protocols" {
+  inspect(support_label(true, false), content="Kitty graphics: on | Sixel: off")
+  inspect(support_label(false, true), content="Kitty graphics: off | Sixel: on")
+  inspect(
+    support_label(false, false),
+    content="Kitty graphics: off | Sixel: off",
+  )
 }
 
 ///|

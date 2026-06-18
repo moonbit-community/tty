@@ -17,9 +17,22 @@ priv struct ProcessResult {
 }
 
 ///|
+priv struct BinaryProcessResult {
+  code : Int
+  stdout : Bytes
+  stderr : String
+}
+
+///|
 priv enum RenderOutcome {
   Rendered(tmp_dir~ : String, path~ : String, png~ : Bytes)
   RenderFailed(String)
+}
+
+///|
+priv enum SixelOutcome {
+  ConvertedSixel(Bytes)
+  SixelFailed(String)
 }
 
 ///|
@@ -79,6 +92,11 @@ fn pdftocairo_args(tmp_dir : String) -> Array[String] {
 }
 
 ///|
+fn magick_sixel_args(path : String) -> Array[String] {
+  [path, "sixel:-"]
+}
+
+///|
 async fn run_tool(
   command : StringView,
   args : Array[String],
@@ -103,12 +121,52 @@ async fn run_tool(
 }
 
 ///|
+async fn run_binary_tool(
+  command : StringView,
+  args : Array[String],
+  cwd? : StringView,
+) -> BinaryProcessResult {
+  @async.with_task_group(group => {
+    let (stdout_reader, stdout_writer) = @pipe.pipe()
+    let (stderr_reader, stderr_writer) = @pipe.pipe()
+    defer stdout_reader.close()
+    defer stderr_reader.close()
+    let process = @process.spawn(
+      group,
+      command,
+      args,
+      stdout=stdout_writer,
+      stderr=stderr_writer,
+      cwd?,
+    )
+    stdout_writer.close()
+    stderr_writer.close()
+    let stdout = stdout_reader.read_all().binary()
+    let stderr = stderr_reader.read_all().text()
+    let code = process.wait()
+    { code, stdout, stderr }
+  })
+}
+
+///|
 async fn try_run_tool(
   command : StringView,
   args : Array[String],
   cwd? : StringView,
 ) -> ProcessResult? {
   Some(run_tool(command, args, cwd?)) catch {
+    error if @async.is_being_cancelled() => raise error
+    _ => None
+  }
+}
+
+///|
+async fn try_run_binary_tool(
+  command : StringView,
+  args : Array[String],
+  cwd? : StringView,
+) -> BinaryProcessResult? {
+  Some(run_binary_tool(command, args, cwd?)) catch {
     error if @async.is_being_cancelled() => raise error
     _ => None
   }
@@ -153,6 +211,24 @@ async fn convert_pdf_to_png(tmp_dir : String) -> String? {
     None =>
       Some(
         "failed to run pdftocairo. Install poppler or make sure pdftocairo is on PATH.",
+      )
+  }
+}
+
+///|
+async fn convert_png_to_sixel(path : String) -> SixelOutcome {
+  match try_run_binary_tool("magick", magick_sixel_args(path)) {
+    Some(result) =>
+      if result.code == 0 && result.stdout.length() > 0 {
+        ConvertedSixel(result.stdout)
+      } else {
+        SixelFailed(
+          "magick sixel conversion failed:\n" + summarize_output(result.stderr),
+        )
+      }
+    None =>
+      SixelFailed(
+        "failed to run magick for Sixel conversion. Install ImageMagick or make sure magick is on PATH.",
       )
   }
 }
@@ -286,11 +362,20 @@ fn formula_text(parts : Array[String]) -> String {
 }
 
 ///|
-fn support_label(kitty_graphics_supported : Bool) -> String {
+fn support_label(
+  kitty_graphics_supported : Bool,
+  sixel_graphics_supported : Bool,
+) -> String {
   if kitty_graphics_supported {
-    "Kitty graphics: on"
+    if sixel_graphics_supported {
+      "Kitty graphics: on | Sixel: on"
+    } else {
+      "Kitty graphics: on | Sixel: off"
+    }
+  } else if sixel_graphics_supported {
+    "Kitty graphics: off | Sixel: on"
   } else {
-    "Kitty graphics: off"
+    "Kitty graphics: off | Sixel: off"
   }
 }
 
@@ -307,12 +392,13 @@ fn frame_text(
   formula : String,
   status : String,
   kitty_graphics_supported : Bool,
+  sixel_graphics_supported : Bool,
   rendered_path : String?,
 ) -> String {
   let shown_formula = if formula == "" { "E = mc^2" } else { formula }
   (
     $|latex display demo
-    $|  \{support_label(kitty_graphics_supported)}
+    $|  \{support_label(kitty_graphics_supported, sixel_graphics_supported)}
     $|  Ctrl-C exits
     $|
     $|formula:
@@ -333,10 +419,11 @@ async fn draw_frame(
   formula : String,
   status : String,
   kitty_graphics_supported : Bool,
+  sixel_graphics_supported : Bool,
   rendered_path : String?,
 ) -> Unit {
   let frame = frame_text(
-    formula, status, kitty_graphics_supported, rendered_path,
+    formula, status, kitty_graphics_supported, sixel_graphics_supported, rendered_path,
   ).replace_all(old="\n", new="\r\n")
   tty.execute([
     BeginSynchronizedUpdate,
@@ -354,6 +441,12 @@ async fn draw_png(tty : @tty.Tty, png : Bytes) -> Unit {
 }
 
 ///|
+async fn draw_sixel(tty : @tty.Tty, sixel : Bytes) -> Unit {
+  tty.set_cursor_position(ImageTopRow, 1)
+  tty.display_sixel(sixel)
+}
+
+///|
 async fn cleanup_render(tmp_dir : String?) -> Unit {
   match tmp_dir {
     Some(tmp_dir) => cleanup_tmp_dir(tmp_dir)
@@ -366,16 +459,21 @@ async fn run_latex_demo(tty : @tty.Tty) -> Unit {
   let kitty_graphics_supported = tty.query_kitty_graphics_support(
     timeout_ms=100,
   )
+  let sixel_graphics_supported = tty.query_sixel_graphics_support(
+    timeout_ms=100,
+  )
   let parts : Array[String] = []
   let mut status = "Enter a LaTeX formula and press Enter."
   let mut rendered_path : String? = None
   let mut rendered_png : Bytes? = None
+  let mut rendered_sixel : Bytes? = None
   let mut tmp_dir : String? = None
   draw_frame(
     tty,
     formula_text(parts),
     status,
     kitty_graphics_supported,
+    sixel_graphics_supported,
     rendered_path,
   )
   for ;; {
@@ -387,11 +485,16 @@ async fn run_latex_demo(tty : @tty.Tty) -> Unit {
           formula_text(parts),
           status,
           kitty_graphics_supported,
+          sixel_graphics_supported,
           rendered_path,
         )
         if kitty_graphics_supported {
           if rendered_png is Some(png) {
             draw_png(tty, png)
+          }
+        } else if sixel_graphics_supported {
+          if rendered_sixel is Some(sixel) {
+            draw_sixel(tty, sixel)
           }
         }
       }
@@ -409,14 +512,17 @@ async fn run_latex_demo(tty : @tty.Tty) -> Unit {
                 if formula.trim() == "" {
                   status = "Formula is empty."
                   draw_frame(
-                    tty, formula, status, kitty_graphics_supported, rendered_path,
+                    tty, formula, status, kitty_graphics_supported, sixel_graphics_supported,
+                    rendered_path,
                   )
                 } else {
                   status = "Rendering..."
                   rendered_path = None
                   rendered_png = None
+                  rendered_sixel = None
                   draw_frame(
-                    tty, formula, status, kitty_graphics_supported, rendered_path,
+                    tty, formula, status, kitty_graphics_supported, sixel_graphics_supported,
+                    rendered_path,
                   )
                   match render_formula(formula) {
                     Rendered(tmp_dir=new_tmp_dir, path~, png~) => {
@@ -424,16 +530,45 @@ async fn run_latex_demo(tty : @tty.Tty) -> Unit {
                       tmp_dir = Some(new_tmp_dir)
                       rendered_path = Some(path)
                       rendered_png = Some(png)
+                      rendered_sixel = None
                       if kitty_graphics_supported {
-                        status = "Rendered."
+                        status = "Rendered with Kitty graphics."
+                        draw_frame(
+                          tty, formula, status, kitty_graphics_supported, sixel_graphics_supported,
+                          rendered_path,
+                        )
+                        draw_png(tty, png)
+                      } else if sixel_graphics_supported {
+                        status = "Converting PNG to Sixel..."
+                        draw_frame(
+                          tty, formula, status, kitty_graphics_supported, sixel_graphics_supported,
+                          rendered_path,
+                        )
+                        match convert_png_to_sixel(path) {
+                          ConvertedSixel(sixel) => {
+                            rendered_sixel = Some(sixel)
+                            status = "Rendered with Sixel graphics."
+                            draw_frame(
+                              tty, formula, status, kitty_graphics_supported, sixel_graphics_supported,
+                              rendered_path,
+                            )
+                            draw_sixel(tty, sixel)
+                          }
+                          SixelFailed(message) => {
+                            status = "Rendered PNG, but Sixel conversion failed:\n" +
+                              message
+                            draw_frame(
+                              tty, formula, status, kitty_graphics_supported, sixel_graphics_supported,
+                              rendered_path,
+                            )
+                          }
+                        }
                       } else {
                         status = "Rendered PNG. Terminal graphics are not available."
-                      }
-                      draw_frame(
-                        tty, formula, status, kitty_graphics_supported, rendered_path,
-                      )
-                      if kitty_graphics_supported {
-                        draw_png(tty, png)
+                        draw_frame(
+                          tty, formula, status, kitty_graphics_supported, sixel_graphics_supported,
+                          rendered_path,
+                        )
                       }
                     }
                     RenderFailed(message) => {
@@ -442,8 +577,10 @@ async fn run_latex_demo(tty : @tty.Tty) -> Unit {
                       status = message
                       rendered_path = None
                       rendered_png = None
+                      rendered_sixel = None
                       draw_frame(
-                        tty, formula, status, kitty_graphics_supported, rendered_path,
+                        tty, formula, status, kitty_graphics_supported, sixel_graphics_supported,
+                        rendered_path,
                       )
                     }
                   }
@@ -454,11 +591,13 @@ async fn run_latex_demo(tty : @tty.Tty) -> Unit {
                   status = "Editing."
                   rendered_path = None
                   rendered_png = None
+                  rendered_sixel = None
                   draw_frame(
                     tty,
                     formula_text(parts),
                     status,
                     kitty_graphics_supported,
+                    sixel_graphics_supported,
                     rendered_path,
                   )
                 }

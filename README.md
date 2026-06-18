@@ -33,6 +33,8 @@ Use `Tty` when an operation needs a real terminal handle:
 - kitty keyboard protocol support query: `Tty::query_kitty_keyboard_support`
 - kitty graphics protocol support query and direct PNG display:
   `Tty::query_kitty_graphics_support`, `Tty::display_kitty_png`
+- Sixel graphics support query and complete Sixel stream display:
+  `Tty::query_sixel_graphics_support`, `Tty::display_sixel`
 - dynamic color queries: `Tty::query_default_foreground_color`,
   `Tty::query_default_background_color`, and `Tty::query_cursor_color`
 - terminal events: `Tty::read_event`
@@ -149,7 +151,7 @@ The examples are manual validation tools, not framework APIs:
 - `examples/input` prints decoded key, paste, mouse, focus, and resize events
   as they arrive.
 - `examples/latex` renders a typed LaTeX formula with external tools and displays
-  the PNG through Kitty graphics when the terminal supports it.
+  it through Kitty graphics or Sixel when the terminal supports one of them.
 - `examples/color` prints a color specimen.
 - `examples/cursor` draws with cursor movement and erase sequences.
 - `examples/pager` demonstrates primary-screen paging with a fixed status row.

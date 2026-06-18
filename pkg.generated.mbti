@@ -64,6 +64,7 @@ pub(all) enum Command {
   ResetReverse
   ResetStyle
   DisplayKittyPng(BytesView, KittyGraphicsOptions)
+  DisplaySixel(BytesView)
 }
 
 pub struct CursorPosition {
@@ -110,6 +111,7 @@ pub async fn Tty::disable_bracketed_paste(Self) -> Unit
 pub async fn Tty::disable_focus_tracking(Self) -> Unit
 pub async fn Tty::disable_mouse(Self) -> Unit
 pub async fn Tty::display_kitty_png(Self, BytesView, image_id? : Int, columns? : Int, rows? : Int) -> Unit
+pub async fn Tty::display_sixel(Self, BytesView) -> Unit
 pub async fn Tty::enable_auto_wrap(Self) -> Unit
 pub async fn Tty::enable_bracketed_paste(Self) -> Unit
 pub async fn Tty::enable_focus_tracking(Self) -> Unit
@@ -135,6 +137,7 @@ pub async fn Tty::query_default_background_color(Self, timeout_ms? : Int) -> @co
 pub async fn Tty::query_default_foreground_color(Self, timeout_ms? : Int) -> @color.Rgb16?
 pub async fn Tty::query_kitty_graphics_support(Self, timeout_ms? : Int) -> Bool
 pub async fn Tty::query_kitty_keyboard_support(Self, timeout_ms? : Int) -> Bool
+pub async fn Tty::query_sixel_graphics_support(Self, timeout_ms? : Int) -> Bool
 pub async fn Tty::read_event(Self, esc_timeout_ms? : Int) -> Event
 pub async fn Tty::reset_background(Self) -> Unit
 pub async fn Tty::reset_bold(Self) -> Unit

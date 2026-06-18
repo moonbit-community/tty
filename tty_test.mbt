@@ -294,6 +294,60 @@ async test "pipe tty execute kitty graphics command writes png sequence" {
 }
 
 ///|
+async test "tty query sixel graphics support returns true for vt220 capability" {
+  let output = with_pipe_tty(b"\x1b[?62;4;6;22c", tty => {
+    @debug.assert_eq(tty.query_sixel_graphics_support(), true)
+  })
+  inspect(output, content="\u{1B}[c")
+}
+
+///|
+async test "tty query sixel graphics support returns false without capability" {
+  let output = with_pipe_tty(b"\x1b[?62;6;22c", tty => {
+    @debug.assert_eq(tty.query_sixel_graphics_support(), false)
+  })
+  inspect(output, content="\u{1B}[c")
+}
+
+///|
+async test "tty query sixel graphics support ignores old vt100-style graphics da" {
+  let output = with_pipe_tty(b"\x1b[?4;6c", tty => {
+    @debug.assert_eq(tty.query_sixel_graphics_support(), false)
+  })
+  inspect(output, content="\u{1B}[c")
+}
+
+///|
+async test "tty query sixel graphics support preserves interleaved input" {
+  let output = with_pipe_tty(b"a\x1b[?63;4;6c", tty => {
+    @debug.assert_eq(tty.query_sixel_graphics_support(), true)
+    match tty.read_event() {
+      Input(event) =>
+        @debug.assert_eq(
+          event,
+          Key(@public_input.KeyEvent::new(Char('a'), text="a")),
+        )
+      Resize(_) => fail("expected pending input")
+    }
+  })
+  inspect(output, content="\u{1B}[c")
+}
+
+///|
+async test "pipe tty sixel display writes bytes unchanged" {
+  let output = with_pipe_tty(b"", tty => tty.display_sixel(b"\x1bPq#0@\x1b\\"))
+  inspect(output, content="\u{1B}Pq#0@\u{1B}\\")
+}
+
+///|
+async test "pipe tty execute sixel command writes bytes unchanged" {
+  let output = with_pipe_tty(b"", tty => {
+    tty.execute([DisplaySixel(b"\x1bPq#0@\x1b\\")])
+  })
+  inspect(output, content="\u{1B}Pq#0@\u{1B}\\")
+}
+
+///|
 async test "pipe tty with mouse restores on success" {
   let output = with_pipe_tty(b"", tty => {
     tty.with_mouse(Drag, () => tty.write("body"))

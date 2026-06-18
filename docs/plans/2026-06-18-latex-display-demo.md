@@ -81,6 +81,45 @@ Done.
   `moon test examples/latex`, `moon check`, `moon test`, `moon info`,
   `git diff --check`, and a tmux smoke of `moon run examples/latex`.
 
+## Follow-up Sixel Fallback
+
+- Problem: Windows Terminal does not implement Kitty Graphics Protocol. Its
+  terminal image work is Sixel-based, so the LaTeX demo should have a Sixel path
+  when Kitty graphics is unavailable.
+- Accepted design:
+  - Add low-level root Sixel transport, not a PNG-to-Sixel encoder.
+  - Detect Sixel support by sending Primary DA (`ESC [ c`) and checking for
+    VT220+ capability parameter `4`, which indicates Sixel graphics.
+  - Add `Tty::display_sixel(BytesView)` to write a complete Sixel DCS byte
+    stream at the current cursor.
+  - Add `Command::DisplaySixel(BytesView)` for command batches.
+  - Do not add an internal VT Sixel wrapper; the root API and command batch
+    variant write the already-encoded Sixel bytes directly.
+  - In `examples/latex`, render the existing high-DPI PNG as before, then:
+    Kitty graphics support uses `display_kitty_png`; otherwise Sixel support
+    runs `magick <png> sixel:-` through `moonbitlang/async/process.spawn` and
+    displays the returned Sixel bytes; otherwise the demo only shows the PNG
+    path.
+  - Missing or failing `magick` should produce a readable demo status and must
+    not panic.
+- Target files/surfaces:
+  - `sixel_graphics.mbt`: root query/display methods and DA capability parsing.
+  - `command.mbt`: `DisplaySixel` command variant.
+  - `tty.mbt`: ignore Sixel-related internal responses in existing query loops
+    if needed.
+  - `tty_test.mbt`: protocol and query tests.
+  - `examples/latex/*`: Kitty-then-Sixel fallback and focused tests.
+  - `README.md` and `docs/architecture.md`: protocol boundary documentation.
+- Public API diff:
+  - `Command::DisplaySixel(BytesView)`
+  - `Tty::query_sixel_graphics_support(timeout_ms? : Int) -> Bool`
+  - `Tty::display_sixel(BytesView) -> Unit`
+  - No `moonbit-community/tty/input` public API change.
+- Validation plan: run `moon fmt`, `moon test internal/vt`, `moon test .`,
+  `moon check examples/latex`, `moon test examples/latex`, `moon check`,
+  `moon test`, `moon info`, `git diff --check`, and a tmux smoke of
+  `moon run examples/latex`.
+
 ## Target Files And Surfaces
 
 - `internal/vt/*`: Kitty graphics command encoding and tests.
@@ -221,6 +260,26 @@ moon run examples/latex
   - tmux smoke with `E = mc^2` produced a `456x205` PNG at 600 DPI, kept
     status/PNG-path rows visible, exited via `Ctrl-C`, and cleaned the temporary
     render directory
+- Follow-up Sixel fallback validation passed:
+  - `moon fmt`
+  - `moon check`
+  - `moon check examples/latex`
+  - `moon test internal/vt` (25 tests)
+  - `moon test .` (38 root tests)
+  - `moon test examples/latex` (5 tests)
+  - `moon test` (200 tests)
+  - `moon info`
+  - `git diff --check`
+  - Public API audit: `pkg.generated.mbti` changed only for
+    `Command::DisplaySixel(BytesView)`, `Tty::display_sixel(BytesView)`, and
+    `Tty::query_sixel_graphics_support(timeout_ms? : Int)`.
+  - tmux smoke with `moon run examples/latex` reported
+    `Kitty graphics: off | Sixel: off` in this environment, rendered
+    `E = mc^2` to a `456x205` PNG path without crashing, exited via `Ctrl-C`,
+    and cleaned the temporary render directory.
+  - Manual conversion check: `magick /tmp/.../formula.png sixel:-` emitted a
+    Sixel DCS beginning with `ESC P...q`, confirming the example's Sixel
+    converter is available in this host environment.
 
 ## Open Questions
 

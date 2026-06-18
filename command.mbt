@@ -49,6 +49,7 @@ pub(all) enum Command {
   ResetReverse
   ResetStyle
   DisplayKittyPng(BytesView, KittyGraphicsOptions)
+  DisplaySixel(BytesView)
 }
 
 ///|
@@ -107,6 +108,7 @@ fn Command::write_to(self : Command, buf : @buffer.Buffer) -> Unit {
       let rows = options.rows
       @vt.write_display_kitty_png(buf, png, image_id?, columns?, rows?)
     }
+    DisplaySixel(sixel) => buf.write_bytes(sixel)
   }
 }
 

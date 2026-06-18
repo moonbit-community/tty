@@ -39,6 +39,7 @@ operations:
 - coordinated cursor position report queries through `Tty`
 - kitty keyboard protocol support queries through `Tty`
 - kitty graphics protocol support queries and direct PNG display through `Tty`
+- Sixel graphics support queries and complete Sixel stream display through `Tty`
 - OSC dynamic color queries through `Tty`
 - command helpers for common screen, cursor, color, and style operations
   through `Tty`
@@ -88,6 +89,7 @@ It should not:
 - remember cursor position
 - model a screen buffer
 - decode image formats or render documents
+- encode Sixel images or wrap already-encoded Sixel streams
 
 Root `Tty` methods are the public output-command surface. Small CSI and SGR byte
 builders stay inside `internal/vt` as implementation helpers.
@@ -196,8 +198,9 @@ module:
 - `examples/raw` validates raw mode behavior on a real tty
 - `examples/cursor` validates VT cursor/screen sequences visually
 - `examples/input` validates input decoding by printing decoded terminal events
-- `examples/latex` validates root Kitty graphics display by rendering a typed
-  LaTeX formula through external tools and displaying the PNG when supported
+- `examples/latex` validates root terminal image display by rendering a typed
+  LaTeX formula through external tools and displaying it through Kitty graphics
+  or Sixel when supported
 - `examples/pager` validates primary-screen paging with a fixed status row and
   scrolling margins
 - `examples/color` validates SGR color output visually
@@ -292,9 +295,9 @@ stream events, but root
 `Tty::read_event` should not surface them as public root events. Root
 request/response operations such as `Tty::query_cursor_position`,
 `Tty::query_kitty_keyboard_support`, `Tty::query_kitty_graphics_support`, and
-OSC dynamic color queries should use the shared reader, consume the matching
-response, and preserve interleaved input events for later `Tty::read_event`
-calls.
+`Tty::query_sixel_graphics_support`, and OSC dynamic color queries should use
+the shared reader, consume the matching response, and preserve interleaved input
+events for later `Tty::read_event` calls.
 
 ## Public API Rule
 
