@@ -60,7 +60,9 @@ async fn Tty::read_event_from_sources(
 ) -> Event {
   @async.with_task_group() <| group => {
     group.spawn_bg(no_wait=true) <| () => {
-      group.return_immediately(self.read_decoded_input_event(esc_timeout_ms))
+      group.return_immediately(
+        read_decoded_input_event(self.reader, esc_timeout_ms),
+      )
     }
     self.read_resize_event()
   }

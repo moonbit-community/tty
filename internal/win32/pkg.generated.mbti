@@ -2,7 +2,6 @@
 package "moonbit-community/tty/internal/win32"
 
 import {
-  "moonbit-community/tty/input",
   "moonbitlang/core/ref",
 }
 
@@ -56,6 +55,17 @@ pub struct Coord {
   y : Int
 }
 
+pub(all) enum Event {
+  Input(@moonbit-community/tty/input.InputEvent)
+  Resize
+} derive(Eq)
+
+type EventReader
+pub fn EventReader::close(Self) -> Unit
+pub fn EventReader::new(Int) -> Self
+pub async fn EventReader::read_event(Self, esc_timeout_ms? : Int) -> Event?
+pub async fn EventReader::read_internal_event(Self, esc_timeout_ms? : Int) -> @moonbit-community/tty/internal/input.Event
+
 pub(all) enum InputRecord {
   Key(KeyRecord)
   Mouse(MouseRecord)
@@ -73,7 +83,7 @@ pub struct KeyRecord {
   unicode_char : Int
   control_key_state : ControlKeyState
 }
-pub fn KeyRecord::input(Self, @ref.Ref[Int]) -> @input.InputEvent?
+pub fn KeyRecord::input(Self, @ref.Ref[Int]) -> @moonbit-community/tty/input.InputEvent?
 pub fn KeyRecord::is_down(Self) -> Bool
 pub fn KeyRecord::new(key_down? : Int, repeat_count? : Int, virtual_key_code? : Int, virtual_scan_code? : Int, unicode_char? : Int, control_key_state? : Int) -> Self
 pub fn KeyRecord::repeat_count(Self) -> Int
@@ -83,7 +93,7 @@ pub fn KeyRecord::text_uses_decoder(Self) -> Bool
 pub struct MouseButtonState {
   mut buttons : Int
 }
-pub fn MouseButtonState::input_event(Self, MouseRecord) -> @input.InputEvent?
+pub fn MouseButtonState::input_event(Self, MouseRecord) -> @moonbit-community/tty/input.InputEvent?
 pub fn MouseButtonState::new() -> Self
 
 pub struct MouseRecord {
