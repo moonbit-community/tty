@@ -2,7 +2,6 @@
 package "moonbit-community/tty/internal/win32"
 
 import {
-  "moonbitlang/async/types",
   "moonbitlang/core/ref",
 }
 
@@ -63,7 +62,7 @@ pub(all) enum Event {
 
 type EventReader
 pub fn EventReader::close(Self) -> Unit
-pub fn EventReader::new(@types.Fd) -> Self
+pub fn EventReader::new(Int) -> Self
 pub async fn EventReader::read_event(Self, esc_timeout_ms? : Int) -> Event?
 pub async fn EventReader::read_internal_event(Self, esc_timeout_ms? : Int) -> @moonbit-community/tty/internal/input.Event
 
