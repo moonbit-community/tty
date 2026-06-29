@@ -77,7 +77,7 @@ fn MouseButtonState::event_kind(
 
 ///|
 fn MouseRecord::modifiers(self : MouseRecord) -> @public_input.KeyModifiers {
-  modifiers_from_control_key_state(self.control_key_state)
+  self.control_key_state.modifiers()
 }
 
 ///|
@@ -136,10 +136,12 @@ fn signed_high_word(value : Int) -> Int {
 }
 
 ///|
-fn modifiers_from_control_key_state(state : Int) -> @public_input.KeyModifiers {
+fn ControlKeyState::modifiers(
+  self : ControlKeyState,
+) -> @public_input.KeyModifiers {
   @public_input.KeyModifiers::new(
-    shift=has_state(state, ShiftPressed),
-    alt=has_state(state, LeftAltPressed | RightAltPressed),
-    ctrl=has_state(state, LeftCtrlPressed | RightCtrlPressed),
+    shift=self.has_state(ShiftPressed),
+    alt=self.has_state(LeftAltPressed | RightAltPressed),
+    ctrl=self.has_state(LeftCtrlPressed | RightCtrlPressed),
   )
 }

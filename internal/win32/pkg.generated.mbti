@@ -48,6 +48,9 @@ pub const ShiftPressed : Int = 0x0010
 // Errors
 
 // Types and methods
+pub struct ControlKeyState(Int)
+pub fn ControlKeyState::has_state(Self, Int) -> Bool
+
 pub struct Coord {
   x : Int
   y : Int
@@ -68,7 +71,7 @@ pub struct KeyRecord {
   virtual_key_code : Int
   virtual_scan_code : Int
   unicode_char : Int
-  control_key_state : Int
+  control_key_state : ControlKeyState
 }
 pub fn KeyRecord::input(Self, @ref.Ref[Int]) -> @input.InputEvent?
 pub fn KeyRecord::is_down(Self) -> Bool
@@ -87,7 +90,7 @@ pub struct MouseRecord {
   x : Int
   y : Int
   button_state : Int
-  control_key_state : Int
+  control_key_state : ControlKeyState
   event_flags : Int
 }
 pub fn MouseRecord::new(x? : Int, y? : Int, button_state? : Int, control_key_state? : Int, event_flags? : Int) -> Self

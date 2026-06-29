@@ -80,7 +80,7 @@ pub struct KeyRecord {
   virtual_key_code : Int
   virtual_scan_code : Int
   unicode_char : Int
-  control_key_state : Int
+  control_key_state : ControlKeyState
 }
 
 ///|
@@ -88,7 +88,7 @@ pub struct MouseRecord {
   x : Int
   y : Int
   button_state : Int
-  control_key_state : Int
+  control_key_state : ControlKeyState
   event_flags : Int
 }
 
@@ -112,7 +112,7 @@ pub fn KeyRecord::new(
     virtual_key_code,
     virtual_scan_code,
     unicode_char,
-    control_key_state,
+    control_key_state: ControlKeyState(control_key_state),
   }
 }
 
@@ -124,7 +124,13 @@ pub fn MouseRecord::new(
   control_key_state? : Int = 0,
   event_flags? : Int = 0,
 ) -> MouseRecord {
-  { x, y, button_state, control_key_state, event_flags }
+  {
+    x,
+    y,
+    button_state,
+    control_key_state: ControlKeyState(control_key_state),
+    event_flags,
+  }
 }
 
 ///|

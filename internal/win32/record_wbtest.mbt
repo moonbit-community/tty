@@ -41,7 +41,7 @@ test "win32 raw input record parses key records" {
   @debug.assert_eq(record.virtual_key_code, 0x41)
   @debug.assert_eq(record.virtual_scan_code, 0x1e)
   @debug.assert_eq(record.unicode_char, 'A'.to_int())
-  @debug.assert_eq(record.control_key_state, ShiftPressed)
+  @debug.assert_eq(record.control_key_state.has_state(ShiftPressed), true)
 }
 
 ///|
@@ -58,6 +58,6 @@ test "win32 raw input record parses mouse records" {
   @debug.assert_eq(record.x, 30)
   @debug.assert_eq(record.y, 2)
   @debug.assert_eq(record.button_state, MouseLeftButton)
-  @debug.assert_eq(record.control_key_state, ShiftPressed)
+  @debug.assert_eq(record.control_key_state.has_state(ShiftPressed), true)
   @debug.assert_eq(record.event_flags, MouseMoved)
 }
