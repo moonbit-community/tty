@@ -146,3 +146,27 @@ Completed on 2026-06-29:
 - `moon info` again surfaced the known root `Fd::fd` generated mbti spelling
   drift from `Int` to `@types.Fd`; that unrelated root generated-file change
   was restored and is not part of this task.
+
+## PR Review Follow-up: Preserve Cancellation
+
+Automated review found that `EventReader::read_input_event` caught all errors
+from `events.get()` and returned `None`. That converted cancellation from
+callers such as `@async.with_timeout_opt` into the reader-closed path in root
+Windows input handling.
+
+Follow-up result:
+
+- `EventReader::read_input_event` now catches only
+  `@aqueue.QueueAlreadyClosed` as the intentional closed-reader `None` case.
+- Other errors, including cancellation, are re-raised.
+- Added a white-box test proving a timeout around `read_input_event` propagates
+  cancellation to the outer `with_timeout_opt`.
+
+Follow-up validation:
+
+- `moon fmt` - passed
+- `moon test internal/win32` - passed, 20 tests
+- `moon check` - passed
+- `moon info` - passed with no generated interface diff
+- `moon test .` - passed, 27 tests
+- `git diff --check` - passed

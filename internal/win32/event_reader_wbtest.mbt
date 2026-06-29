@@ -107,6 +107,16 @@ async test "win32 event reader preserves native events during internal reads" {
 }
 
 ///|
+async test "win32 event reader propagates cancellation while waiting for native events" {
+  let reader = win32_test_event_reader()
+  defer reader.close()
+  match @async.with_timeout_opt(1, () => reader.read_input_event(50)) {
+    None => ()
+    Some(_) => fail("expected timeout cancellation to propagate")
+  }
+}
+
+///|
 async test "win32 event reader keeps queued bytes after native event" {
   let reader = win32_test_event_reader()
   defer reader.close()

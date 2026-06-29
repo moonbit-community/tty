@@ -1,5 +1,6 @@
 import {
   "moonbitlang/async",
+  "moonbitlang/async/aqueue",
   "moonbitlang/async/io" @async/io,
   "moonbitlang/async/os_error",
   "moonbitlang/async/types" @async/types,

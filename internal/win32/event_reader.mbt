@@ -65,7 +65,8 @@ async fn EventReader::read_input_event(
       group.return_immediately(self.read_decoded_input_event(esc_timeout_ms))
     }
     try self.events.get() catch {
-      _ => None
+      @aqueue.QueueAlreadyClosed => None
+      err => raise err
     } noraise {
       event => Some(event)
     }
