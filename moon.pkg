@@ -10,7 +10,6 @@ import {
   "moonbitlang/core/buffer",
   "moonbit-community/tty/color",
   "moonbit-community/tty/input" @public_input,
-  "moonbit-community/tty/internal/io" @internal_io,
   "moonbit-community/tty/internal/lock",
   "moonbit-community/tty/internal/input",
   "moonbit-community/tty/internal/win32",
@@ -34,12 +33,5 @@ import {
 supported_targets = "native"
 
 options(
-  "native-stub": [
-    "isatty.c",
-    "state.c",
-    "size.c",
-    "tty_open.c",
-    "resize.c",
-    "win32_input.c",
-  ],
+  "native-stub": [ "isatty.c", "state.c", "size.c", "tty_open.c", "resize.c" ],
 )

@@ -23,7 +23,6 @@ pub(all) enum Event {
 struct Tty {
   input : &Reader
   output : &Writer
-  reader : @input.EventReader
   input_backend : WindowsInput
   pending_input : Array[@public_input.InputEvent]
   // Serializes output writes so a single `write`/`write_string` call lands on
@@ -49,11 +48,10 @@ struct Tty {
 pub fn[I : Reader, O : Writer] Tty::new(input : I, output : O) -> Tty {
   let input = input as &Reader
   let output = output as &Writer
-  let input_backend = WindowsInput::new(input.fd())
+  let input_backend = WindowsInput::new(input.fd(), input as &@async/io.Reader)
   {
     input,
     output,
-    reader: input_backend.event_reader(input as &@async/io.Reader),
     input_backend,
     pending_input: [],
     write_lock: @lock.Lock::new(),
@@ -115,12 +113,12 @@ pub async fn Tty::read_event(self : Self, esc_timeout_ms? : Int = 50) -> Event {
 }
 
 ///|
-async fn Tty::read_decoded_input_event(
-  self : Self,
+async fn read_decoded_input_event(
+  reader : @input.EventReader,
   esc_timeout_ms : Int,
 ) -> Event {
   for ;; {
-    match self.reader.read_event(esc_timeout_ms~) {
+    match reader.read_event(esc_timeout_ms~) {
       Input(event) => return Input(event)
       CursorPosition(..) => ()
       KeyboardEnhancementFlags(_) => ()
