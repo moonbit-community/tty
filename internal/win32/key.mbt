@@ -24,8 +24,7 @@ fn KeyRecord::has_direct_key_metadata(self : KeyRecord) -> Bool {
 
 ///|
 fn KeyRecord::has_keyboard_modifier(self : KeyRecord) -> Bool {
-  has_state(
-    self.control_key_state,
+  self.control_key_state.has_state(
     ShiftPressed |
     LeftAltPressed |
     RightAltPressed |
@@ -36,11 +35,12 @@ fn KeyRecord::has_keyboard_modifier(self : KeyRecord) -> Bool {
 
 ///|
 fn KeyRecord::is_alt_gr_text(self : KeyRecord) -> Bool {
-  let alt_gr_state = RightAltPressed | LeftCtrlPressed
+  let state = self.control_key_state
   self.key_down != 0 &&
   self.unicode_char > 0x1f &&
-  (self.control_key_state & alt_gr_state) == alt_gr_state &&
-  !has_state(self.control_key_state, LeftAltPressed | RightCtrlPressed)
+  state.has_state(RightAltPressed) &&
+  state.has_state(LeftCtrlPressed) &&
+  !state.has_state(LeftAltPressed | RightCtrlPressed)
 }
 
 ///|
@@ -93,15 +93,15 @@ fn KeyRecord::key_kind(self : KeyRecord) -> @public_input.KeyEventKind {
 
 ///|
 fn KeyRecord::modifiers(self : KeyRecord) -> @public_input.KeyModifiers {
-  modifiers_from_control_key_state(self.control_key_state)
+  self.control_key_state.modifiers()
 }
 
 ///|
 fn KeyRecord::key_state(self : KeyRecord) -> @public_input.KeyEventState {
   @public_input.KeyEventState::new(
     keypad=self.is_keypad(),
-    caps_lock=has_state(self.control_key_state, CapsLockOn),
-    num_lock=has_state(self.control_key_state, NumLockOn),
+    caps_lock=self.control_key_state.has_state(CapsLockOn),
+    num_lock=self.control_key_state.has_state(NumLockOn),
   )
 }
 
@@ -169,14 +169,13 @@ fn KeyRecord::is_keypad(self : KeyRecord) -> Bool {
 
 ///|
 fn KeyRecord::is_keypad_enter(self : KeyRecord) -> Bool {
-  self.virtual_key_code == 0x0d &&
-  has_state(self.control_key_state, EnhancedKey)
+  self.virtual_key_code == 0x0d && self.control_key_state.has_state(EnhancedKey)
 }
 
 ///|
 fn KeyRecord::is_keypad_navigation(self : KeyRecord) -> Bool {
   virtual_key_is_navigation(self.virtual_key_code) &&
-  !has_state(self.control_key_state, EnhancedKey)
+  !self.control_key_state.has_state(EnhancedKey)
 }
 
 ///|
@@ -319,11 +318,6 @@ fn virtual_key_is_navigation(vk : Int) -> Bool {
     0x21 | 0x22 | 0x23 | 0x24 | 0x25 | 0x26 | 0x27 | 0x28 | 0x2d | 0x2e => true
     _ => false
   }
-}
-
-///|
-fn has_state(state : Int, mask : Int) -> Bool {
-  (state & mask) != 0
 }
 
 ///|
