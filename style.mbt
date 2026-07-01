@@ -14,24 +14,15 @@ pub async fn Tty::leave_alt_screen(self : Self) -> Unit {
 /// Run `f` with the output in the alternate screen buffer.
 pub async fn[T] Tty::with_alt_screen(self : Self, f : async () -> T) -> T {
   self.enter_alt_screen()
-  try f() catch {
-    error => {
-      self.leave_alt_screen()
-      raise error
-    }
-  } noraise {
-    value => {
-      self.leave_alt_screen()
-      value
-    }
-  }
+  with_deferred(() => self.leave_alt_screen(), f)
 }
 
 ///|
 /// Begin a synchronized update (DEC private mode 2026). Output written until the
 /// matching `end_synchronized_update` is buffered by the terminal and presented
 /// as one atomic frame, so a clear-then-repaint is never shown half-drawn.
-/// Prefer `with_synchronized_update`, which always emits the matching end.
+/// Prefer `with_synchronized_update`, which emits the matching end on normal
+/// return and attempts a bounded end when `f` fails or is cancelled.
 pub async fn Tty::begin_synchronized_update(self : Self) -> Unit {
   self.write(@vt.begin_synchronized_update)
 }
@@ -45,26 +36,15 @@ pub async fn Tty::end_synchronized_update(self : Self) -> Unit {
 
 ///|
 /// Run `f` inside a synchronized update so the frame it draws is presented
-/// atomically (no flicker from a visible clear-then-repaint). The end is always
-/// emitted, even if `f` raises, so the terminal is never left with synchronized
-/// output stuck on. Terminals without mode 2026 ignore the markers and `f` draws
-/// as before.
+/// atomically on normal return. If `f` fails or is cancelled, the matching end is
+/// attempted with a short cleanup timeout and the original failure is preserved.
+/// Terminals without mode 2026 ignore the markers and `f` draws as before.
 pub async fn[T] Tty::with_synchronized_update(
   self : Self,
   f : async () -> T,
 ) -> T {
   self.begin_synchronized_update()
-  try f() catch {
-    error => {
-      self.end_synchronized_update()
-      raise error
-    }
-  } noraise {
-    value => {
-      self.end_synchronized_update()
-      value
-    }
-  }
+  with_deferred(() => self.end_synchronized_update(), f)
 }
 
 ///|
@@ -83,17 +63,7 @@ pub async fn Tty::disable_bracketed_paste(self : Self) -> Unit {
 /// Run `f` with bracketed paste mode enabled.
 pub async fn[T] Tty::with_bracketed_paste(self : Self, f : async () -> T) -> T {
   self.enable_bracketed_paste()
-  try f() catch {
-    error => {
-      self.disable_bracketed_paste()
-      raise error
-    }
-  } noraise {
-    value => {
-      self.disable_bracketed_paste()
-      value
-    }
-  }
+  with_deferred(() => self.disable_bracketed_paste(), f)
 }
 
 ///|
@@ -124,17 +94,7 @@ pub async fn Tty::disable_auto_wrap(self : Self) -> Unit {
 /// Run `f` with focus tracking enabled.
 pub async fn[T] Tty::with_focus_tracking(self : Self, f : async () -> T) -> T {
   self.enable_focus_tracking()
-  try f() catch {
-    error => {
-      self.disable_focus_tracking()
-      raise error
-    }
-  } noraise {
-    value => {
-      self.disable_focus_tracking()
-      value
-    }
-  }
+  with_deferred(() => self.disable_focus_tracking(), f)
 }
 
 ///|
@@ -271,17 +231,7 @@ pub async fn[T] Tty::with_keyboard_enhancements(
   f : async () -> T,
 ) -> T {
   self.push_keyboard_enhancement_flags(flags)
-  try f() catch {
-    error => {
-      self.pop_keyboard_enhancement_flags()
-      raise error
-    }
-  } noraise {
-    value => {
-      self.pop_keyboard_enhancement_flags()
-      value
-    }
-  }
+  with_deferred(() => self.pop_keyboard_enhancement_flags(), f)
 }
 
 ///|
@@ -329,17 +279,7 @@ pub async fn[T] Tty::with_mouse(
   f : async () -> T,
 ) -> T {
   self.enable_mouse(mode)
-  try f() catch {
-    error => {
-      self.disable_mouse()
-      raise error
-    }
-  } noraise {
-    value => {
-      self.disable_mouse()
-      value
-    }
-  }
+  with_deferred(() => self.disable_mouse(), f)
 }
 
 ///|
