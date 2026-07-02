@@ -10,7 +10,7 @@ pub struct WindowSize {
 pub fn Tty::window_size(self : Self) -> WindowSize raise @os_error.OSError {
   let rows = Ref(0)
   let cols = Ref(0)
-  let rc = tty_get_window_size(self.output.fd(), rows, cols)
+  let rc = tty_get_window_size(self.output_fd, rows, cols)
   if rc < 0 {
     @os_error.check_errno("Tty::window_size")
   }

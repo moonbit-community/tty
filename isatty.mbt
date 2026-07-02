@@ -6,7 +6,7 @@ extern "c" fn tty_isatty(fd : @async/types.Fd) -> Int = "moonbit_tty_isatty"
 ///
 /// Valid non-terminal handles return `false`; OS-level failures raise
 /// `OSError`.
-pub fn[T : Fd] isatty(fd : T) -> Bool raise @os_error.OSError {
+pub fn[T : Fd] isatty(fd : T) -> Bool raise {
   let fd = fd.fd()
   let rc = tty_isatty(fd)
   if rc < 0 {
@@ -22,7 +22,7 @@ pub fn[T : Fd] isatty(fd : T) -> Bool raise @os_error.OSError {
 ///|
 /// A handle that exposes an OS file descriptor.
 pub(open) trait Fd {
-  fn fd(Self) -> @async/types.Fd
+  fn fd(Self) -> @async/types.Fd raise
 }
 
 ///|
