@@ -13,7 +13,7 @@ import {
 }
 
 // Values
-pub fn[T : Fd] isatty(T) -> Bool raise @os_error.OSError
+pub fn[T : Fd] isatty(T) -> Bool raise
 
 // Errors
 
@@ -120,7 +120,7 @@ pub fn Tty::get_state(Self) -> State raise @os_error.OSError
 pub async fn Tty::hide_cursor(Self) -> Unit
 pub async fn Tty::leave_alt_screen(Self) -> Unit
 pub fn Tty::leave_raw_mode(Self, State) -> Unit raise @os_error.OSError
-pub fn[I : Reader, O : Writer] Tty::new(I, O) -> Self
+pub fn[I : Reader, O : Writer] Tty::new(I, O) -> Self raise
 pub async fn Tty::open() -> Self
 pub async fn Tty::pop_keyboard_enhancement_flags(Self) -> Unit
 pub async fn Tty::push_keyboard_enhancement_flags(Self, KeyboardEnhancementFlags) -> Unit
@@ -153,7 +153,7 @@ pub async fn Tty::set_top_bottom_margins(Self, Int, Int) -> Unit
 #alias(underline, deprecated)
 pub async fn Tty::set_underline(Self) -> Unit
 pub async fn Tty::show_cursor(Self) -> Unit
-pub fn Tty::stdio() -> Self
+pub fn Tty::stdio() -> Self raise
 pub fn Tty::window_size(Self) -> WindowSize raise @os_error.OSError
 pub async fn[T] Tty::with_alt_screen(Self, async () -> T) -> T
 pub async fn[T] Tty::with_bracketed_paste(Self, async () -> T) -> T
@@ -176,7 +176,7 @@ pub struct WindowSize {
 
 // Traits
 pub(open) trait Fd {
-  fn fd(Self) -> Int
+  fn fd(Self) -> Int raise
 }
 pub impl Fd for @fs.File
 pub impl Fd for @pipe.PipeRead

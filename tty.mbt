@@ -22,7 +22,9 @@ pub(all) enum Event {
 #cfg(platform="windows")
 struct Tty {
   input : &Reader
+  input_fd : @async/types.Fd
   output : &Writer
+  output_fd : @async/types.Fd
   input_backend : WindowsInput
   pending_input : Array[@public_input.InputEvent]
   // Serializes output writes so a single `write`/`write_string` call lands on
@@ -34,7 +36,9 @@ struct Tty {
 #cfg(not(platform="windows"))
 struct Tty {
   input : &Reader
+  input_fd : @async/types.Fd
   output : &Writer
+  output_fd : @async/types.Fd
   reader : @input.EventReader
   pending_input : Array[@public_input.InputEvent]
   // Serializes output writes so a single `write`/`write_string` call lands on
@@ -45,13 +49,17 @@ struct Tty {
 ///|
 /// Create a coordinated terminal handle from input and output handles.
 #cfg(platform="windows")
-pub fn[I : Reader, O : Writer] Tty::new(input : I, output : O) -> Tty {
+pub fn[I : Reader, O : Writer] Tty::new(input : I, output : O) -> Tty raise {
   let input = input as &Reader
+  let input_fd = input.fd()
   let output = output as &Writer
-  let input_backend = WindowsInput::new(input.fd(), input as &@async/io.Reader)
+  let output_fd = output.fd()
+  let input_backend = WindowsInput::new(input_fd, input as &@async/io.Reader)
   {
     input,
+    input_fd,
     output,
+    output_fd,
     input_backend,
     pending_input: [],
     write_lock: @lock.Lock::new(),
@@ -61,12 +69,16 @@ pub fn[I : Reader, O : Writer] Tty::new(input : I, output : O) -> Tty {
 ///|
 /// Create a coordinated terminal handle from input and output handles.
 #cfg(not(platform="windows"))
-pub fn[I : Reader, O : Writer] Tty::new(input : I, output : O) -> Tty {
+pub fn[I : Reader, O : Writer] Tty::new(input : I, output : O) -> Tty raise {
   let input = input as &Reader
+  let input_fd = input.fd()
   let output = output as &Writer
+  let output_fd = output.fd()
   {
     input,
+    input_fd,
     output,
+    output_fd,
     reader: @input.EventReader::new(input as &@async/io.Reader),
     pending_input: [],
     write_lock: @lock.Lock::new(),
@@ -75,7 +87,7 @@ pub fn[I : Reader, O : Writer] Tty::new(input : I, output : O) -> Tty {
 
 ///|
 /// Wrap process stdio as one coordinated terminal handle.
-pub fn Tty::stdio() -> Tty {
+pub fn Tty::stdio() -> Tty raise {
   Tty::new(@async/stdio.stdin, @async/stdio.stdout)
 }
 
