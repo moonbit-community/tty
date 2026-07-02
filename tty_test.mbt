@@ -226,6 +226,128 @@ async test "pipe tty with kitty keyboard uses full flags" {
 }
 
 ///|
+async test "tty query kitty graphics support returns true for ok response" {
+  let output = with_pipe_tty(b"\x1b_Gi=2147483647;OK\x1b\\", tty => {
+    @debug.assert_eq(tty.query_kitty_graphics_support(), true)
+  })
+  inspect(
+    output,
+    content="\u{1B}_Gi=2147483647,s=1,v=1,a=q,t=d,f=24;AAAA\u{1B}\\\u{1B}[c",
+  )
+}
+
+///|
+async test "tty query kitty graphics support returns false for da reply" {
+  let output = with_pipe_tty(b"\x1b[?1;2c", tty => {
+    @debug.assert_eq(tty.query_kitty_graphics_support(), false)
+  })
+  inspect(
+    output,
+    content="\u{1B}_Gi=2147483647,s=1,v=1,a=q,t=d,f=24;AAAA\u{1B}\\\u{1B}[c",
+  )
+}
+
+///|
+async test "tty query kitty graphics support preserves interleaved input" {
+  let output = with_pipe_tty(b"a\x1b_Gi=2147483647;OK\x1b\\", tty => {
+    @debug.assert_eq(tty.query_kitty_graphics_support(), true)
+    match tty.read_event() {
+      Input(event) =>
+        @debug.assert_eq(
+          event,
+          Key(@public_input.KeyEvent::new(Char('a'), text="a")),
+        )
+      Resize(_) => fail("expected pending input")
+    }
+  })
+  inspect(
+    output,
+    content="\u{1B}_Gi=2147483647,s=1,v=1,a=q,t=d,f=24;AAAA\u{1B}\\\u{1B}[c",
+  )
+}
+
+///|
+async test "pipe tty kitty graphics display writes png sequence" {
+  let output = with_pipe_tty(b"", tty => {
+    tty.display_kitty_png(b"abc", image_id=7, columns=4, rows=2)
+  })
+  inspect(
+    output,
+    content="\u{1B}_Ga=T,f=100,t=d,q=1,m=0,i=7,c=4,r=2,C=1;YWJj\u{1B}\\",
+  )
+}
+
+///|
+async test "pipe tty execute kitty graphics command writes png sequence" {
+  let output = with_pipe_tty(b"", tty => {
+    tty.execute([
+      DisplayKittyPng(
+        b"abc",
+        @tty.KittyGraphicsOptions::new(image_id=7, columns=4, rows=2),
+      ),
+    ])
+  })
+  inspect(
+    output,
+    content="\u{1B}_Ga=T,f=100,t=d,q=1,m=0,i=7,c=4,r=2,C=1;YWJj\u{1B}\\",
+  )
+}
+
+///|
+async test "tty query sixel graphics support returns true for vt220 capability" {
+  let output = with_pipe_tty(b"\x1b[?62;4;6;22c", tty => {
+    @debug.assert_eq(tty.query_sixel_graphics_support(), true)
+  })
+  inspect(output, content="\u{1B}[c")
+}
+
+///|
+async test "tty query sixel graphics support returns false without capability" {
+  let output = with_pipe_tty(b"\x1b[?62;6;22c", tty => {
+    @debug.assert_eq(tty.query_sixel_graphics_support(), false)
+  })
+  inspect(output, content="\u{1B}[c")
+}
+
+///|
+async test "tty query sixel graphics support ignores old vt100-style graphics da" {
+  let output = with_pipe_tty(b"\x1b[?4;6c", tty => {
+    @debug.assert_eq(tty.query_sixel_graphics_support(), false)
+  })
+  inspect(output, content="\u{1B}[c")
+}
+
+///|
+async test "tty query sixel graphics support preserves interleaved input" {
+  let output = with_pipe_tty(b"a\x1b[?63;4;6c", tty => {
+    @debug.assert_eq(tty.query_sixel_graphics_support(), true)
+    match tty.read_event() {
+      Input(event) =>
+        @debug.assert_eq(
+          event,
+          Key(@public_input.KeyEvent::new(Char('a'), text="a")),
+        )
+      Resize(_) => fail("expected pending input")
+    }
+  })
+  inspect(output, content="\u{1B}[c")
+}
+
+///|
+async test "pipe tty sixel display writes bytes unchanged" {
+  let output = with_pipe_tty(b"", tty => tty.display_sixel(b"\x1bPq#0@\x1b\\"))
+  inspect(output, content="\u{1B}Pq#0@\u{1B}\\")
+}
+
+///|
+async test "pipe tty execute sixel command writes bytes unchanged" {
+  let output = with_pipe_tty(b"", tty => {
+    tty.execute([DisplaySixel(b"\x1bPq#0@\x1b\\")])
+  })
+  inspect(output, content="\u{1B}Pq#0@\u{1B}\\")
+}
+
+///|
 async test "pipe tty with mouse restores on success" {
   let output = with_pipe_tty(b"", tty => {
     tty.with_mouse(Drag, () => tty.write("body"))

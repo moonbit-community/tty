@@ -9,4 +9,10 @@ pub(all) enum Event {
   KeyboardEnhancementFlags(Int)
   PrimaryDeviceAttributes(Bytes)
   DynamicColor(code~ : Int, red~ : Int, green~ : Int, blue~ : Int)
+  KittyGraphicsResponse(
+    image_id~ : Int,
+    image_number~ : Int,
+    placement_id~ : Int,
+    message~ : String
+  )
 } derive(Eq, Debug)

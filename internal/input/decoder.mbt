@@ -143,6 +143,7 @@ async fn read_escape(reader : EventReader, esc_timeout_ms : Int) -> Event {
     }
     b'[' => read_csi(reader, esc_timeout_ms~)
     b']' => read_osc(reader, esc_timeout_ms~)
+    b'_' => read_apc(reader, esc_timeout_ms~)
     b'O' => Input(read_ss3(reader, esc_timeout_ms~))
     0x20..<0x7f as byte =>
       Input(
@@ -155,6 +156,128 @@ async fn read_escape(reader : EventReader, esc_timeout_ms : Int) -> Event {
       )
     _ => Input(Unknown(reader.view().to_owned()))
   }
+}
+
+///|
+async fn read_apc(reader : EventReader, esc_timeout_ms~ : Int) -> Event {
+  for ;; {
+    guard @async.with_timeout_opt(esc_timeout_ms, () => reader.read_byte())
+      is Some(byte) else {
+      return match reader.view() {
+        [Esc, b'_'] =>
+          Input(
+            Key(
+              @public_input.KeyEvent::new(
+                Char('_'),
+                modifiers=@public_input.KeyModifiers::new(alt=true),
+              ),
+            ),
+          )
+        _ => Input(Unknown(reader.view().to_owned()))
+      }
+    }
+    if byte == Esc {
+      guard @async.with_timeout_opt(esc_timeout_ms, () => reader.read_byte())
+        is Some(byte) else {
+        return Input(Unknown(reader.view().to_owned()))
+      }
+      if byte == b'\\' {
+        return parse_apc(reader.view())
+      }
+    }
+  }
+}
+
+///|
+fn parse_apc(apc : BytesView) -> Event {
+  match apc {
+    [Esc, b'_', .. body, Esc, b'\\'] => parse_apc_body(apc, body)
+    _ => Input(Unknown(apc.to_owned()))
+  }
+}
+
+///|
+fn parse_apc_body(apc : BytesView, body : BytesView) -> Event {
+  match body {
+    [b'G', .. payload] => parse_kitty_graphics_response(apc, payload)
+    _ => Input(Unknown(apc.to_owned()))
+  }
+}
+
+///|
+fn parse_kitty_graphics_response(apc : BytesView, payload : BytesView) -> Event {
+  guard split_kitty_graphics_payload(payload) is Some((control, message)) else {
+    return Input(Unknown(apc.to_owned()))
+  }
+  guard parse_kitty_graphics_control(control)
+    is Some((image_id, image_number, placement_id)) else {
+    return Input(Unknown(apc.to_owned()))
+  }
+  try @utf8.decode(message) catch {
+    _ => Input(Unknown(apc.to_owned()))
+  } noraise {
+    message =>
+      KittyGraphicsResponse(image_id~, image_number~, placement_id~, message~)
+  }
+}
+
+///|
+fn split_kitty_graphics_payload(payload : BytesView) -> (BytesView, BytesView)? {
+  for index = 0; index < payload.length(); index = index + 1 {
+    if payload[index] == b';' {
+      return Some((payload[:index], payload[index + 1:]))
+    }
+  }
+  None
+}
+
+///|
+fn parse_kitty_graphics_control(control : BytesView) -> (Int, Int, Int)? {
+  let mut image_id = 0
+  let mut image_number = 0
+  let mut placement_id = 0
+  let mut start = 0
+  for index = 0; index <= control.length(); index = index + 1 {
+    if index == control.length() || control[index] == b',' {
+      guard parse_kitty_graphics_field(control[start:index])
+        is Some((key, value)) else {
+        return None
+      }
+      match key {
+        b'i' => image_id = value
+        b'I' => image_number = value
+        b'p' => placement_id = value
+        _ => ()
+      }
+      start = index + 1
+    }
+  }
+  Some((image_id, image_number, placement_id))
+}
+
+///|
+fn parse_kitty_graphics_field(field : BytesView) -> (Byte, Int)? {
+  match field {
+    [key, b'=', .. value] =>
+      match parse_decimal(value) {
+        Some(value) => Some((key, value))
+        None => None
+      }
+    _ => None
+  }
+}
+
+///|
+fn parse_decimal(bytes : BytesView) -> Int? {
+  guard bytes.length() > 0 else { return None }
+  let mut value = 0
+  for index = 0; index < bytes.length(); index = index + 1 {
+    match bytes[index] {
+      b'0'..=b'9' as byte => value = value * 10 + byte.to_int() - b'0'.to_int()
+      _ => return None
+    }
+  }
+  Some(value)
 }
 
 ///|
