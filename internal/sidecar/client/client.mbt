@@ -4,7 +4,7 @@
 /// `sidecar/PROTOCOL.md`). One lazily started sidecar serves the whole
 /// program; its lifetime is bounded by the connections, so it exits (and
 /// restores the terminal) when this process ends for any reason.
-priv enum HostPlatform {
+pub enum HostPlatform {
   Linux
   MacOS
   Windows
@@ -20,7 +20,8 @@ fn host_platform_code() -> Int = "moonbitlang/async" "runtime/get_platform"
 fn host_random_fill(buf : FixedArray[Byte], len : Int) -> Int = "moonbitlang/async" "random/fill"
 
 ///|
-fn host_platform() -> HostPlatform {
+/// The platform the wasm host runs on, as reported by the async runtime.
+pub fn host_platform() -> HostPlatform {
   match host_platform_code() {
     0 => Linux
     1 => MacOS
@@ -47,7 +48,7 @@ async fn host_arch(platform : HostPlatform) -> String {
 }
 
 ///|
-priv struct Sidecar {
+struct Sidecar {
   control : @async/socket.Tcp
   events : @sidecar.EventStream
   control_lock : @lock.Lock
@@ -64,7 +65,8 @@ let sidecar_cell : Ref[Sidecar?] = Ref(None)
 let sidecar_init_lock : @lock.Lock = @lock.Lock::new()
 
 ///|
-async fn sidecar() -> Sidecar {
+/// The process-wide sidecar handle, launching the sidecar on first use.
+pub async fn Sidecar::get() -> Sidecar {
   if sidecar_cell.val is Some(client) {
     return client
   }
@@ -188,7 +190,7 @@ async fn remove_sidecar_binary(path : String, dir : String) -> Unit {
 /// from cancellation because tearing it mid-read would desync the control
 /// connection for every later request; it stays bounded because the sidecar
 /// answers immediately and a dead sidecar surfaces as EOF (`ReaderClosed`).
-async fn Sidecar::call(
+pub async fn Sidecar::call(
   self : Sidecar,
   request : @sidecar.Request,
 ) -> @sidecar.Response {
@@ -205,7 +207,7 @@ async fn Sidecar::call(
 ///|
 /// Enable terminal-event delivery (idempotent): resize notifications on
 /// Unix, exclusive console record streaming on Windows.
-async fn Sidecar::watch(self : Sidecar) -> Unit {
+pub async fn Sidecar::watch(self : Sidecar) -> Unit {
   if self.watching {
     return
   }
@@ -217,14 +219,15 @@ async fn Sidecar::watch(self : Sidecar) -> Unit {
 }
 
 ///|
-/// Wait for the next resize notification (Unix). Waiters take turns holding
-/// the event lock; `EventStream` keeps partially received frames across
-/// cancellation, so a cancelled waiter never tears the stream.
-async fn Sidecar::wait_resize(self : Sidecar) -> WindowSize {
+/// Wait for the next resize notification (Unix), returned as
+/// `(rows, cols)`. Waiters take turns holding the event lock;
+/// `EventStream` keeps partially received frames across cancellation, so a
+/// cancelled waiter never tears the stream.
+pub async fn Sidecar::wait_resize(self : Sidecar) -> (Int, Int) {
   self.event_lock.with_lock(() => {
     for ;; {
       match self.events.next() {
-        Resize(rows~, cols~) => return { rows, cols }
+        Resize(rows~, cols~) => return (rows, cols)
         InputRecords(..) => () // Windows-only; never sent on the Unix path
       }
     }
@@ -235,7 +238,7 @@ async fn Sidecar::wait_resize(self : Sidecar) -> WindowSize {
 /// The console record reader (Windows): a process-wide singleton, because
 /// the sidecar streams the one console's records over the one event
 /// connection.
-async fn Sidecar::console_event_reader(
+pub async fn Sidecar::console_event_reader(
   self : Sidecar,
 ) -> @win32.StreamEventReader {
   if self.console_reader is Some(reader) {
@@ -245,30 +248,4 @@ async fn Sidecar::console_event_reader(
   let reader = @win32.StreamEventReader(self.events)
   self.console_reader = Some(reader)
   reader
-}
-
-///|
-/// Map a host stdio handle to a sidecar terminal slot. Handles other than
-/// the process stdio cannot be named across the process boundary.
-fn stdio_slot(fd : @async/types.Fd) -> Int? raise {
-  if fd == @async/stdio.stdin.fd() {
-    Some(0)
-  } else if fd == @async/stdio.stdout.fd() {
-    Some(1)
-  } else if fd == @async/stdio.stderr.fd() {
-    Some(2)
-  } else {
-    None
-  }
-}
-
-///|
-/// Slot used for handles that are not the process stdio: the sidecar
-/// rejects it with `EINVAL`, mirroring how native terminal calls fail on
-/// non-terminal fds.
-const INVALID_SLOT : Int = 255
-
-///|
-fn stdio_slot_or_invalid(fd : @async/types.Fd) -> Int raise {
-  stdio_slot(fd).unwrap_or(INVALID_SLOT)
 }

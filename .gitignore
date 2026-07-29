@@ -1,6 +1,7 @@
 # MoonBit
 _build/
 .mooncakes/
+.repos/
 
 # Local notes
 docs/local-*.md

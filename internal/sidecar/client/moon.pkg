@@ -1,0 +1,26 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/types" @async/types,
+  "moonbitlang/async/fs" @async/fs,
+  "moonbitlang/async/process" @async/process,
+  "moonbitlang/async/socket" @async/socket,
+  "moonbitlang/async/stdio" @async/stdio,
+  "moonbitlang/async/os_error",
+  "moonbitlang/async/io" @async/io,
+  "moonbitlang/core/buffer",
+  "moonbitlang/core/encoding/utf8",
+  "moonbit-community/tty/internal/lock",
+  "moonbit-community/tty/internal/sidecar",
+  "moonbit-community/tty/internal/win32",
+}
+
+supported_targets = "native+wasm"
+
+options(
+  targets: {
+    "client.mbt": [ "wasm" ],
+    "binaries.mbt": [ "wasm" ],
+    "native_imports.mbt": [ "native" ],
+    "pkg.generated.mbti": [ "native" ],
+  },
+)

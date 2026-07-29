@@ -1,7 +1,7 @@
 ///|
 /// Cross-compiles `sidecar/tty_sidecar.c` for every supported wasm host with
-/// `zig cc` and regenerates `sidecar_binaries_wasm.mbt` (the embedded
-/// binaries in the root package).
+/// `zig cc` and regenerates `internal/sidecar/client/binaries.mbt` (the
+/// embedded binaries in the sidecar client package).
 ///
 /// Run from anywhere inside the repository:
 ///
@@ -82,7 +82,7 @@ async fn main {
     )
     binaries.push((target, binary))
   }
-  let out_path = "\{root}/sidecar_binaries_wasm.mbt"
+  let out_path = "\{root}/internal/sidecar/client/binaries.mbt"
   @async/fs.write_file(out_path, render_binaries(binaries))
   println("wrote \{out_path}")
 }

@@ -246,7 +246,7 @@ if the program dies while raw).
   executable end-to-end.
 - The sidecar binaries for linux/x86_64, macos/aarch64 and windows/x86_64
   are cross-compiled with `zig cc` by `tools/build_sidecar` (a MoonBit tool)
-  and embedded in the generated `sidecar_binaries_wasm.mbt`.
+  and embedded in the generated `internal/sidecar/client/binaries.mbt`.
 - Unix input still flows through the parent's own stdin and the shared ANSI
   decoder; only resize notifications come from the sidecar (`SIGWINCH` is a
   signal, which wasm cannot receive), coalesced on a non-blocking event

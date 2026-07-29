@@ -1,0 +1,16 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbit-community/tty/internal/sidecar/client"
+
+// Values
+pub fn stdio_slot(Int) -> Int? raise
+
+pub fn stdio_slot_or_invalid(Int) -> Int raise
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits
+

@@ -175,8 +175,8 @@ Differences from native:
 - On Windows, the sidecar streams raw console `INPUT_RECORD`s, so mouse,
   focus and resize events keep native fidelity.
 - Supported wasm hosts: linux/x86_64, macos/aarch64, windows/x86_64. The
-  sidecar binaries are embedded (`sidecar_binaries_wasm.mbt`, ~540 KB of
-  source) and regenerated with `cd tools && moon run build_sidecar` (uses
+  sidecar binaries are embedded (`internal/sidecar/client/binaries.mbt`,
+  ~540 KB of source) and regenerated with `cd tools && moon run build_sidecar` (uses
   `zig cc`, downloading zig on demand).
 
 ## Design Boundaries

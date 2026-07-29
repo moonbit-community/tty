@@ -139,15 +139,16 @@ upstream async practice.
   - shared: `fd.mbt` (trait `Fd` + impls), `state_types.mbt` (`State`),
     `size_types.mbt` (`WindowSize`), `io.mbt`, `tty.mbt`, `command.mbt`,
     `style.mbt`, `decstbm.mbt`.
-  - wasm-only: `sidecar_wasm.mbt` (client + lifecycle), generated
-    `sidecar_binaries_wasm.mbt`, `isatty_wasm.mbt`, `state_wasm.mbt`,
-    `size_wasm.mbt`, `resize_wasm.mbt`, `wasm_imports.mbt` (import anchors).
+  - wasm-only: `internal/sidecar/client` (sidecar client + lifecycle +
+    generated `binaries.mbt`), root `tty_wasm.mbt`, `isatty_wasm.mbt`,
+    `state_wasm.mbt`, `size_wasm.mbt`, `sidecar_imports.mbt` (import
+    anchors).
 - `internal/win32` becomes `native+wasm`; the `event_reader*.mbt` files and
   C stub stay native-only, pure record parsing stays shared (root's wasm
   anchor references it).
 - `tools/` — separate MoonBit module (native) that cross-compiles the
   sidecar with `zig cc` (found via `MOONBIT_TTY_ZIG`/`PATH`, else downloaded
-  and cached) and regenerates `sidecar_binaries_wasm.mbt`.
+  and cached) and regenerates `internal/sidecar/client/binaries.mbt`.
 
 ## Root package restructure (breaking, decided 2026-07-29)
 
@@ -240,7 +241,7 @@ always safe to enable.
   `Tty` pipe tests that spawn the embedded sidecar for real.
 - `tools/build_sidecar` cross-compiles the three sidecars with zig cc
   (25.6 KB linux static, 52.2 KB macos, 60.4 KB windows) and regenerates
-  `sidecar_binaries_wasm.mbt` (~554 KB source).
+  `internal/sidecar/client/binaries.mbt` (~554 KB source).
 - Pty smoke test (`tests/probe` + a python pty driver), all checks green on
   BOTH targets: isatty=true on a pty, window size 30x100, raw mode entered,
   SIGWINCH resize delivered as `resize: 40x120` (wasm: through the sidecar

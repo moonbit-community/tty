@@ -34,10 +34,10 @@ pub async fn[I : Reader, O : Writer] Tty::new(input : I, output : O) -> Tty {
   let input_fd = Fd::fd(input)
   let output = output as &Writer
   let output_fd = Fd::fd(output)
-  let backend = if host_platform() is Windows &&
-    stdio_slot(input_fd) is Some(0) &&
+  let backend = if @client.host_platform() is Windows &&
+    @client.stdio_slot(input_fd) is Some(0) &&
     isatty(@async/stdio.stdin) {
-    Win32Console(sidecar().console_event_reader())
+    Win32Console(@client.Sidecar::get().console_event_reader())
   } else {
     Ansi(@input.EventReader::new(input as &@async/io.Reader))
   }
@@ -74,8 +74,8 @@ pub fn Tty::close(self : Self) -> Unit {
 ///|
 async fn Tty::read_resize_event(self : Self) -> Event {
   ignore(self)
-  let size = sidecar().wait_resize()
-  Resize(size)
+  let (rows, cols) = @client.Sidecar::get().wait_resize()
+  Resize({ rows, cols })
 }
 
 ///|

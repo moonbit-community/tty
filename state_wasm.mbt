@@ -3,8 +3,8 @@
 /// restored inside the sidecar, so no `State` snapshot type exists on this
 /// target (`get_state`/`set_state`/`State::make_raw` are native-only).
 async fn Tty::set_raw_mode(self : Self, enter~ : Bool) -> Unit {
-  let input = stdio_slot_or_invalid(self.input_fd)
-  let output = stdio_slot_or_invalid(self.output_fd)
+  let input = @client.stdio_slot_or_invalid(self.input_fd)
+  let output = @client.stdio_slot_or_invalid(self.output_fd)
   let request : @sidecar.Request = if enter {
     EnterRawMode(input~, output~)
   } else {
@@ -15,7 +15,7 @@ async fn Tty::set_raw_mode(self : Self, enter~ : Bool) -> Unit {
   } else {
     "Tty::leave_raw_mode"
   }
-  match sidecar().call(request) {
+  match @client.Sidecar::get().call(request) {
     Acknowledged => ()
     Error(errno~) => raise @os_error.OSError(errno, context~)
     _ => raise @sidecar.ProtocolViolation
