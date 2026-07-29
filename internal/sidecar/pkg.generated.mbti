@@ -1,0 +1,52 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbit-community/tty/internal/sidecar"
+
+import {
+  "moonbitlang/async/io",
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub const INPUT_RECORD_SIZE : Int = 20
+
+pub const MAGIC_CONTROL : UInt = 0x4354544D
+
+pub const MAGIC_EVENT : UInt = 0x4554544D
+
+pub async fn read_handshake(&@io.Reader, magic~ : UInt, token~ : Bytes) -> Unit
+
+// Errors
+pub(all) suberror ProtocolViolation derive(ToJson, @debug.Debug)
+
+// Types and methods
+pub enum Event {
+  Resize(rows~ : Int, cols~ : Int)
+  InputRecords(records~ : Bytes)
+} derive(Eq, @debug.Debug)
+
+type EventStream
+pub fn EventStream::EventStream(&@io.Reader) -> Self
+pub async fn EventStream::next(Self) -> Event
+
+pub(all) enum Request {
+  IsATty(which~ : Int)
+  EnterRawMode(input~ : Int, output~ : Int)
+  LeaveRawMode(input~ : Int, output~ : Int)
+  WinSize(which~ : Int)
+  Watch(enable~ : Bool)
+  Shutdown
+} derive(Eq, @debug.Debug)
+pub fn Request::encode(Self, id~ : UInt) -> Bytes
+
+pub enum Response {
+  IsATty(Bool)
+  WinSize(rows~ : Int, cols~ : Int)
+  Acknowledged
+  Error(errno~ : Int)
+} derive(Eq, @debug.Debug)
+pub async fn Response::read(&@io.Reader, Request, id~ : UInt) -> Self
+
+// Type aliases
+
+// Traits
+

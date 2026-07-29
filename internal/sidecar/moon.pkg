@@ -1,0 +1,11 @@
+import {
+  "moonbitlang/async/io" @async/io,
+}
+
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/pipe" @async/pipe,
+  "moonbitlang/core/debug",
+} for "test"
+
+supported_targets = "native+wasm"

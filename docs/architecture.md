@@ -28,8 +28,9 @@ operations:
 
 - `Tty`, a narrow handle that coordinates one terminal input stream and output
   stream for terminal capabilities and request/response protocols
-- `Tty::stdio` and `Tty::open` convenience constructors for process stdio and
-  `/dev/tty` style handles where supported
+- `Tty::stdio`, the convenience constructor for process stdio
+  (`@tty/open.open()` in the native-only `open` sub-package covers `/dev/tty`
+  and Windows console devices)
 - `Reader` and `Writer`, terminal-handle traits that extend async I/O with
   descriptor and close operations for `Tty::new`
   (`moonbitlang/async` files, stdio handles, and OS pipes implement them)
@@ -226,6 +227,39 @@ records. Resize/focus native events and decoded byte-stream input each preserve
 their own source order, but `Tty::read_event` does not guarantee a strict total
 order between native resize/focus notifications and terminal byte sequences;
 this matches the Unix signal-backed resize model.
+
+## Wasm Backend
+
+The `wasm` target (run under `moonrun`) has no libc surface, so terminal
+syscalls are proxied to a small native **sidecar** executable
+(`sidecar/tty_sidecar.c`), spawned on first use with the parent's
+stdin/stdout/stderr inherited and reached over loopback TCP with a compact
+binary protocol (`sidecar/PROTOCOL.md`). Terminals are addressed by stdio
+slot (0/1/2) because wasm host handles are opaque and cannot cross the
+process boundary; terminal state itself never crosses the wire (`ENTER_RAW`
+captures and restores inside the sidecar, which also restores the terminal
+if the program dies while raw).
+
+- `internal/sidecar` owns the wire protocol (`Request`/`Response` encode and
+  decode, handshake, cancellation-safe `EventStream`) and is pure enough to
+  be unit-tested on native; `internal/sidecar/livetest` exercises the real
+  executable end-to-end.
+- The sidecar binaries for linux/x86_64, macos/aarch64 and windows/x86_64
+  are cross-compiled with `zig cc` by `tools/build_sidecar` (a MoonBit tool)
+  and embedded in the generated `sidecar_binaries_wasm.mbt`.
+- Unix input still flows through the parent's own stdin and the shared ANSI
+  decoder; only resize notifications come from the sidecar (`SIGWINCH` is a
+  signal, which wasm cannot receive), coalesced on a non-blocking event
+  connection so a non-draining parent can never stall it.
+- Windows input keeps native fidelity: with `WATCH` enabled the sidecar is
+  the console's sole `INPUT_RECORD` consumer and streams raw records to the
+  shared `internal/win32` record router (`StreamEventReader`); resizes arrive
+  as `WINDOW_BUFFER_SIZE_EVENT` records.
+- Wasm API differences: syscall-backed operations (`isatty`,
+  `Tty::window_size`, raw-mode control) are `async`; `State` does not exist
+  (`enter_raw_mode`/`leave_raw_mode` return/take nothing);
+  `isatty` identifies process stdio handles only; `@tty/open` is
+  unavailable. `pkg.generated.mbti` records the native surface.
 
 ## Raw Mode
 

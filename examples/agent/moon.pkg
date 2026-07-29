@@ -6,12 +6,11 @@ import {
   "kawaz/grapheme",
   "rami3l/unicodewidth",
   "moonbit-community/tty",
+  "moonbit-community/tty/open" @tty_open,
   "moonbit-community/tty/color",
   "moonbit-community/tty/input" @tty/input,
 }
 
 supported_targets = "native"
 
-options(
-  "is-main": true,
-)
+pkgtype(kind: "executable")

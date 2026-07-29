@@ -1421,7 +1421,7 @@ async fn run_agent(tty : @tty.Tty) -> Unit {
 
 ///|
 async fn main {
-  let tty = @tty.Tty::open()
+  let tty = @tty_open.open()
   try tty.with_raw_mode(() => run_agent(tty)) catch {
     error => {
       restore_terminal(tty)

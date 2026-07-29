@@ -1,11 +1,4 @@
 ///|
-/// Terminal window size in rows and columns.
-pub struct WindowSize {
-  rows : Int
-  cols : Int
-} derive(Eq)
-
-///|
 /// Query the visible terminal window size.
 pub fn Tty::window_size(self : Self) -> WindowSize raise @os_error.OSError {
   let rows = Ref(0)

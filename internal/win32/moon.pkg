@@ -6,6 +6,7 @@ import {
   "moonbitlang/async/types" @async/types,
   "moonbit-community/tty/internal/input",
   "moonbit-community/tty/internal/io" @internal_io,
+  "moonbit-community/tty/internal/sidecar",
   "moonbit-community/tty/input" @public_input,
 }
 
@@ -16,13 +17,20 @@ import {
 
 import {
   "moonbitlang/async",
-  "moonbitlang/async/pipe" @async/pipe,
   "moonbitlang/core/debug",
   "moonbit-community/tty/input" @public_input,
 } for "wbtest"
 
-supported_targets = "native"
+supported_targets = "native+wasm"
 
 options(
   "native-stub": [ "win32_input.c" ],
+  targets: {
+    "event_reader.mbt": [ "native" ],
+    "event_reader_wbtest.mbt": [ "native" ],
+    "record_test.mbt": [ "native", "wasm" ],
+    "record_wbtest.mbt": [ "native" ],
+    "stream_event_reader.mbt": [ "wasm" ],
+    "pkg.generated.mbti": [ "native" ],
+  },
 )

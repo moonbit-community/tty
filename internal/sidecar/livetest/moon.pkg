@@ -1,0 +1,12 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/fs" @async/fs,
+  "moonbitlang/async/io" @async/io,
+  "moonbitlang/async/pipe" @async/pipe,
+  "moonbitlang/async/process" @async/process,
+  "moonbitlang/async/socket" @async/socket,
+  "moonbitlang/core/debug",
+  "moonbit-community/tty/internal/sidecar",
+} for "test"
+
+supported_targets = "native"

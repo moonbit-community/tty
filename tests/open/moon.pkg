@@ -2,6 +2,7 @@ import {
   "moonbitlang/async",
   "moonbitlang/async/stdio",
   "moonbit-community/tty",
+  "moonbit-community/tty/open" @tty_open,
 }
 
 options(

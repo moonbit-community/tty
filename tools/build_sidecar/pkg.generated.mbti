@@ -1,0 +1,14 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbit-community/tty-tools/build_sidecar"
+
+// Values
+
+// Errors
+
+// Types and methods
+type SidecarTarget
+
+// Type aliases
+
+// Traits
+

@@ -139,8 +139,8 @@ pub fn MouseButtonState::new() -> MouseButtonState {
 }
 
 ///|
-pub fn InputRecord::parse(record : Bytes) -> InputRecord {
-  let bytes = record[:]
+pub fn InputRecord::parse(record : BytesView) -> InputRecord {
+  let bytes = record
   guard u16_at(bytes, 0) is Some(event_type) else { return Unsupported(0) }
   match event_type {
     RecordKey => parse_key_record(bytes)

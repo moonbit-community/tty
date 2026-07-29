@@ -10,8 +10,9 @@ pane system, or scrollback buffer.
 
 ## Status
 
-This module is early and native-target focused. Public APIs are still being
-shaped around small terminal programs and the examples in this repository.
+This module is early. Public APIs are still being shaped around small
+terminal programs and the examples in this repository. It targets `native`
+and `wasm` (see "Wasm backend" below).
 
 ## Packages
 
@@ -23,7 +24,8 @@ operations.
 Use `Tty` when an operation needs a real terminal handle:
 
 - process stdio: `Tty::stdio()`
-- controlling terminal: `Tty::open()`
+- controlling terminal: `@tty/open.open()` (native-only sub-package
+  `moonbit-community/tty/open`, which also adapts raw fds via `Terminal`)
 - custom handles: `Tty::new(input, output)` with `Reader` and `Writer` traits
   for async files, stdio, and OS pipes
 - raw mode: `Tty::get_state`, `State::make_raw`, `Tty::set_state`,
@@ -150,6 +152,32 @@ The examples are manual validation tools, not framework APIs:
 - `examples/pager` demonstrates primary-screen paging with a fixed status row.
 - `examples/agent` demonstrates a Codex-like primary-screen transcript, input
   composer, delayed queued input, and shell command execution.
+
+## Wasm backend
+
+On the `wasm` target (run with `moonrun`), terminal syscalls have no libc to
+call into, so the package spawns a small native **sidecar** process on first
+use: it inherits the program's stdio, performs `termios`/`ioctl`/console
+calls on the shared terminal, and is reached over loopback TCP with a
+compact binary protocol (see `sidecar/PROTOCOL.md` and the "Wasm Backend"
+section of `docs/architecture.md`). The sidecar restores the terminal even
+if the program dies while in raw mode.
+
+Differences from native:
+
+- syscall-backed operations are `async` on wasm: `isatty`,
+  `Tty::window_size`, `Tty::enter_raw_mode` / `Tty::leave_raw_mode` (which
+  take and return nothing — `State`, `get_state`, `set_state` are
+  native-only; the sidecar keeps the state), and `Tty::new` / `Tty::stdio`.
+- `isatty` identifies process stdio handles only; other handles report
+  `false`.
+- `@tty/open` (controlling terminal) is not available on wasm.
+- On Windows, the sidecar streams raw console `INPUT_RECORD`s, so mouse,
+  focus and resize events keep native fidelity.
+- Supported wasm hosts: linux/x86_64, macos/aarch64, windows/x86_64. The
+  sidecar binaries are embedded (`sidecar_binaries_wasm.mbt`, ~540 KB of
+  source) and regenerated with `cd tools && moon run build_sidecar` (uses
+  `zig cc`, downloading zig on demand).
 
 ## Design Boundaries
 

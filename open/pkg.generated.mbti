@@ -1,0 +1,26 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbit-community/tty/open"
+
+import {
+  "moonbit-community/tty",
+  "moonbitlang/async/io",
+  "moonbitlang/async/raw_fd",
+}
+
+// Values
+pub async fn open() -> @tty.Tty
+
+// Errors
+
+// Types and methods
+pub struct Terminal(@raw_fd.RawFdStream)
+pub impl @tty.Fd for Terminal
+pub impl @tty.Reader for Terminal
+pub impl @tty.Writer for Terminal
+pub impl @io.Reader for Terminal
+pub impl @io.Writer for Terminal
+
+// Type aliases
+
+// Traits
+

@@ -73,7 +73,7 @@ pub(all) enum InputRecord {
   Focus(Bool)
   Unsupported(Int)
 }
-pub fn InputRecord::parse(Bytes) -> Self
+pub fn InputRecord::parse(BytesView) -> Self
 
 pub struct KeyRecord {
   key_down : Int

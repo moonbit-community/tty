@@ -44,16 +44,12 @@ fn win32_test_mouse_record(
 }
 
 ///|
-fn win32_test_event_reader() -> EventReader raise {
-  let (read, write) = @async/pipe.pipe()
-  write.close()
-  let reader = EventReader::new(read.fd())
-  read.close()
-  reader
+fn win32_test_router() -> RecordRouter {
+  RecordRouter()
 }
 
 ///|
-fn win32_test_try_get_event(reader : EventReader) -> Event? {
+fn win32_test_try_get_event(reader : RecordRouter) -> Event? {
   try reader.events.try_get() catch {
     _ => None
   } noraise {
@@ -63,9 +59,9 @@ fn win32_test_try_get_event(reader : EventReader) -> Event? {
 
 ///|
 async test "win32 event reader ignores key-up records" {
-  let reader = win32_test_event_reader()
+  let reader = win32_test_router()
   defer reader.close()
-  reader.read_key_record(win32_test_key_record('a', key_down=0))
+  reader.route_key_record(win32_test_key_record('a', key_down=0))
   match win32_test_try_get_event(reader) {
     None => ()
     Some(_) => fail("expected key-up record to be ignored")
@@ -74,10 +70,10 @@ async test "win32 event reader ignores key-up records" {
 
 ///|
 async test "win32 event reader decodes bracketed paste key records" {
-  let reader = win32_test_event_reader()
+  let reader = win32_test_router()
   defer reader.close()
   for char in "\u{1B}[200~hello\u{1B}[201~" {
-    reader.read_key_record(win32_test_key_record(char))
+    reader.route_key_record(win32_test_key_record(char))
   }
   match reader.read_decoded_input_event(50) {
     Some(Input(Paste(text))) => @debug.assert_eq(text, "hello")
@@ -87,11 +83,11 @@ async test "win32 event reader decodes bracketed paste key records" {
 
 ///|
 async test "win32 event reader preserves native events during internal reads" {
-  let reader = win32_test_event_reader()
+  let reader = win32_test_router()
   defer reader.close()
-  reader.read_record(Focus(true))
+  reader.route(Focus(true))
   for char in "\u{1B}[7;9R" {
-    reader.read_key_record(win32_test_key_record(char))
+    reader.route_key_record(win32_test_key_record(char))
   }
   match reader.decoder.read_event(esc_timeout_ms=50) {
     CursorPosition(row~, col~) => {
@@ -108,7 +104,7 @@ async test "win32 event reader preserves native events during internal reads" {
 
 ///|
 async test "win32 event reader propagates cancellation while waiting for native events" {
-  let reader = win32_test_event_reader()
+  let reader = win32_test_router()
   defer reader.close()
   match @async.with_timeout_opt(1, () => reader.read_input_event(50)) {
     None => ()
@@ -118,11 +114,11 @@ async test "win32 event reader propagates cancellation while waiting for native 
 
 ///|
 async test "win32 event reader keeps queued bytes after native event" {
-  let reader = win32_test_event_reader()
+  let reader = win32_test_router()
   defer reader.close()
-  reader.read_record(Focus(true))
+  reader.route(Focus(true))
   for char in "\u{1B}[<0;20;4M" {
-    reader.read_key_record(win32_test_key_record(char))
+    reader.route_key_record(win32_test_key_record(char))
   }
   match win32_test_try_get_event(reader) {
     Some(Input(FocusIn)) => ()
@@ -137,9 +133,9 @@ async test "win32 event reader keeps queued bytes after native event" {
 
 ///|
 async test "win32 event reader maps native mouse records" {
-  let reader = win32_test_event_reader()
+  let reader = win32_test_router()
   defer reader.close()
-  reader.read_mouse_record(
+  reader.route_mouse_record(
     win32_test_mouse_record(x=30, y=2, event_flags=MouseMoved),
   )
   match win32_test_try_get_event(reader) {
@@ -147,7 +143,7 @@ async test "win32 event reader maps native mouse records" {
       @debug.assert_eq(event, @public_input.MouseEvent::new(Move, 3, 31))
     _ => fail("expected mouse move event")
   }
-  reader.read_mouse_record(
+  reader.route_mouse_record(
     win32_test_mouse_record(x=30, y=2, button_state=MouseLeftButton),
   )
   match win32_test_try_get_event(reader) {
@@ -155,7 +151,7 @@ async test "win32 event reader maps native mouse records" {
       @debug.assert_eq(event, @public_input.MouseEvent::new(Press(Left), 3, 31))
     _ => fail("expected left mouse press event")
   }
-  reader.read_mouse_record(
+  reader.route_mouse_record(
     win32_test_mouse_record(
       x=31,
       y=2,
@@ -177,7 +173,7 @@ async test "win32 event reader maps native mouse records" {
       )
     _ => fail("expected left mouse drag event")
   }
-  reader.read_mouse_record(win32_test_mouse_record(x=31, y=2))
+  reader.route_mouse_record(win32_test_mouse_record(x=31, y=2))
   match win32_test_try_get_event(reader) {
     Some(Input(Mouse(event))) =>
       @debug.assert_eq(
@@ -186,7 +182,7 @@ async test "win32 event reader maps native mouse records" {
       )
     _ => fail("expected left mouse release event")
   }
-  reader.read_mouse_record(
+  reader.route_mouse_record(
     win32_test_mouse_record(
       x=31,
       y=2,
@@ -203,9 +199,9 @@ async test "win32 event reader maps native mouse records" {
 
 ///|
 async test "win32 event reader preserves printable key modifiers" {
-  let reader = win32_test_event_reader()
+  let reader = win32_test_router()
   defer reader.close()
-  reader.read_key_record(
+  reader.route_key_record(
     win32_test_key_record('a', control_key_state=LeftAltPressed),
   )
   match win32_test_try_get_event(reader) {
@@ -220,7 +216,7 @@ async test "win32 event reader preserves printable key modifiers" {
       )
     _ => fail("expected Alt+a key event")
   }
-  reader.read_key_record(
+  reader.route_key_record(
     win32_test_key_record('X', control_key_state=ShiftPressed | RightAltPressed),
   )
   match win32_test_try_get_event(reader) {
@@ -239,9 +235,9 @@ async test "win32 event reader preserves printable key modifiers" {
 
 ///|
 async test "win32 event reader preserves ctrl left bracket" {
-  let reader = win32_test_event_reader()
+  let reader = win32_test_router()
   defer reader.close()
-  reader.read_key_record(
+  reader.route_key_record(
     win32_test_key_record(
       '\u{1B}',
       virtual_key_code=0xdb,
@@ -263,9 +259,9 @@ async test "win32 event reader preserves ctrl left bracket" {
 
 ///|
 async test "win32 event reader preserves ctrl space" {
-  let reader = win32_test_event_reader()
+  let reader = win32_test_router()
   defer reader.close()
-  reader.read_key_record(
+  reader.route_key_record(
     win32_test_key_record_charcode(
       0,
       virtual_key_code=0x20,
@@ -287,9 +283,9 @@ async test "win32 event reader preserves ctrl space" {
 
 ///|
 async test "win32 event reader preserves AltGr text input" {
-  let reader = win32_test_event_reader()
+  let reader = win32_test_router()
   defer reader.close()
-  reader.read_key_record(
+  reader.route_key_record(
     win32_test_key_record(
       '@',
       control_key_state=RightAltPressed | LeftCtrlPressed,
@@ -304,9 +300,9 @@ async test "win32 event reader preserves AltGr text input" {
 
 ///|
 async test "win32 event reader preserves keypad key metadata" {
-  let reader = win32_test_event_reader()
+  let reader = win32_test_router()
   defer reader.close()
-  reader.read_key_record(
+  reader.route_key_record(
     win32_test_key_record(
       '1',
       virtual_key_code=0x61,
@@ -324,7 +320,7 @@ async test "win32 event reader preserves keypad key metadata" {
       )
     _ => fail("expected keypad 1 key event")
   }
-  reader.read_key_record(win32_test_key_record('*', virtual_key_code=0x6a))
+  reader.route_key_record(win32_test_key_record('*', virtual_key_code=0x6a))
   match win32_test_try_get_event(reader) {
     Some(Input(Key(event))) =>
       @debug.assert_eq(
@@ -340,9 +336,9 @@ async test "win32 event reader preserves keypad key metadata" {
 
 ///|
 async test "win32 event reader preserves keypad enter metadata" {
-  let reader = win32_test_event_reader()
+  let reader = win32_test_router()
   defer reader.close()
-  reader.read_key_record(
+  reader.route_key_record(
     win32_test_key_record(
       '\r',
       virtual_key_code=0x0d,
@@ -364,9 +360,9 @@ async test "win32 event reader preserves keypad enter metadata" {
 
 ///|
 async test "win32 event reader preserves keypad navigation metadata" {
-  let reader = win32_test_event_reader()
+  let reader = win32_test_router()
   defer reader.close()
-  reader.read_key_record(
+  reader.route_key_record(
     win32_test_key_record_charcode(0, virtual_key_code=0x23),
   )
   match win32_test_try_get_event(reader) {
@@ -380,7 +376,7 @@ async test "win32 event reader preserves keypad navigation metadata" {
       )
     _ => fail("expected keypad End key event")
   }
-  reader.read_key_record(
+  reader.route_key_record(
     win32_test_key_record_charcode(
       0,
       virtual_key_code=0x23,

@@ -1,6 +1,6 @@
 ///|
 async fn main {
-  let tty = @tty.Tty::open()
+  let tty = @tty_open.open()
   defer tty.close()
   let size = tty.window_size()
   @stdio.stdout.write("open: ok\n")

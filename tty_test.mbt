@@ -390,27 +390,6 @@ async test "tty raw mode operations reject non tty pipe" {
 }
 
 ///|
-async test "Tty::open() when controlling tty is available" {
-  try @tty.Tty::open() catch {
-    _ => ()
-  } noraise {
-    tty =>
-      try tty.window_size() catch {
-        _ => {
-          tty.close()
-          fail("expected /dev/tty window size")
-        }
-      } noraise {
-        size => {
-          tty.close()
-          assert_true(size.rows > 0)
-          assert_true(size.cols > 0)
-        }
-      }
-  }
-}
-
-///|
 async test "pipe tty with alt screen restores on success" {
   let output = with_pipe_tty(b"", tty => {
     tty.with_alt_screen(() => tty.write("body"))

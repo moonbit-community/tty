@@ -1,0 +1,18 @@
+import {
+  "moonbitlang/async/io" @async/io,
+  "moonbitlang/async/os_error",
+  "moonbitlang/async/raw_fd" @async/raw_fd,
+  "moonbitlang/async/types" @async/types,
+  "moonbit-community/tty",
+}
+
+import {
+  "moonbitlang/async",
+  "moonbit-community/tty",
+} for "test"
+
+supported_targets = "native"
+
+options(
+  "native-stub": [ "tty_open.c" ],
+)

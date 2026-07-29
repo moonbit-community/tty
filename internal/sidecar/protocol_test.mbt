@@ -1,0 +1,39 @@
+///|
+test "request encoding carries op, id and payload length" {
+  inspect(
+    @sidecar.Request::IsATty(which=2).encode(id=0x01020304),
+    content=(
+      #|b"\x01\x04\x03\x02\x01\x01\x00\x02"
+    ),
+  )
+  inspect(
+    @sidecar.Request::EnterRawMode(input=0, output=1).encode(id=7),
+    content=(
+      #|b"\x02\x07\x00\x00\x00\x02\x00\x00\x01"
+    ),
+  )
+  inspect(
+    @sidecar.Request::LeaveRawMode(input=0, output=1).encode(id=8),
+    content=(
+      #|b"\x03\x08\x00\x00\x00\x02\x00\x00\x01"
+    ),
+  )
+  inspect(
+    @sidecar.Request::WinSize(which=1).encode(id=9),
+    content=(
+      #|b"\x05\x09\x00\x00\x00\x01\x00\x01"
+    ),
+  )
+  inspect(
+    @sidecar.Request::Watch(enable=true).encode(id=2),
+    content=(
+      #|b"\x06\x02\x00\x00\x00\x01\x00\x01"
+    ),
+  )
+  inspect(
+    @sidecar.Request::Shutdown.encode(id=3),
+    content=(
+      #|b"\x07\x03\x00\x00\x00\x00\x00"
+    ),
+  )
+}

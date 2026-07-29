@@ -2,4 +2,5 @@ members = [
   ".",
   "./tests",
   "./examples",
+  "./tools",
 ]

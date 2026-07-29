@@ -27,22 +27,24 @@ extern "C" fn console_handle_is_valid(fd : @async/types.Fd) -> Int = "moonbit_tt
 /// instead would probe the handle with `GetFileInformationByHandle`, which fails
 /// on console devices.
 #cfg(platform="windows")
-pub async fn Tty::open() -> Tty {
+pub async fn open() -> @tty.Tty {
   let input_fd = open_console_input()
   if console_handle_is_valid(input_fd) == 0 {
-    @os_error.check_errno("Tty::open")
+    @os_error.check_errno("open")
   }
-  let input = @async/raw_fd.RawFdStream(input_fd)
+  let input = Terminal(@async/raw_fd.RawFdStream(input_fd))
   let output_fd = open_console_output()
   if console_handle_is_valid(output_fd) == 0 {
-    input.close()
-    @os_error.check_errno("Tty::open")
+    input.0.close()
+    @os_error.check_errno("open")
   }
-  let output = @async/raw_fd.RawFdStream(output_fd) catch {
-    error => {
-      input.close()
-      raise error
-    }
-  }
-  Tty::new(input, output)
+  let output = Terminal(
+    @async/raw_fd.RawFdStream(output_fd) catch {
+      error => {
+        input.0.close()
+        raise error
+      }
+    },
+  )
+  @tty.Tty::new(input, output)
 }
