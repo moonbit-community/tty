@@ -113,7 +113,7 @@ fn EventReader::drain_records(self : EventReader) -> Bool raise {
 
 ///|
 fn queue_event(events : @async.Queue[Event], event : Event) -> Unit {
-  guard (try! events.try_put(event))
+  guard! (try! events.try_put(event))
 }
 
 ///|

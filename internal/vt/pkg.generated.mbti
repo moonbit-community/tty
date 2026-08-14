@@ -164,4 +164,3 @@ pub fn write_sgr5(@buffer.Buffer, Int, Int, Int, Int, Int) -> Unit
 // Type aliases
 
 // Traits
-

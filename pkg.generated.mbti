@@ -200,4 +200,3 @@ pub impl Writer for @fs.File
 pub impl Writer for @pipe.PipeWrite
 pub impl Writer for @raw_fd.RawFdStream
 pub impl Writer for @stdio.Output
-

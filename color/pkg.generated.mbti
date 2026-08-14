@@ -45,4 +45,3 @@ pub(all) struct Rgb16 {
 // Type aliases
 
 // Traits
-

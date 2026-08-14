@@ -18,7 +18,7 @@ pub fn ByteQueue::close(self : ByteQueue) -> Unit {
 
 ///|
 pub fn ByteQueue::put_byte(self : ByteQueue, byte : Byte) -> Unit {
-  guard (try! self.queue.try_put(byte))
+  guard! (try! self.queue.try_put(byte))
 }
 
 ///|
