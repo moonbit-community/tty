@@ -16,4 +16,3 @@ pub async fn[X] Lock::with_lock(Self, async () -> X) -> X
 // Type aliases
 
 // Traits
-

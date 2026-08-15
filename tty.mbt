@@ -51,9 +51,9 @@ struct Tty {
 #cfg(platform="windows")
 pub fn[I : Reader, O : Writer] Tty::new(input : I, output : O) -> Tty raise {
   let input = input as &Reader
-  let input_fd = input.fd()
+  let input_fd = Fd::fd(input)
   let output = output as &Writer
-  let output_fd = output.fd()
+  let output_fd = Fd::fd(output)
   let input_backend = WindowsInput::new(input_fd, input as &@async/io.Reader)
   {
     input,
@@ -71,9 +71,9 @@ pub fn[I : Reader, O : Writer] Tty::new(input : I, output : O) -> Tty raise {
 #cfg(not(platform="windows"))
 pub fn[I : Reader, O : Writer] Tty::new(input : I, output : O) -> Tty raise {
   let input = input as &Reader
-  let input_fd = input.fd()
+  let input_fd = Fd::fd(input)
   let output = output as &Writer
-  let output_fd = output.fd()
+  let output_fd = Fd::fd(output)
   {
     input,
     input_fd,
@@ -156,7 +156,7 @@ async fn Tty::read_internal_event(
 /// a multi-call sequence atomic, assemble it into one buffer and issue a single
 /// `write`.
 pub async fn Tty::write(self : Self, data : &@async/io.Data) -> Unit {
-  self.write_lock.with_lock(() => self.output.write(data))
+  self.write_lock.with_lock(() => @async/io.Writer::write(self.output, data))
 }
 
 ///|
@@ -167,7 +167,7 @@ pub async fn Tty::write(self : Self, data : &@async/io.Data) -> Unit {
 /// a multi-call sequence atomic, assemble it into one string and issue a single
 /// `write_string`.
 pub async fn Tty::write_string(self : Self, string : String) -> Unit {
-  self.write_lock.with_lock(() => self.output.write(string))
+  self.write_lock.with_lock(() => @async/io.Writer::write(self.output, string))
 }
 
 ///|

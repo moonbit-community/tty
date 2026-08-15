@@ -108,4 +108,3 @@ pub fn MouseRecord::new(x? : Int, y? : Int, button_state? : Int, control_key_sta
 // Type aliases
 
 // Traits
-

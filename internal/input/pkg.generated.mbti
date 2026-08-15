@@ -26,4 +26,3 @@ pub async fn EventReader::read_event(Self, esc_timeout_ms? : Int) -> Event
 // Type aliases
 
 // Traits
-

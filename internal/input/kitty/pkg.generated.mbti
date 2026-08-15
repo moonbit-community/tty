@@ -22,4 +22,3 @@ pub fn ModifierReport::key_event(Self, @input.KeyCode) -> @input.KeyEvent
 // Type aliases
 
 // Traits
-

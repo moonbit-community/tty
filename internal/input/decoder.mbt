@@ -79,7 +79,7 @@ async fn EventReader::read_byte_raw(self : EventReader) -> Byte {
 
 ///|
 fn EventReader::unread_byte(self : EventReader) -> Unit {
-  guard self.read > self.head
+  guard! self.read > self.head
   self.read -= 1
 }
 

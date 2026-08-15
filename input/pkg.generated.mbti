@@ -197,4 +197,3 @@ pub(all) enum MouseScroll {
 // Type aliases
 
 // Traits
-
