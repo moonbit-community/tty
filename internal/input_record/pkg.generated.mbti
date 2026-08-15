@@ -1,0 +1,55 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbit-community/tty/internal/input_record"
+
+// Values
+
+// Errors
+type InvalidInputRecord
+
+// Types and methods
+pub struct Coord {
+  x : UInt16
+  y : UInt16
+}
+
+pub struct FocusEventRecord {
+  set_focus : Bool
+}
+
+pub enum InputRecord {
+  KeyEvent(KeyEventRecord)
+  MouseEvent(MouseEventRecord)
+  WindowBufferSizeEvent(WindowBufferSizeEventRecord)
+  MenuEvent(MenuEventRecord)
+  FocusEvent(FocusEventRecord)
+}
+pub fn InputRecord::parse(BytesView) -> Self raise InvalidInputRecord
+
+pub struct KeyEventRecord {
+  key_down : Bool
+  repeat_count : UInt16
+  virtual_key_code : UInt16
+  virtual_scan_code : UInt16
+  unicode_char : UInt16
+  control_key_state : UInt
+}
+pub fn KeyEventRecord::parse(BytesView) -> Self raise InvalidInputRecord
+
+pub struct MenuEventRecord {
+  command_id : UInt
+}
+
+pub struct MouseEventRecord {
+  mouse_position : Coord
+  button_state : UInt
+  control_key_state : UInt
+  event_flags : UInt
+}
+
+pub struct WindowBufferSizeEventRecord {
+  size : Coord
+}
+
+// Type aliases
+
+// Traits
