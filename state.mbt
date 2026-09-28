@@ -68,7 +68,7 @@ pub fn Tty::leave_raw_mode(
 ///|
 /// Run an async callback with raw mode enabled.
 ///
-/// The captured terminal state is restored on success or error.
+/// The captured terminal state is restored on success, error, or cancellation.
 pub async fn[T] Tty::with_raw_mode(self : Self, f : async () -> T) -> T {
   let state = self.enter_raw_mode()
   defer self.leave_raw_mode(state)

@@ -1423,6 +1423,6 @@ async fn run_agent(tty : @tty.Tty) -> Unit {
 async fn main {
   let tty = @tty.Tty::open()
   defer tty.close()
-  errdefer restore_terminal(tty)
+  errdefer @async.protect_from_cancel(() => restore_terminal(tty))
   tty.with_raw_mode(() => run_agent(tty))
 }

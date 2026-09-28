@@ -14,7 +14,7 @@ pub async fn Tty::leave_alt_screen(self : Self) -> Unit {
 /// Run `f` with the output in the alternate screen buffer.
 pub async fn[T] Tty::with_alt_screen(self : Self, f : async () -> T) -> T {
   self.enter_alt_screen()
-  defer self.leave_alt_screen()
+  defer @async.protect_from_cancel(() => self.leave_alt_screen())
   f()
 }
 
@@ -45,7 +45,7 @@ pub async fn[T] Tty::with_synchronized_update(
   f : async () -> T,
 ) -> T {
   self.begin_synchronized_update()
-  defer self.end_synchronized_update()
+  defer @async.protect_from_cancel(() => self.end_synchronized_update())
   f()
 }
 
@@ -65,7 +65,7 @@ pub async fn Tty::disable_bracketed_paste(self : Self) -> Unit {
 /// Run `f` with bracketed paste mode enabled.
 pub async fn[T] Tty::with_bracketed_paste(self : Self, f : async () -> T) -> T {
   self.enable_bracketed_paste()
-  defer self.disable_bracketed_paste()
+  defer @async.protect_from_cancel(() => self.disable_bracketed_paste())
   f()
 }
 
@@ -97,7 +97,7 @@ pub async fn Tty::disable_auto_wrap(self : Self) -> Unit {
 /// Run `f` with focus tracking enabled.
 pub async fn[T] Tty::with_focus_tracking(self : Self, f : async () -> T) -> T {
   self.enable_focus_tracking()
-  defer self.disable_focus_tracking()
+  defer @async.protect_from_cancel(() => self.disable_focus_tracking())
   f()
 }
 
@@ -235,7 +235,7 @@ pub async fn[T] Tty::with_keyboard_enhancements(
   f : async () -> T,
 ) -> T {
   self.push_keyboard_enhancement_flags(flags)
-  defer self.pop_keyboard_enhancement_flags()
+  defer @async.protect_from_cancel(() => self.pop_keyboard_enhancement_flags())
   f()
 }
 
@@ -284,7 +284,7 @@ pub async fn[T] Tty::with_mouse(
   f : async () -> T,
 ) -> T {
   self.enable_mouse(mode)
-  defer self.disable_mouse()
+  defer @async.protect_from_cancel(() => self.disable_mouse())
   f()
 }
 
