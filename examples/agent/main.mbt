@@ -27,7 +27,7 @@ priv enum AgentEvent {
 ///|
 fn terminal_size(tty : @tty.Tty) -> AgentSize {
   try tty.window_size() catch {
-    _ => { rows: 24, cols: 80 }
+    _ => { rows: 24, cols: 80, }
   } noraise {
     size =>
       {
@@ -166,7 +166,7 @@ fn cursor_point_for(text : String, cursor : Int) -> CursorPoint {
     }
     index = index + 1
   }
-  { line, grapheme_column, display_column }
+  { line, grapheme_column, display_column, }
 }
 
 ///|
@@ -243,7 +243,7 @@ fn make_editor(
 ) -> Editor {
   let cursor = clamp_int(cursor, 0, grapheme_count(text))
   let view_start = ensure_cursor_visible(text, cursor, view_start)
-  { text, cursor, preferred_column, view_start, shell_mode }
+  { text, cursor, preferred_column, view_start, shell_mode, }
 }
 
 ///|

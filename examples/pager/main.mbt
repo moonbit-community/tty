@@ -62,7 +62,7 @@ fn clamp(value : Int, min : Int, max : Int) -> Int {
 ///|
 fn terminal_size(tty : @tty.Tty) -> PagerSize {
   try tty.window_size() catch {
-    _ => { rows: 24, cols: 80 }
+    _ => { rows: 24, cols: 80, }
   } noraise {
     size =>
       {

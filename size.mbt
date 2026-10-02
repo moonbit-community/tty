@@ -14,7 +14,7 @@ pub fn Tty::window_size(self : Self) -> WindowSize raise @os_error.OSError {
   if rc < 0 {
     @os_error.check_errno("Tty::window_size")
   }
-  { rows: rows.val, cols: cols.val }
+  { rows: rows.val, cols: cols.val, }
 }
 
 ///|

@@ -42,7 +42,7 @@ pub fn KeyEvent::new(
   shifted_code? : KeyCode,
   base_code? : KeyCode,
 ) -> KeyEvent {
-  { code, modifiers, kind, state, text, shifted_code, base_code }
+  { code, modifiers, kind, state, text, shifted_code, base_code, }
 }
 
 ///|
@@ -306,7 +306,7 @@ pub fn MouseEvent::new(
   col : Int,
   modifiers? : KeyModifiers = KeyModifiers::new(),
 ) -> MouseEvent {
-  { kind, row, col, modifiers }
+  { kind, row, col, modifiers, }
 }
 
 ///|

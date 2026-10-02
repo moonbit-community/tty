@@ -8,7 +8,7 @@ struct ByteQueue {
 ///|
 #warnings("-14")
 pub fn ByteQueue::new() -> ByteQueue {
-  { queue: Queue(kind=Unbounded), read_buf: @async/io.ReaderBuffer::new() }
+  { queue: Queue(kind=Unbounded), read_buf: @async/io.ReaderBuffer::new(), }
 }
 
 ///|

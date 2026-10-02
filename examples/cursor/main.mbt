@@ -93,8 +93,8 @@ async fn draw_status(
 
 ///|
 async fn run_cursor_demo(tty : @tty.Tty) -> Unit {
-  let anchor : Anchor = { top: 2, left: 4 }
-  let size : Size = { width: 20, height: 10 }
+  let anchor : Anchor = { top: 2, left: 4, }
+  let size : Size = { width: 20, height: 10, }
   let mut x = size.width / 2
   let mut y = size.height / 2
   let mut visible = false

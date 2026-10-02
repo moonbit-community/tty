@@ -183,7 +183,7 @@ pub async fn Tty::query_cursor_position(
     self.write(@vt.request_cursor_position)
     for ;; {
       match self.read_internal_event() {
-        CursorPosition(row~, col~) => return { row, col }
+        CursorPosition(row~, col~) => return { row, col, }
         Input(event) => self.pending_input.push(event)
         KeyboardEnhancementFlags(_) => ()
         PrimaryDeviceAttributes(_) => ()
@@ -272,7 +272,7 @@ async fn Tty::query_dynamic_color(
     for ;; {
       match self.read_internal_event() {
         DynamicColor(code~, red~, green~, blue~) if code == expected_code =>
-          return { red, green, blue }
+          return { red, green, blue, }
         DynamicColor(..) => ()
         CursorPosition(..) => ()
         KeyboardEnhancementFlags(_) => ()

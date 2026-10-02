@@ -4,8 +4,6 @@ import {
   "moonbit-community/tty",
 }
 
-options(
-  "is-main": true,
-)
+pkgtype(kind: "executable")
 
 supported_targets = "native"

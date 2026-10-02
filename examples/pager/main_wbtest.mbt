@@ -29,7 +29,7 @@ test "clamp offset keeps viewport in range" {
 
 ///|
 test "content fit detection" {
-  let size : PagerSize = { rows: 4, cols: 80 }
+  let size : PagerSize = { rows: 4, cols: 80, }
   assert_true(content_fits(["a", "b", "c"], size))
   assert_false(content_fits(["a", "b", "c", "d"], size))
 }

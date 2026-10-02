@@ -22,7 +22,7 @@ fn sigwinch_watcher() -> SigwinchWatcher raise {
     write.close()
     @os_error.check_errno("install SIGWINCH handler")
   }
-  let watcher = SigwinchWatcher::{ read, write }
+  let watcher = SigwinchWatcher::{ read, write, }
   global_sigwinch_watcher.val = Some(watcher)
   watcher
 }
