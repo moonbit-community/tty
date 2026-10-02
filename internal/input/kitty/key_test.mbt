@@ -1,15 +1,15 @@
 ///|
 test "parse key event kinds" {
   @debug.assert_eq(
-    parse_key([[Some(97)]]),
+    @kitty.parse_key([[Some(97)]]),
     Some(@public_input.KeyEvent::new(Char('a'), text="a")),
   )
   @debug.assert_eq(
-    parse_key([[Some(97)], [Some(1), Some(2)]]),
+    @kitty.parse_key([[Some(97)], [Some(1), Some(2)]]),
     Some(@public_input.KeyEvent::new(Char('a'), kind=Repeat, text="a")),
   )
   @debug.assert_eq(
-    parse_key([[Some(97)], [Some(1), Some(3)]]),
+    @kitty.parse_key([[Some(97)], [Some(1), Some(3)]]),
     Some(@public_input.KeyEvent::new(Char('a'), kind=Release, text="a")),
   )
 }
@@ -17,7 +17,7 @@ test "parse key event kinds" {
 ///|
 test "parse modifiers alternate keys and associated text" {
   @debug.assert_eq(
-    parse_key([[Some(105)], [Some(5)]]),
+    @kitty.parse_key([[Some(105)], [Some(5)]]),
     Some(
       @public_input.KeyEvent::new(
         Char('i'),
@@ -26,7 +26,7 @@ test "parse modifiers alternate keys and associated text" {
     ),
   )
   @debug.assert_eq(
-    parse_key([[Some(61), Some(43)], [Some(6)]]),
+    @kitty.parse_key([[Some(61), Some(43)], [Some(6)]]),
     Some(
       @public_input.KeyEvent::new(
         Char('='),
@@ -36,7 +36,7 @@ test "parse modifiers alternate keys and associated text" {
     ),
   )
   @debug.assert_eq(
-    parse_key([[Some(51)], [Some(2)]]),
+    @kitty.parse_key([[Some(51)], [Some(2)]]),
     Some(
       @public_input.KeyEvent::new(
         Char('3'),
@@ -45,11 +45,11 @@ test "parse modifiers alternate keys and associated text" {
     ),
   )
   @debug.assert_eq(
-    parse_key([[Some(0)], [None], [Some(229)]]),
+    @kitty.parse_key([[Some(0)], [None], [Some(229)]]),
     Some(@public_input.KeyEvent::new(Text, text="å")),
   )
   @debug.assert_eq(
-    parse_key([[Some(0)], [None], [Some(101), Some(769)]]),
+    @kitty.parse_key([[Some(0)], [None], [Some(101), Some(769)]]),
     Some(@public_input.KeyEvent::new(Text, text="e\u{0301}")),
   )
 }
@@ -57,7 +57,7 @@ test "parse modifiers alternate keys and associated text" {
 ///|
 test "parse functional keys and extension event kinds" {
   @debug.assert_eq(
-    parse_key([[Some(57400)]]),
+    @kitty.parse_key([[Some(57400)]]),
     Some(
       @public_input.KeyEvent::new(
         Keypad1,
@@ -67,7 +67,7 @@ test "parse functional keys and extension event kinds" {
     ),
   )
   @debug.assert_eq(
-    parse_key([[Some(57444)]]),
+    @kitty.parse_key([[Some(57444)]]),
     Some(
       @public_input.KeyEvent::new(
         Modifier(LeftSuper),
@@ -76,10 +76,10 @@ test "parse functional keys and extension event kinds" {
     ),
   )
   @debug.assert_eq(
-    parse_key([[Some(57442)], [Some(1), Some(3)]]),
+    @kitty.parse_key([[Some(57442)], [Some(1), Some(3)]]),
     Some(@public_input.KeyEvent::new(Modifier(LeftControl), kind=Release)),
   )
-  match parse_csi_key_report([[Some(1)], [Some(5), Some(2)]]) {
+  match @kitty.parse_csi_key_report([[Some(1)], [Some(5), Some(2)]]) {
     Some(report) =>
       @debug.assert_eq(
         report.key_event(Up),
@@ -95,29 +95,38 @@ test "parse functional keys and extension event kinds" {
 
 ///|
 test "invalid key shapes return none" {
-  @debug.assert_eq(parse_key([]), None)
-  @debug.assert_eq(parse_key([[None], [Some(5)]]), None)
-  @debug.assert_eq(parse_key([[None, Some(43)]]), None)
-  @debug.assert_eq(parse_key([[Some(0)]]), None)
-  @debug.assert_eq(parse_key([[Some(1)]]), None)
-  @debug.assert_eq(parse_key([[Some(0xE000)]]), None)
-  @debug.assert_eq(parse_key([[Some(97), Some(65)], [Some(1)]]), None)
-  @debug.assert_eq(parse_key([[Some(97), Some(0)], [Some(1)]]), None)
-  @debug.assert_eq(parse_key([[Some(97), None, Some(0)]]), None)
-  @debug.assert_eq(parse_key([[Some(97)], [Some(0)]]), None)
-  @debug.assert_eq(parse_key([[Some(97)], [None, Some(2)]]), None)
-  @debug.assert_eq(parse_key([[Some(97)], [Some(5), None]]), None)
-  @debug.assert_eq(parse_key([[Some(97)], [None, None]]), None)
-  @debug.assert_eq(parse_key([[Some(97)], [Some(5), Some(2), Some(9)]]), None)
-  @debug.assert_eq(parse_key([[Some(97), Some(65), Some(99), Some(120)]]), None)
+  @debug.assert_eq(@kitty.parse_key([]), None)
+  @debug.assert_eq(@kitty.parse_key([[None], [Some(5)]]), None)
+  @debug.assert_eq(@kitty.parse_key([[None, Some(43)]]), None)
+  @debug.assert_eq(@kitty.parse_key([[Some(0)]]), None)
+  @debug.assert_eq(@kitty.parse_key([[Some(1)]]), None)
+  @debug.assert_eq(@kitty.parse_key([[Some(0xE000)]]), None)
+  @debug.assert_eq(@kitty.parse_key([[Some(97), Some(65)], [Some(1)]]), None)
+  @debug.assert_eq(@kitty.parse_key([[Some(97), Some(0)], [Some(1)]]), None)
+  @debug.assert_eq(@kitty.parse_key([[Some(97), None, Some(0)]]), None)
+  @debug.assert_eq(@kitty.parse_key([[Some(97)], [Some(0)]]), None)
+  @debug.assert_eq(@kitty.parse_key([[Some(97)], [None, Some(2)]]), None)
+  @debug.assert_eq(@kitty.parse_key([[Some(97)], [Some(5), None]]), None)
+  @debug.assert_eq(@kitty.parse_key([[Some(97)], [None, None]]), None)
   @debug.assert_eq(
-    parse_key([[Some(97)], [Some(1)], [Some(65), None, Some(66)]]),
+    @kitty.parse_key([[Some(97)], [Some(5), Some(2), Some(9)]]),
     None,
   )
-  @debug.assert_eq(parse_key([[Some(97)], [Some(1)], [Some(10)]]), None)
   @debug.assert_eq(
-    parse_key([[Some(97)], [Some(1)], [Some(2)], [Some(3)]]),
+    @kitty.parse_key([[Some(97), Some(65), Some(99), Some(120)]]),
     None,
   )
-  @debug.assert_eq(parse_key([[Some(0)], [None], [Some(0x110000)]]), None)
+  @debug.assert_eq(
+    @kitty.parse_key([[Some(97)], [Some(1)], [Some(65), None, Some(66)]]),
+    None,
+  )
+  @debug.assert_eq(@kitty.parse_key([[Some(97)], [Some(1)], [Some(10)]]), None)
+  @debug.assert_eq(
+    @kitty.parse_key([[Some(97)], [Some(1)], [Some(2)], [Some(3)]]),
+    None,
+  )
+  @debug.assert_eq(
+    @kitty.parse_key([[Some(0)], [None], [Some(0x110000)]]),
+    None,
+  )
 }

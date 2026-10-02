@@ -8,17 +8,8 @@ async fn main {
 async fn[T] with_screen(tty : @tty.Tty, f : async () -> T) -> T {
   tty.enter_alt_screen()
   tty.hide_cursor()
-  try f() catch {
-    error => {
-      restore_screen(tty)
-      raise error
-    }
-  } noraise {
-    value => {
-      restore_screen(tty)
-      value
-    }
-  }
+  defer restore_screen(tty)
+  f()
 }
 
 ///|

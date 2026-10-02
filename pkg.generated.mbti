@@ -69,18 +69,24 @@ pub struct CursorPosition {
   row : Int
   col : Int
 } derive(Eq)
+pub fn CursorPosition::equal(Self, Self) -> Bool
+pub fn CursorPosition::not_equal(Self, Self) -> Bool
 
 pub(all) enum Event {
   Input(@input.InputEvent)
   Resize(WindowSize)
 } derive(Eq)
+pub fn Event::equal(Self, Self) -> Bool
+pub fn Event::not_equal(Self, Self) -> Bool
 
 type KeyboardEnhancementFlags derive(Eq)
 pub fn KeyboardEnhancementFlags::bits(Self) -> Int
 pub fn KeyboardEnhancementFlags::disambiguate() -> Self
 pub fn KeyboardEnhancementFlags::disambiguate_escape_codes(Self) -> Bool
+pub fn KeyboardEnhancementFlags::equal(Self, Self) -> Bool
 pub fn KeyboardEnhancementFlags::full() -> Self
 pub fn KeyboardEnhancementFlags::new(disambiguate_escape_codes? : Bool, report_event_types? : Bool, report_alternate_keys? : Bool, report_all_keys_as_escape_codes? : Bool, report_associated_text? : Bool) -> Self
+pub fn KeyboardEnhancementFlags::not_equal(Self, Self) -> Bool
 pub fn KeyboardEnhancementFlags::report_all_keys_as_escape_codes(Self) -> Bool
 pub fn KeyboardEnhancementFlags::report_alternate_keys(Self) -> Bool
 pub fn KeyboardEnhancementFlags::report_associated_text(Self) -> Bool
@@ -91,6 +97,8 @@ pub(all) enum MouseTrackingMode {
   Drag
   Motion
 } derive(Eq)
+pub fn MouseTrackingMode::equal(Self, Self) -> Bool
+pub fn MouseTrackingMode::not_equal(Self, Self) -> Bool
 
 type State
 pub fn State::make_raw(Self) -> Self
@@ -171,6 +179,8 @@ pub struct WindowSize {
   rows : Int
   cols : Int
 } derive(Eq)
+pub fn WindowSize::equal(Self, Self) -> Bool
+pub fn WindowSize::not_equal(Self, Self) -> Bool
 
 // Type aliases
 

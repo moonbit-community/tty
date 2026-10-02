@@ -67,3 +67,15 @@ pub impl @async/io.Reader for ByteQueue with fn _direct_read(
   }
   len
 }
+
+///|
+pub extend ByteQueue with @async/io.Reader::{
+  _direct_read,
+  _get_internal_buffer,
+  drop,
+  read,
+  read_all,
+  read_exactly,
+  read_some,
+  read_until,
+}

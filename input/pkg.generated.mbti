@@ -18,6 +18,9 @@ pub(all) enum InputEvent {
   FocusOut
   Unknown(Bytes)
 } derive(Eq, @debug.Debug)
+pub fn InputEvent::equal(Self, Self) -> Bool
+pub fn InputEvent::not_equal(Self, Self) -> Bool
+pub fn InputEvent::to_repr(Self) -> @debug.Repr
 
 pub(all) enum KeyCode {
   Char(Char)
@@ -99,6 +102,9 @@ pub(all) enum KeyCode {
   Media(MediaKeyCode)
   Modifier(ModifierKeyCode)
 } derive(Eq, @debug.Debug)
+pub fn KeyCode::equal(Self, Self) -> Bool
+pub fn KeyCode::not_equal(Self, Self) -> Bool
+pub fn KeyCode::to_repr(Self) -> @debug.Repr
 
 pub struct KeyEvent {
   code : KeyCode
@@ -109,28 +115,40 @@ pub struct KeyEvent {
   shifted_code : KeyCode?
   base_code : KeyCode?
 } derive(Eq, @debug.Debug)
+pub fn KeyEvent::equal(Self, Self) -> Bool
 pub fn KeyEvent::new(KeyCode, modifiers? : KeyModifiers, text? : String, kind? : KeyEventKind, state? : KeyEventState, shifted_code? : KeyCode, base_code? : KeyCode) -> Self
+pub fn KeyEvent::not_equal(Self, Self) -> Bool
+pub fn KeyEvent::to_repr(Self) -> @debug.Repr
 
 pub(all) enum KeyEventKind {
   Press
   Repeat
   Release
 } derive(Eq, @debug.Debug)
+pub fn KeyEventKind::equal(Self, Self) -> Bool
+pub fn KeyEventKind::not_equal(Self, Self) -> Bool
+pub fn KeyEventKind::to_repr(Self) -> @debug.Repr
 
 type KeyEventState derive(Eq, @debug.Debug)
 pub fn KeyEventState::caps_lock(Self) -> Bool
+pub fn KeyEventState::equal(Self, Self) -> Bool
 pub fn KeyEventState::keypad(Self) -> Bool
 pub fn KeyEventState::new(keypad? : Bool, caps_lock? : Bool, num_lock? : Bool) -> Self
+pub fn KeyEventState::not_equal(Self, Self) -> Bool
 pub fn KeyEventState::num_lock(Self) -> Bool
+pub fn KeyEventState::to_repr(Self) -> @debug.Repr
 
 type KeyModifiers derive(Eq, @debug.Debug)
 pub fn KeyModifiers::alt(Self) -> Bool
 pub fn KeyModifiers::ctrl(Self) -> Bool
+pub fn KeyModifiers::equal(Self, Self) -> Bool
 pub fn KeyModifiers::hyper(Self) -> Bool
 pub fn KeyModifiers::meta(Self) -> Bool
 pub fn KeyModifiers::new(shift? : Bool, alt? : Bool, ctrl? : Bool, meta? : Bool, super_? : Bool, hyper? : Bool) -> Self
+pub fn KeyModifiers::not_equal(Self, Self) -> Bool
 pub fn KeyModifiers::shift(Self) -> Bool
 pub fn KeyModifiers::super_(Self) -> Bool
+pub fn KeyModifiers::to_repr(Self) -> @debug.Repr
 
 pub(all) enum MediaKeyCode {
   Play
@@ -147,6 +165,9 @@ pub(all) enum MediaKeyCode {
   RaiseVolume
   MuteVolume
 } derive(Eq, @debug.Debug)
+pub fn MediaKeyCode::equal(Self, Self) -> Bool
+pub fn MediaKeyCode::not_equal(Self, Self) -> Bool
+pub fn MediaKeyCode::to_repr(Self) -> @debug.Repr
 
 pub(all) enum ModifierKeyCode {
   LeftShift
@@ -164,12 +185,18 @@ pub(all) enum ModifierKeyCode {
   IsoLevel3Shift
   IsoLevel5Shift
 } derive(Eq, @debug.Debug)
+pub fn ModifierKeyCode::equal(Self, Self) -> Bool
+pub fn ModifierKeyCode::not_equal(Self, Self) -> Bool
+pub fn ModifierKeyCode::to_repr(Self) -> @debug.Repr
 
 pub(all) enum MouseButton {
   Left
   Middle
   Right
 } derive(Eq, @debug.Debug)
+pub fn MouseButton::equal(Self, Self) -> Bool
+pub fn MouseButton::not_equal(Self, Self) -> Bool
+pub fn MouseButton::to_repr(Self) -> @debug.Repr
 
 pub struct MouseEvent {
   kind : MouseEventKind
@@ -177,7 +204,10 @@ pub struct MouseEvent {
   col : Int
   modifiers : KeyModifiers
 } derive(Eq, @debug.Debug)
+pub fn MouseEvent::equal(Self, Self) -> Bool
 pub fn MouseEvent::new(MouseEventKind, Int, Int, modifiers? : KeyModifiers) -> Self
+pub fn MouseEvent::not_equal(Self, Self) -> Bool
+pub fn MouseEvent::to_repr(Self) -> @debug.Repr
 
 pub(all) enum MouseEventKind {
   Press(MouseButton)
@@ -186,6 +216,9 @@ pub(all) enum MouseEventKind {
   Move
   Scroll(MouseScroll)
 } derive(Eq, @debug.Debug)
+pub fn MouseEventKind::equal(Self, Self) -> Bool
+pub fn MouseEventKind::not_equal(Self, Self) -> Bool
+pub fn MouseEventKind::to_repr(Self) -> @debug.Repr
 
 pub(all) enum MouseScroll {
   Up
@@ -193,6 +226,9 @@ pub(all) enum MouseScroll {
   Left
   Right
 } derive(Eq, @debug.Debug)
+pub fn MouseScroll::equal(Self, Self) -> Bool
+pub fn MouseScroll::not_equal(Self, Self) -> Bool
+pub fn MouseScroll::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

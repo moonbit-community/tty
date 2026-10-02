@@ -59,6 +59,8 @@ pub(all) enum Event {
   Input(@moonbit-community/tty/input.InputEvent)
   Resize
 } derive(Eq)
+pub fn Event::equal(Self, Self) -> Bool
+pub fn Event::not_equal(Self, Self) -> Bool
 
 type EventReader
 pub fn EventReader::close(Self) -> Unit

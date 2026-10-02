@@ -14,17 +14,8 @@ pub async fn Tty::leave_alt_screen(self : Self) -> Unit {
 /// Run `f` with the output in the alternate screen buffer.
 pub async fn[T] Tty::with_alt_screen(self : Self, f : async () -> T) -> T {
   self.enter_alt_screen()
-  try f() catch {
-    error => {
-      self.leave_alt_screen()
-      raise error
-    }
-  } noraise {
-    value => {
-      self.leave_alt_screen()
-      value
-    }
-  }
+  defer self.leave_alt_screen()
+  f()
 }
 
 ///|
@@ -54,17 +45,8 @@ pub async fn[T] Tty::with_synchronized_update(
   f : async () -> T,
 ) -> T {
   self.begin_synchronized_update()
-  try f() catch {
-    error => {
-      self.end_synchronized_update()
-      raise error
-    }
-  } noraise {
-    value => {
-      self.end_synchronized_update()
-      value
-    }
-  }
+  defer self.end_synchronized_update()
+  f()
 }
 
 ///|
@@ -83,17 +65,8 @@ pub async fn Tty::disable_bracketed_paste(self : Self) -> Unit {
 /// Run `f` with bracketed paste mode enabled.
 pub async fn[T] Tty::with_bracketed_paste(self : Self, f : async () -> T) -> T {
   self.enable_bracketed_paste()
-  try f() catch {
-    error => {
-      self.disable_bracketed_paste()
-      raise error
-    }
-  } noraise {
-    value => {
-      self.disable_bracketed_paste()
-      value
-    }
-  }
+  defer self.disable_bracketed_paste()
+  f()
 }
 
 ///|
@@ -124,17 +97,8 @@ pub async fn Tty::disable_auto_wrap(self : Self) -> Unit {
 /// Run `f` with focus tracking enabled.
 pub async fn[T] Tty::with_focus_tracking(self : Self, f : async () -> T) -> T {
   self.enable_focus_tracking()
-  try f() catch {
-    error => {
-      self.disable_focus_tracking()
-      raise error
-    }
-  } noraise {
-    value => {
-      self.disable_focus_tracking()
-      value
-    }
-  }
+  defer self.disable_focus_tracking()
+  f()
 }
 
 ///|
@@ -271,17 +235,8 @@ pub async fn[T] Tty::with_keyboard_enhancements(
   f : async () -> T,
 ) -> T {
   self.push_keyboard_enhancement_flags(flags)
-  try f() catch {
-    error => {
-      self.pop_keyboard_enhancement_flags()
-      raise error
-    }
-  } noraise {
-    value => {
-      self.pop_keyboard_enhancement_flags()
-      value
-    }
-  }
+  defer self.pop_keyboard_enhancement_flags()
+  f()
 }
 
 ///|
@@ -329,17 +284,8 @@ pub async fn[T] Tty::with_mouse(
   f : async () -> T,
 ) -> T {
   self.enable_mouse(mode)
-  try f() catch {
-    error => {
-      self.disable_mouse()
-      raise error
-    }
-  } noraise {
-    value => {
-      self.disable_mouse()
-      value
-    }
-  }
+  defer self.disable_mouse()
+  f()
 }
 
 ///|
@@ -503,3 +449,9 @@ pub async fn Tty::reset_reverse(self : Self) -> Unit {
 pub async fn Tty::reset_style(self : Self) -> Unit {
   self.write(@vt.reset_style)
 }
+
+///|
+pub extend KeyboardEnhancementFlags with Eq::{equal, not_equal}
+
+///|
+pub extend MouseTrackingMode with Eq::{equal, not_equal}

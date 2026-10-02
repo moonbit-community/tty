@@ -335,3 +335,75 @@ pub(all) enum MouseScroll {
   Left
   Right
 } derive(Eq, Debug)
+
+///|
+pub extend InputEvent with Eq::{equal, not_equal}
+
+///|
+pub extend InputEvent with @debug.Debug::{to_repr}
+
+///|
+pub extend KeyEvent with Eq::{equal, not_equal}
+
+///|
+pub extend KeyEvent with @debug.Debug::{to_repr}
+
+///|
+pub extend KeyEventKind with Eq::{equal, not_equal}
+
+///|
+pub extend KeyEventKind with @debug.Debug::{to_repr}
+
+///|
+pub extend KeyCode with Eq::{equal, not_equal}
+
+///|
+pub extend KeyCode with @debug.Debug::{to_repr}
+
+///|
+pub extend MediaKeyCode with Eq::{equal, not_equal}
+
+///|
+pub extend MediaKeyCode with @debug.Debug::{to_repr}
+
+///|
+pub extend ModifierKeyCode with Eq::{equal, not_equal}
+
+///|
+pub extend ModifierKeyCode with @debug.Debug::{to_repr}
+
+///|
+pub extend KeyModifiers with Eq::{equal, not_equal}
+
+///|
+pub extend KeyModifiers with @debug.Debug::{to_repr}
+
+///|
+pub extend KeyEventState with Eq::{equal, not_equal}
+
+///|
+pub extend KeyEventState with @debug.Debug::{to_repr}
+
+///|
+pub extend MouseEvent with Eq::{equal, not_equal}
+
+///|
+pub extend MouseEvent with @debug.Debug::{to_repr}
+
+///|
+pub extend MouseEventKind with Eq::{equal, not_equal}
+
+///|
+pub extend MouseEventKind with @debug.Debug::{to_repr}
+
+///|
+pub extend MouseButton with Eq::{equal, not_equal}
+
+///|
+pub extend MouseButton with @debug.Debug::{to_repr}
+
+///|
+pub extend MouseScroll with Eq::{equal, not_equal}
+
+///|
+pub extend MouseScroll with @debug.Debug::{to_repr}

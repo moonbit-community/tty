@@ -282,3 +282,9 @@ async fn Tty::query_dynamic_color(
     }
   })
 }
+
+///|
+pub extend CursorPosition with Eq::{equal, not_equal}
+
+///|
+pub extend Event with Eq::{equal, not_equal}

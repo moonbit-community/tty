@@ -6,8 +6,8 @@ fn test_raw_record(event_type : Int) -> FixedArray[Byte] {
 }
 
 ///|
-fn test_input_record(buf : FixedArray[Byte]) -> InputRecord {
-  InputRecord::parse(buf.unsafe_reinterpret_as_bytes())
+fn test_input_record(buf : FixedArray[Byte]) -> @win32.InputRecord {
+  @win32.InputRecord::parse(buf.unsafe_reinterpret_as_bytes())
 }
 
 ///|
@@ -26,7 +26,7 @@ fn test_set_u32_le(buf : FixedArray[Byte], offset : Int, value : Int) -> Unit {
 
 ///|
 test "win32 raw input record parses focus records" {
-  let buf = test_raw_record(RecordFocus)
+  let buf = test_raw_record(@win32.RecordFocus)
   test_set_u32_le(buf, 4, 1)
   match test_input_record(buf) {
     Focus(true) => ()
@@ -36,7 +36,7 @@ test "win32 raw input record parses focus records" {
 
 ///|
 test "win32 raw input record parses window buffer size records" {
-  let buf = test_raw_record(RecordWindowBufferSize)
+  let buf = test_raw_record(@win32.RecordWindowBufferSize)
   test_set_u16_le(buf, 4, 80)
   test_set_u16_le(buf, 6, 24)
   match test_input_record(buf) {
@@ -47,7 +47,7 @@ test "win32 raw input record parses window buffer size records" {
 
 ///|
 test "win32 raw input record parses unsupported records" {
-  match InputRecord::parse(b"\x01") {
+  match @win32.InputRecord::parse(b"\x01") {
     Unsupported(0) => ()
     _ => fail("expected unsupported short record")
   }
@@ -60,13 +60,13 @@ test "win32 raw input record parses unsupported records" {
 
 ///|
 test "win32 raw input record parses key records to input events" {
-  let buf = test_raw_record(RecordKey)
+  let buf = test_raw_record(@win32.RecordKey)
   test_set_u32_le(buf, 4, 1)
   test_set_u16_le(buf, 8, 1)
   test_set_u16_le(buf, 10, 0x41)
   test_set_u16_le(buf, 12, 0x1e)
   test_set_u16_le(buf, 14, 'A'.to_int())
-  test_set_u32_le(buf, 16, ShiftPressed)
+  test_set_u32_le(buf, 16, @win32.ShiftPressed)
   guard test_input_record(buf) is Key(record) else {
     fail("expected key record")
   }
@@ -86,16 +86,16 @@ test "win32 raw input record parses key records to input events" {
 
 ///|
 test "win32 raw input record parses mouse records to input events" {
-  let buf = test_raw_record(RecordMouse)
+  let buf = test_raw_record(@win32.RecordMouse)
   test_set_u16_le(buf, 4, 30)
   test_set_u16_le(buf, 6, 2)
-  test_set_u32_le(buf, 12, ShiftPressed)
-  test_set_u32_le(buf, 16, MouseMoved)
+  test_set_u32_le(buf, 12, @win32.ShiftPressed)
+  test_set_u32_le(buf, 16, @win32.MouseMoved)
   guard test_input_record(buf) is Mouse(record) else {
     fail("expected mouse record")
   }
   @debug.assert_eq(
-    MouseButtonState::new().input_event(record),
+    @win32.MouseButtonState::new().input_event(record),
     Some(
       Mouse(
         @public_input.MouseEvent::new(

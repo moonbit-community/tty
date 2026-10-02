@@ -38,11 +38,9 @@ pub async fn Tty::open() -> Tty {
     input.close()
     @os_error.check_errno("Tty::open")
   }
-  let output = @async/raw_fd.RawFdStream(output_fd) catch {
-    error => {
-      input.close()
-      raise error
-    }
+  let output = {
+    errdefer input.close()
+    @async/raw_fd.RawFdStream(output_fd)
   }
   Tty::new(input, output)
 }

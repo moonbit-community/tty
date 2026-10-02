@@ -28,6 +28,9 @@ pub(all) enum BasicColor {
   BrightCyan
   BrightWhite
 } derive(Eq, @debug.Debug)
+pub fn BasicColor::equal(Self, Self) -> Bool
+pub fn BasicColor::not_equal(Self, Self) -> Bool
+pub fn BasicColor::to_repr(Self) -> @debug.Repr
 
 pub(all) enum Color {
   Default
@@ -35,12 +38,18 @@ pub(all) enum Color {
   Indexed(Int)
   Rgb(Int, Int, Int)
 } derive(Eq, @debug.Debug)
+pub fn Color::equal(Self, Self) -> Bool
+pub fn Color::not_equal(Self, Self) -> Bool
+pub fn Color::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Rgb16 {
   red : Int
   green : Int
   blue : Int
 } derive(Eq, @debug.Debug)
+pub fn Rgb16::equal(Self, Self) -> Bool
+pub fn Rgb16::not_equal(Self, Self) -> Bool
+pub fn Rgb16::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

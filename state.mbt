@@ -71,17 +71,8 @@ pub fn Tty::leave_raw_mode(
 /// The captured terminal state is restored on success or error.
 pub async fn[T] Tty::with_raw_mode(self : Self, f : async () -> T) -> T {
   let state = self.enter_raw_mode()
-  try f() catch {
-    error => {
-      self.leave_raw_mode(state)
-      raise error
-    }
-  } noraise {
-    value => {
-      self.leave_raw_mode(state)
-      value
-    }
-  }
+  defer self.leave_raw_mode(state)
+  f()
 }
 
 ///|

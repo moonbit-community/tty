@@ -39,21 +39,15 @@ pub async fn EventReader::read_event(
   esc_timeout_ms? : Int = 50,
 ) -> Event {
   let start = self.read
-  try {
-    let byte = self.read_byte()
-    let event = if byte == Esc {
-      read_escape(self, esc_timeout_ms)
-    } else {
-      Input(read_byte_event(self, byte, esc_timeout_ms))
-    }
-    self.commit()
-    event
-  } catch {
-    err => {
-      self.rollback_to(start)
-      raise err
-    }
+  errdefer self.rollback_to(start)
+  let byte = self.read_byte()
+  let event = if byte == Esc {
+    read_escape(self, esc_timeout_ms)
+  } else {
+    Input(read_byte_event(self, byte, esc_timeout_ms))
   }
+  self.commit()
+  event
 }
 
 ///|

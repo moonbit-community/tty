@@ -69,19 +69,10 @@ async fn main {
   write_line(tty, "")
   write_line(tty, "entering raw mode...")
   let state = tty.enter_raw_mode()
-  let mut restored = false
-  try {
+  {
+    defer tty.leave_raw_mode(state)
     write_line(tty, "raw mode active")
     run_raw_loop(tty)
-  } catch {
-    error => {
-      tty.leave_raw_mode(state)
-      restored = true
-      raise error
-    }
-  }
-  if !restored {
-    tty.leave_raw_mode(state)
   }
   write_line(tty, "terminal restored")
 }
