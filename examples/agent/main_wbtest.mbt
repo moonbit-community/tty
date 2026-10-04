@@ -102,7 +102,7 @@ test "viewport top derives from probed cursor row" {
 
 ///|
 test "viewport top clamps to visible terminal rows" {
-  let size : AgentSize = { rows: 8, cols: 80 }
+  let size : AgentSize = { rows: 8, cols: 80, }
   inspect(max_viewport_top(size), content="5")
   inspect(clamp_viewport_top(1, size), content="1")
   inspect(clamp_viewport_top(9, size), content="5")

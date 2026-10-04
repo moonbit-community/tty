@@ -62,7 +62,7 @@ fn clamp(value : Int, min : Int, max : Int) -> Int {
 ///|
 fn terminal_size(tty : @tty.Tty) -> PagerSize {
   try tty.window_size() catch {
-    _ => { rows: 24, cols: 80 }
+    _ => { rows: 24, cols: 80, }
   } noraise {
     size =>
       {
@@ -411,14 +411,8 @@ async fn run_pager(
 async fn with_pager_terminal(title : String, lines : Array[String]) -> Unit {
   let tty = @tty.Tty::stdio()
   tty.hide_cursor()
-  try tty.with_raw_mode(() => run_pager(tty, title, lines)) catch {
-    error => {
-      restore_terminal(tty)
-      raise error
-    }
-  } noraise {
-    _ => ()
-  }
+  errdefer restore_terminal(tty)
+  tty.with_raw_mode(() => run_pager(tty, title, lines))
 }
 
 ///|

@@ -7,10 +7,18 @@ package "moonbit-community/tty/internal/io"
 
 // Types and methods
 type ByteQueue
+pub async fn ByteQueue::_direct_read(Self, FixedArray[Byte], offset~ : Int, max_len~ : Int) -> Int
+pub fn ByteQueue::_get_internal_buffer(Self) -> @moonbitlang/async/io.ReaderBuffer
 pub fn ByteQueue::close(Self) -> Unit
+pub async fn ByteQueue::drop(Self, Int) -> Int
 pub fn ByteQueue::new() -> Self
 pub fn ByteQueue::put_byte(Self, Byte) -> Unit
 pub fn ByteQueue::put_data(Self, &@moonbitlang/async/io.Data) -> Unit
+pub async fn ByteQueue::read(Self, FixedArray[Byte], offset? : Int, max_len? : Int) -> Int
+pub async fn ByteQueue::read_all(Self) -> &@moonbitlang/async/io.Data
+pub async fn ByteQueue::read_exactly(Self, Int) -> Bytes
+pub async fn ByteQueue::read_some(Self, max_len? : Int) -> Bytes?
+pub async fn ByteQueue::read_until(Self, StringView) -> String?
 pub impl @moonbitlang/async/io.Reader for ByteQueue
 
 // Type aliases

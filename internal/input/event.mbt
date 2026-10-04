@@ -10,3 +10,9 @@ pub(all) enum Event {
   PrimaryDeviceAttributes(Bytes)
   DynamicColor(code~ : Int, red~ : Int, green~ : Int, blue~ : Int)
 } derive(Eq, Debug)
+
+///|
+pub extend Event with Eq::{equal, not_equal}
+
+///|
+pub extend Event with @debug.Debug::{to_repr}

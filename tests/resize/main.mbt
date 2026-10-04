@@ -3,7 +3,7 @@ async fn main {
   let tty = @tty.Tty::stdio()
   tty.with_raw_mode(() => {
     @stdio.stdout.write("ready\n")
-    try @async.with_timeout(5000, () => {
+    @async.with_timeout(5000, () => {
       while true {
         match tty.read_event() {
           Resize(size) => {

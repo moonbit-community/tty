@@ -37,3 +37,21 @@ pub(all) enum Color {
   Indexed(Int)
   Rgb(Int, Int, Int)
 } derive(Eq, Debug)
+
+///|
+pub extend BasicColor with Eq::{equal, not_equal}
+
+///|
+pub extend BasicColor with @debug.Debug::{to_repr}
+
+///|
+pub extend Rgb16 with Eq::{equal, not_equal}
+
+///|
+pub extend Rgb16 with @debug.Debug::{to_repr}
+
+///|
+pub extend Color with Eq::{equal, not_equal}
+
+///|
+pub extend Color with @debug.Debug::{to_repr}

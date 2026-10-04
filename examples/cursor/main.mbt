@@ -8,17 +8,8 @@ async fn main {
 async fn[T] with_screen(tty : @tty.Tty, f : async () -> T) -> T {
   tty.enter_alt_screen()
   tty.hide_cursor()
-  try f() catch {
-    error => {
-      restore_screen(tty)
-      raise error
-    }
-  } noraise {
-    value => {
-      restore_screen(tty)
-      value
-    }
-  }
+  defer restore_screen(tty)
+  f()
 }
 
 ///|
@@ -93,8 +84,8 @@ async fn draw_status(
 
 ///|
 async fn run_cursor_demo(tty : @tty.Tty) -> Unit {
-  let anchor : Anchor = { top: 2, left: 4 }
-  let size : Size = { width: 20, height: 10 }
+  let anchor : Anchor = { top: 2, left: 4, }
+  let size : Size = { width: 20, height: 10, }
   let mut x = size.width / 2
   let mut y = size.height / 2
   let mut visible = false

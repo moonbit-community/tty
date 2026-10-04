@@ -1,12 +1,15 @@
 ///|
-async fn with_input(bytes : Bytes, f : async (EventReader) -> Unit) -> Unit {
+async fn with_input(
+  bytes : Bytes,
+  f : async (@input.EventReader) -> Unit,
+) -> Unit {
   @async.with_task_group() <| group => {
     let (reader, writer) = @io.pipe()
     group.spawn_bg() <| () => {
       defer writer.close()
       writer.write(bytes)
     }
-    f(EventReader::new(reader))
+    f(@input.EventReader::new(reader))
     reader.close()
   }
 }
@@ -16,7 +19,7 @@ async fn with_delayed_input(
   first : Bytes,
   second : Bytes,
   delay : Int,
-  f : async (EventReader) -> Unit,
+  f : async (@input.EventReader) -> Unit,
 ) -> Unit {
   @async.with_task_group() <| group => {
     let (reader, writer) = @io.pipe()
@@ -26,7 +29,7 @@ async fn with_delayed_input(
       @async.sleep(delay)
       writer.write(second)
     }
-    f(EventReader::new(reader))
+    f(@input.EventReader::new(reader))
     reader.close()
   }
 }

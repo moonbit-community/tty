@@ -135,7 +135,7 @@ pub fn MouseRecord::new(
 
 ///|
 pub fn MouseButtonState::new() -> MouseButtonState {
-  { buttons: 0 }
+  { buttons: 0, }
 }
 
 ///|
@@ -209,7 +209,7 @@ fn parse_window_buffer_size_record(bytes : BytesView) -> InputRecord {
   guard i16_at(bytes, 6) is Some(y) else {
     return Unsupported(RecordWindowBufferSize)
   }
-  WindowBufferSize({ x, y })
+  WindowBufferSize({ x, y, })
 }
 
 ///|

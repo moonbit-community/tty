@@ -8,7 +8,7 @@ struct ByteQueue {
 ///|
 #warnings("-14")
 pub fn ByteQueue::new() -> ByteQueue {
-  { queue: Queue(kind=Unbounded), read_buf: @async/io.ReaderBuffer::new() }
+  { queue: Queue(kind=Unbounded), read_buf: @async/io.ReaderBuffer::new(), }
 }
 
 ///|
@@ -66,4 +66,16 @@ pub impl @async/io.Reader for ByteQueue with fn _direct_read(
     }
   }
   len
+}
+
+///|
+pub extend ByteQueue with @async/io.Reader::{
+  _direct_read,
+  _get_internal_buffer,
+  drop,
+  read,
+  read_all,
+  read_exactly,
+  read_some,
+  read_until,
 }

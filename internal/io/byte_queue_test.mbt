@@ -1,6 +1,6 @@
 ///|
 async test "byte queue drains queued bytes" {
-  let queue = ByteQueue::new()
+  let queue = @io.ByteQueue::new()
   queue.put_byte(b'a')
   queue.put_byte(b'b')
   queue.put_byte(b'c')
@@ -12,7 +12,7 @@ async test "byte queue drains queued bytes" {
 
 ///|
 async test "byte queue waits for first byte" {
-  let queue = ByteQueue::new()
+  let queue = @io.ByteQueue::new()
   let dst = FixedArray::make(2, b'\x00')
   @async.with_task_group() <| group => {
     group.spawn_bg() <| () => {
@@ -27,7 +27,7 @@ async test "byte queue waits for first byte" {
 
 ///|
 async test "byte queue reports eof when closed" {
-  let queue = ByteQueue::new()
+  let queue = @io.ByteQueue::new()
   queue.close()
   let dst = FixedArray::make(1, b'\x00')
   @debug.assert_eq(queue.read(dst, max_len=1), 0)
@@ -35,7 +35,7 @@ async test "byte queue reports eof when closed" {
 
 ///|
 async test "byte queue writes data" {
-  let queue = ByteQueue::new()
+  let queue = @io.ByteQueue::new()
   queue.put_data("ab")
   queue.put_data(b"cd")
   let dst = FixedArray::make(8, b'\x00')

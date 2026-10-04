@@ -14,7 +14,7 @@ pub fn Tty::window_size(self : Self) -> WindowSize raise @os_error.OSError {
   if rc < 0 {
     @os_error.check_errno("Tty::window_size")
   }
-  { rows: rows.val, cols: cols.val }
+  { rows: rows.val, cols: cols.val, }
 }
 
 ///|
@@ -24,3 +24,6 @@ extern "c" fn tty_get_window_size(
   rows : Ref[Int],
   cols : Ref[Int],
 ) -> Int = "moonbit_tty_get_window_size"
+
+///|
+pub extend WindowSize with Eq::{equal, not_equal}

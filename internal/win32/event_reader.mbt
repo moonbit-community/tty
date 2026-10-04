@@ -203,3 +203,6 @@ fn read_console_input_record(fd : @async/types.Fd) -> InputRecord? raise {
     Some(InputRecord::parse(record))
   }
 }
+
+///|
+pub extend Event with Eq::{equal, not_equal}
