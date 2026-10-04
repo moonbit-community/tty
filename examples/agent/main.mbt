@@ -1237,6 +1237,8 @@ async fn run_agent(tty : @tty.Tty) -> Unit {
   @async.with_task_group() <| group => {
     let events : @aqueue.Queue[AgentEvent] = Queue(kind=Unbounded)
     let mut editor = Editor::new()
+    let mut viewport_top : Int? = None
+    defer leave_agent(tty, editor, viewport_top)
     let mut size = terminal_size(tty)
     tty.show_cursor()
     render_transcript_at_cursor(
@@ -1255,7 +1257,7 @@ async fn run_agent(tty : @tty.Tty) -> Unit {
     )
     render_input_at_cursor(tty, editor, "", size)
     place_input_cursor(tty, editor, size)
-    let mut viewport_top = detect_viewport_top(tty, editor, size)
+    viewport_top = detect_viewport_top(tty, editor, size)
     match viewport_top {
       Some(top) => redraw_input_at_top(tty, top, editor, "", size)
       None => ()
@@ -1415,7 +1417,6 @@ async fn run_agent(tty : @tty.Tty) -> Unit {
           }
       }
     }
-    leave_agent(tty, editor, viewport_top)
   }
 }
 
@@ -1423,6 +1424,5 @@ async fn run_agent(tty : @tty.Tty) -> Unit {
 async fn main {
   let tty = @tty.Tty::open()
   defer tty.close()
-  errdefer @async.protect_from_cancel(() => restore_terminal(tty))
   tty.with_raw_mode(() => run_agent(tty))
 }

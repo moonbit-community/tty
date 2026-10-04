@@ -356,7 +356,10 @@ async fn run_pager(
 ) -> Unit {
   let mut size = terminal_size(tty)
   let mut offset = clamp_offset(0, lines, body_rows(size))
-  let mut full_screen = render_initial(tty, title, lines, offset, size)
+  let mut full_screen = false
+  defer leave_pager(tty, full_screen)
+  tty.hide_cursor()
+  full_screen = render_initial(tty, title, lines, offset, size)
   while true {
     let event = tty.read_event(esc_timeout_ms~) catch {
       @async/io.ReaderClosed => break
@@ -404,14 +407,11 @@ async fn run_pager(
     }
     offset = next_offset
   }
-  leave_pager(tty, full_screen)
 }
 
 ///|
 async fn with_pager_terminal(title : String, lines : Array[String]) -> Unit {
   let tty = @tty.Tty::stdio()
-  tty.hide_cursor()
-  errdefer @async.protect_from_cancel(() => restore_terminal(tty))
   tty.with_raw_mode(() => run_pager(tty, title, lines))
 }
 
