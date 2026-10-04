@@ -234,14 +234,13 @@ async fn render_initial(
   lines : Array[String],
   offset : Int,
   size : PagerSize,
-) -> Bool {
+) -> Unit {
   let rows = body_rows(size)
   if content_fits(lines, size) {
     for row in 0..<lines.length() {
       write_inline_content_row(tty, line_at(lines, row), size.cols)
     }
     render_status_current(tty, title, lines, offset, size)
-    false
   } else {
     for row in 0..<rows {
       write_inline_content_row(tty, line_at(lines, offset + row), size.cols)
@@ -250,7 +249,6 @@ async fn render_initial(
     tty.set_top_bottom_margins(1, rows)
     tty.set_cursor_position(status_row(size), 1)
     render_status_current(tty, title, lines, offset, size)
-    true
   }
 }
 
@@ -356,10 +354,10 @@ async fn run_pager(
 ) -> Unit {
   let mut size = terminal_size(tty)
   let mut offset = clamp_offset(0, lines, body_rows(size))
-  let mut full_screen = false
+  let mut full_screen = !content_fits(lines, size)
   defer @async.protect_from_cancel(() => leave_pager(tty, full_screen))
   tty.hide_cursor()
-  full_screen = render_initial(tty, title, lines, offset, size)
+  render_initial(tty, title, lines, offset, size)
   while true {
     let event = tty.read_event(esc_timeout_ms~) catch {
       @async/io.ReaderClosed => break
@@ -403,7 +401,8 @@ async fn run_pager(
     } else if content_fits(lines, size) {
       render_status_current(tty, title, lines, next_offset, size)
     } else {
-      full_screen = render_initial(tty, title, lines, next_offset, size)
+      full_screen = true
+      render_initial(tty, title, lines, next_offset, size)
     }
     offset = next_offset
   }
