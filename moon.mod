@@ -1,6 +1,6 @@
 name = "moonbit-community/tty"
 
-version = "0.3.0"
+version = "0.4.0"
 
 import {
   "moonbitlang/async@0.22.4",
