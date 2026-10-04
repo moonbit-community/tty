@@ -357,7 +357,7 @@ async fn run_pager(
   let mut size = terminal_size(tty)
   let mut offset = clamp_offset(0, lines, body_rows(size))
   let mut full_screen = false
-  defer leave_pager(tty, full_screen)
+  defer @async.protect_from_cancel(() => leave_pager(tty, full_screen))
   tty.hide_cursor()
   full_screen = render_initial(tty, title, lines, offset, size)
   while true {

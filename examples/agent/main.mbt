@@ -1238,7 +1238,9 @@ async fn run_agent(tty : @tty.Tty) -> Unit {
     let events : @aqueue.Queue[AgentEvent] = Queue(kind=Unbounded)
     let mut editor = Editor::new()
     let mut viewport_top : Int? = None
-    defer leave_agent(tty, editor, viewport_top)
+    defer @async.protect_from_cancel(() => {
+      leave_agent(tty, editor, viewport_top)
+    })
     let mut size = terminal_size(tty)
     tty.show_cursor()
     render_transcript_at_cursor(
