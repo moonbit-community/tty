@@ -3,8 +3,8 @@ name = "moonbit-community/tty/examples"
 version = "0.1.0"
 
 import {
-  "moonbit-community/tty@0.1.0",
-  "moonbitlang/async@0.19.4",
+  "moonbit-community/tty@0.3.0",
+  "moonbitlang/async@0.22.4",
   "kawaz/grapheme@0.10.2",
   "rami3l/unicodewidth@0.2.0",
 }

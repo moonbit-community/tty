@@ -8,7 +8,7 @@ async fn main {
 async fn[T] with_screen(tty : @tty.Tty, f : async () -> T) -> T {
   tty.enter_alt_screen()
   tty.hide_cursor()
-  defer restore_screen(tty)
+  defer @async.protect_from_cancel(() => restore_screen(tty))
   f()
 }
 
