@@ -41,6 +41,8 @@ pub let disable_mouse_motion : Bytes
 
 pub let disable_sgr_mouse : Bytes
 
+pub fn display_kitty_png(BytesView, image_id? : Int, columns? : Int, rows? : Int) -> Bytes
+
 pub let enable_auto_wrap : Bytes
 
 pub let enable_bracketed_paste : Bytes
@@ -73,6 +75,8 @@ pub let hide_cursor : Bytes
 
 pub let italic : Bytes
 
+pub let kitty_graphics_query_image_id : Int
+
 pub let leave_alt_screen : Bytes
 
 pub let pop_keyboard_enhancement_flags : Bytes
@@ -86,6 +90,8 @@ pub let query_default_background_color : Bytes
 pub let query_default_foreground_color : Bytes
 
 pub let query_keyboard_enhancement_flags : Bytes
+
+pub let query_kitty_graphics_support : Bytes
 
 pub let request_cursor_position : Bytes
 
@@ -143,7 +149,11 @@ pub fn write_cursor_prev_line(@buffer.Buffer, Int) -> Unit
 
 pub fn write_cursor_up(@buffer.Buffer, Int) -> Unit
 
+pub fn write_display_kitty_png(@buffer.Buffer, BytesView, image_id? : Int, columns? : Int, rows? : Int) -> Unit
+
 pub fn write_push_keyboard_enhancement_flags(@buffer.Buffer, Int) -> Unit
+
+pub fn write_query_kitty_graphics_support(@buffer.Buffer) -> Unit
 
 pub fn write_set_background(@buffer.Buffer, @color.Color) -> Unit
 

@@ -1,0 +1,14 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/pipe",
+  "moonbitlang/async/process",
+  "moonbit-community/tty",
+  "moonbit-community/tty/input" @tty/input,
+}
+
+supported_targets = "native"
+
+options(
+  "is-main": true,
+)

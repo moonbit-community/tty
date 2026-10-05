@@ -38,6 +38,8 @@ operations:
 - decoded root terminal events through `Tty`
 - coordinated cursor position report queries through `Tty`
 - kitty keyboard protocol support queries through `Tty`
+- kitty graphics protocol support queries and direct PNG display through `Tty`
+- Sixel graphics support queries and complete Sixel stream display through `Tty`
 - OSC dynamic color queries through `Tty`
 - command helpers for common screen, cursor, color, and style operations
   through `Tty`
@@ -76,6 +78,7 @@ It should:
 - construct low-level SGR sequences and fixed SGR attribute bytes
 - construct foreground and background SGR sequences from semantic
   `@color.Color` values for root `Tty` methods
+- construct Kitty Graphics Protocol byte sequences for root `Tty` methods
 - document the standard or terminal family each sequence comes from
 
 It should not:
@@ -85,6 +88,8 @@ It should not:
 - depend on `@io.Writer`
 - remember cursor position
 - model a screen buffer
+- decode image formats or render documents
+- encode Sixel images or wrap already-encoded Sixel streams
 
 Root `Tty` methods are the public output-command surface. Small CSI and SGR byte
 builders stay inside `internal/vt` as implementation helpers.
@@ -153,7 +158,8 @@ Current shape:
   terminal stream events.
 - Internal stream `Event` contains public user input events and terminal
   responses such as cursor-position reports, kitty keyboard enhancement flags,
-  and primary device attributes replies.
+  primary device attributes replies, OSC dynamic color replies, and Kitty
+  graphics APC replies.
 - Terminal response events are consumed by root request/response methods and do
   not surface from root `Tty::read_event`.
 - `moonbit-community/tty/internal/input/csi` owns low-level CSI parameter
@@ -192,6 +198,12 @@ module:
 - `examples/raw` validates raw mode behavior on a real tty
 - `examples/cursor` validates VT cursor/screen sequences visually
 - `examples/input` validates input decoding by printing decoded terminal events
+- `examples/latex` validates root terminal image display by rendering a typed
+  LaTeX formula through external tools and displaying it through Kitty graphics
+  or Sixel when supported
+- `examples/bad_apple` validates continuous terminal image display by extracting
+  Bad Apple video frames with external tools and playing them through Kitty
+  graphics or Sixel when supported
 - `examples/pager` validates primary-screen paging with a fixed status row and
   scrolling margins
 - `examples/color` validates SGR color output visually
@@ -280,11 +292,13 @@ variants.
 
 Terminal request/response reports such as Cursor Position Report (`CSI row ;
 col R`), kitty keyboard enhancement flags (`CSI ? flags u`), and Primary Device
-Attributes replies (`CSI ? ... c`), and OSC dynamic color replies are not user
-input events. They may appear as low-level stream events, but root
+Attributes replies (`CSI ? ... c`), OSC dynamic color replies, and Kitty
+graphics APC replies are not user input events. They may appear as low-level
+stream events, but root
 `Tty::read_event` should not surface them as public root events. Root
 request/response operations such as `Tty::query_cursor_position`,
-`Tty::query_kitty_keyboard_support`, and OSC dynamic color queries should use
+`Tty::query_kitty_keyboard_support`, `Tty::query_kitty_graphics_support`, and
+`Tty::query_sixel_graphics_support`, and OSC dynamic color queries should use
 the shared reader, consume the matching response, and preserve interleaved input
 events for later `Tty::read_event` calls.
 
