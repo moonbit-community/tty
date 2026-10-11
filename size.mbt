@@ -3,7 +3,7 @@
 pub struct WindowSize {
   rows : Int
   cols : Int
-} derive(Eq)
+} derive(Eq, Debug)
 
 ///|
 /// Query the visible terminal window size.
@@ -27,3 +27,6 @@ extern "c" fn tty_get_window_size(
 
 ///|
 pub extend WindowSize with Eq::{equal, not_equal}
+
+///|
+pub extend WindowSize with @debug.Debug::{to_repr}

@@ -10,6 +10,7 @@ import {
   "moonbitlang/async/pipe",
   "moonbitlang/async/raw_fd",
   "moonbitlang/async/stdio",
+  "moonbitlang/core/debug",
 }
 
 // Values
@@ -65,23 +66,28 @@ pub(all) enum Command {
   SetReverse
   ResetReverse
   ResetStyle
-}
+} derive(Eq, @debug.Debug)
+pub fn Command::equal(Self, Self) -> Bool
+pub fn Command::not_equal(Self, Self) -> Bool
+pub fn Command::to_repr(Self) -> @debug.Repr
 
 pub struct CursorPosition {
   row : Int
   col : Int
-} derive(Eq)
+} derive(Eq, @debug.Debug)
 pub fn CursorPosition::equal(Self, Self) -> Bool
 pub fn CursorPosition::not_equal(Self, Self) -> Bool
+pub fn CursorPosition::to_repr(Self) -> @debug.Repr
 
 pub(all) enum Event {
   Input(@input.InputEvent)
   Resize(WindowSize)
-} derive(Eq)
+} derive(Eq, @debug.Debug)
 pub fn Event::equal(Self, Self) -> Bool
 pub fn Event::not_equal(Self, Self) -> Bool
+pub fn Event::to_repr(Self) -> @debug.Repr
 
-type KeyboardEnhancementFlags derive(Eq)
+type KeyboardEnhancementFlags derive(Eq, @debug.Debug)
 pub fn KeyboardEnhancementFlags::bits(Self) -> Int
 pub fn KeyboardEnhancementFlags::disambiguate() -> Self
 pub fn KeyboardEnhancementFlags::disambiguate_escape_codes(Self) -> Bool
@@ -93,14 +99,16 @@ pub fn KeyboardEnhancementFlags::report_all_keys_as_escape_codes(Self) -> Bool
 pub fn KeyboardEnhancementFlags::report_alternate_keys(Self) -> Bool
 pub fn KeyboardEnhancementFlags::report_associated_text(Self) -> Bool
 pub fn KeyboardEnhancementFlags::report_event_types(Self) -> Bool
+pub fn KeyboardEnhancementFlags::to_repr(Self) -> @debug.Repr
 
 pub(all) enum MouseTrackingMode {
   Click
   Drag
   Motion
-} derive(Eq)
+} derive(Eq, @debug.Debug)
 pub fn MouseTrackingMode::equal(Self, Self) -> Bool
 pub fn MouseTrackingMode::not_equal(Self, Self) -> Bool
+pub fn MouseTrackingMode::to_repr(Self) -> @debug.Repr
 
 type State
 pub fn State::make_raw(Self) -> Self
@@ -182,9 +190,10 @@ pub async fn Tty::write_string(Self, String) -> Unit
 pub struct WindowSize {
   rows : Int
   cols : Int
-} derive(Eq)
+} derive(Eq, @debug.Debug)
 pub fn WindowSize::equal(Self, Self) -> Bool
 pub fn WindowSize::not_equal(Self, Self) -> Bool
+pub fn WindowSize::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 
