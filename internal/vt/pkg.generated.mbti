@@ -107,9 +107,13 @@ pub let reset_top_bottom_margins : Bytes
 
 pub let reset_underline : Bytes
 
+pub let restore_cursor : Bytes
+
 pub let reverse : Bytes
 
 pub let reverse_index : Bytes
+
+pub let save_cursor : Bytes
 
 pub fn set_background(@color.Color) -> Bytes
 

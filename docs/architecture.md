@@ -44,6 +44,8 @@ operations:
 - bracketed paste mode helpers through `Tty`
 - focus tracking mode helpers through `Tty`
 - DEC auto wrap mode helpers through `Tty`
+- DEC cursor save/restore commands through `Tty`, without tracking the saved
+  state
 - terminal state operations such as `Tty::get_state`, `Tty::set_state`, and raw
   mode helpers through `Tty`
 
@@ -67,6 +69,7 @@ by the root `Tty` command methods. It is not downstream API.
 It should:
 
 - construct cursor movement sequences
+- construct DEC cursor save/restore sequences
 - construct erase sequences
 - construct screen mode sequences such as alternate-screen enter/leave
 - construct bracketed paste enable/disable sequences

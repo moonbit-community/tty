@@ -19,6 +19,8 @@ pub(all) enum Command {
   PopKeyboardEnhancementFlags
   HideCursor
   ShowCursor
+  SaveCursor
+  RestoreCursor
   CursorUp(Int)
   CursorDown(Int)
   CursorForward(Int)
@@ -70,6 +72,8 @@ fn Command::write_to(self : Command, buf : @buffer.Buffer) -> Unit {
       buf.write_bytes(@vt.pop_keyboard_enhancement_flags)
     HideCursor => buf.write_bytes(@vt.hide_cursor)
     ShowCursor => buf.write_bytes(@vt.show_cursor)
+    SaveCursor => buf.write_bytes(@vt.save_cursor)
+    RestoreCursor => buf.write_bytes(@vt.restore_cursor)
     CursorUp(n) => @vt.write_cursor_up(buf, n)
     CursorDown(n) => @vt.write_cursor_down(buf, n)
     CursorForward(n) => @vt.write_cursor_forward(buf, n)

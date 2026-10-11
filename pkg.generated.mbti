@@ -34,6 +34,8 @@ pub(all) enum Command {
   PopKeyboardEnhancementFlags
   HideCursor
   ShowCursor
+  SaveCursor
+  RestoreCursor
   CursorUp(Int)
   CursorDown(Int)
   CursorForward(Int)
@@ -146,7 +148,9 @@ pub async fn Tty::reset_reverse(Self) -> Unit
 pub async fn Tty::reset_style(Self) -> Unit
 pub async fn Tty::reset_top_bottom_margins(Self) -> Unit
 pub async fn Tty::reset_underline(Self) -> Unit
+pub async fn Tty::restore_cursor(Self) -> Unit
 pub async fn Tty::reverse_index(Self) -> Unit
+pub async fn Tty::save_cursor(Self) -> Unit
 pub async fn Tty::set_background(Self, @color.Color) -> Unit
 #alias(bold, deprecated)
 pub async fn Tty::set_bold(Self) -> Unit

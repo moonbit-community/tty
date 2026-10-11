@@ -26,3 +26,9 @@ test "cursor visibility sequences" {
   @debug.assert_eq(@vt.hide_cursor, b"\x1b[?25l")
   @debug.assert_eq(@vt.show_cursor, b"\x1b[?25h")
 }
+
+///|
+test "cursor save and restore sequences" {
+  @debug.assert_eq(@vt.save_cursor, b"\x1b7")
+  @debug.assert_eq(@vt.restore_cursor, b"\x1b8")
+}

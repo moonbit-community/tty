@@ -301,6 +301,22 @@ pub async fn Tty::show_cursor(self : Self) -> Unit {
 }
 
 ///|
+/// Save the cursor state (DECSC).
+///
+/// The terminal keeps a single saved state: position, SGR attributes, character
+/// set, origin mode, and pending wrap. A second save overwrites the first, so
+/// save/restore pairs do not nest.
+pub async fn Tty::save_cursor(self : Self) -> Unit {
+  self.write(@vt.save_cursor)
+}
+
+///|
+/// Restore the cursor state last saved by `Tty::save_cursor` (DECRC).
+pub async fn Tty::restore_cursor(self : Self) -> Unit {
+  self.write(@vt.restore_cursor)
+}
+
+///|
 /// Move the terminal cursor to a 1-based row and column.
 pub async fn Tty::set_cursor_position(
   self : Self,
