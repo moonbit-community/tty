@@ -5,6 +5,7 @@
 /// `Tty::execute`.
 pub(all) enum Command {
   Print(StringView)
+  SetClipboard(StringView)
   EnterAltScreen
   LeaveAltScreen
   BeginSynchronizedUpdate
@@ -56,6 +57,7 @@ pub(all) enum Command {
 fn Command::write_to(self : Command, buf : @buffer.Buffer) -> Unit {
   match self {
     Print(text) => buf.write_string_utf8(text)
+    SetClipboard(text) => @vt.write_set_clipboard(buf, text)
     EnterAltScreen => buf.write_bytes(@vt.enter_alt_screen)
     LeaveAltScreen => buf.write_bytes(@vt.leave_alt_screen)
     BeginSynchronizedUpdate => buf.write_bytes(@vt.begin_synchronized_update)

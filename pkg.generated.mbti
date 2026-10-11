@@ -21,6 +21,7 @@ pub fn[T : Fd] isatty(T) -> Bool raise
 // Types and methods
 pub(all) enum Command {
   Print(StringView)
+  SetClipboard(StringView)
   EnterAltScreen
   LeaveAltScreen
   BeginSynchronizedUpdate
@@ -162,6 +163,7 @@ pub async fn Tty::save_cursor(Self) -> Unit
 pub async fn Tty::set_background(Self, @color.Color) -> Unit
 #alias(bold, deprecated)
 pub async fn Tty::set_bold(Self) -> Unit
+pub async fn Tty::set_clipboard(Self, StringView) -> Unit
 pub async fn Tty::set_cursor_position(Self, Int, Int) -> Unit
 pub async fn Tty::set_foreground(Self, @color.Color) -> Unit
 #alias(italic, deprecated)

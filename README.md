@@ -37,7 +37,8 @@ Use `Tty` when an operation needs a real terminal handle:
 - output commands: cursor movement/visibility, cursor save/restore,
   line/display/scrollback erase, scroll margins, reverse index, alternate
   screen, bracketed paste mode, SGR mouse tracking, focus tracking, DEC auto
-  wrap mode, foreground/background colors, text attributes, and style reset
+  wrap mode, foreground/background colors, text attributes, style reset, and
+  system clipboard write (OSC 52)
 
 Raw file and stdio byte I/O should use `moonbitlang/async/fs` and
 `moonbitlang/async/stdio` directly. The root package does not wrap them as

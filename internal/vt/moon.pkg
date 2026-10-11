@@ -1,6 +1,8 @@
 import {
   "moonbit-community/tty/color",
   "moonbitlang/core/buffer",
+  "moonbitlang/core/encoding/base64",
+  "moonbitlang/core/encoding/utf8",
 }
 
 import {

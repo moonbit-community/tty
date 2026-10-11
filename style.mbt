@@ -317,6 +317,17 @@ pub async fn Tty::restore_cursor(self : Self) -> Unit {
 }
 
 ///|
+/// Set the system clipboard to `text` (xterm OSC 52).
+///
+/// An empty `text` clears the clipboard. Terminals that do not support OSC 52,
+/// or that have clipboard access disabled, ignore the request; terminals may
+/// also limit how much text they accept. The package does not detect either
+/// case.
+pub async fn Tty::set_clipboard(self : Self, text : StringView) -> Unit {
+  self.write(@vt.set_clipboard(text))
+}
+
+///|
 /// Move the terminal cursor to a 1-based row and column.
 pub async fn Tty::set_cursor_position(
   self : Self,
