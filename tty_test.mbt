@@ -176,6 +176,18 @@ async test "pipe tty save and restore cursor commands write sequences" {
 }
 
 ///|
+async test "pipe tty set clipboard commands write sequences" {
+  let output = with_pipe_tty(b"", tty => {
+    tty.set_clipboard("hello")
+    tty.execute([SetClipboard("你好"), SetClipboard("")])
+  })
+  inspect(
+    output,
+    content="\u{1B}]52;c;aGVsbG8=\u{1B}\\\u{1B}]52;c;5L2g5aW9\u{1B}\\\u{1B}]52;c;\u{1B}\\",
+  )
+}
+
+///|
 async test "pipe tty with focus tracking restores on success" {
   let output = with_pipe_tty(b"", tty => {
     tty.with_focus_tracking(() => tty.write("body"))

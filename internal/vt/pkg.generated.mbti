@@ -117,6 +117,8 @@ pub let save_cursor : Bytes
 
 pub fn set_background(@color.Color) -> Bytes
 
+pub fn set_clipboard(StringView) -> Bytes
+
 pub fn set_foreground(@color.Color) -> Bytes
 
 pub fn set_top_bottom_margins(Int, Int) -> Bytes
@@ -150,6 +152,8 @@ pub fn write_cursor_up(@buffer.Buffer, Int) -> Unit
 pub fn write_push_keyboard_enhancement_flags(@buffer.Buffer, Int) -> Unit
 
 pub fn write_set_background(@buffer.Buffer, @color.Color) -> Unit
+
+pub fn write_set_clipboard(@buffer.Buffer, StringView) -> Unit
 
 pub fn write_set_foreground(@buffer.Buffer, @color.Color) -> Unit
 

@@ -49,6 +49,8 @@ operations:
 - inert `Command` values for batched output through `Tty::execute`; `Command`
   and the other root value types derive `Eq` and `Debug` so callers can compare
   and snapshot them in tests
+- system clipboard write (OSC 52) through `Tty`, without reading the clipboard
+  back or detecting terminal support
 - terminal state operations such as `Tty::get_state`, `Tty::set_state`, and raw
   mode helpers through `Tty`
 
@@ -73,6 +75,7 @@ It should:
 
 - construct cursor movement sequences
 - construct DEC cursor save/restore sequences
+- construct the OSC 52 clipboard write sequence, including its base64 payload
 - construct erase sequences
 - construct screen mode sequences such as alternate-screen enter/leave
 - construct bracketed paste enable/disable sequences
