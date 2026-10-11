@@ -166,6 +166,16 @@ async test "pipe tty auto wrap commands write sequences" {
 }
 
 ///|
+async test "pipe tty save and restore cursor commands write sequences" {
+  let output = with_pipe_tty(b"", tty => {
+    tty.save_cursor()
+    tty.restore_cursor()
+    tty.execute([SaveCursor, CursorPosition(9999, 9999), RestoreCursor])
+  })
+  inspect(output, content="\u{1B}7\u{1B}8\u{1B}7\u{1B}[9999;9999H\u{1B}8")
+}
+
+///|
 async test "pipe tty with focus tracking restores on success" {
   let output = with_pipe_tty(b"", tty => {
     tty.with_focus_tracking(() => tty.write("body"))

@@ -27,6 +27,14 @@ pub let hide_cursor : Bytes = b"\x1b[?25l"
 pub let show_cursor : Bytes = b"\x1b[?25h"
 
 ///|
+/// Save Cursor (DECSC), DEC VT100.
+pub let save_cursor : Bytes = b"\x1b7"
+
+///|
+/// Restore Cursor (DECRC), DEC VT100.
+pub let restore_cursor : Bytes = b"\x1b8"
+
+///|
 /// Cursor Down (CUD), ECMA-48.
 pub fn write_cursor_down(buf : @buffer.Buffer, n : Int) -> Unit {
   if n <= 1 {
