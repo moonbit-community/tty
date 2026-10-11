@@ -118,7 +118,7 @@ const KeyboardReportAssociatedText : Int = 16
 
 ///|
 /// Kitty keyboard protocol progressive enhancement flags.
-struct KeyboardEnhancementFlags(Int) derive(Eq)
+struct KeyboardEnhancementFlags(Int) derive(Eq, Debug)
 
 ///|
 /// Construct kitty keyboard protocol progressive enhancement flags.
@@ -251,7 +251,7 @@ pub(all) enum MouseTrackingMode {
   Click
   Drag
   Motion
-} derive(Eq)
+} derive(Eq, Debug)
 
 ///|
 /// Enable SGR mouse tracking.
@@ -470,4 +470,10 @@ pub async fn Tty::reset_style(self : Self) -> Unit {
 pub extend KeyboardEnhancementFlags with Eq::{equal, not_equal}
 
 ///|
+pub extend KeyboardEnhancementFlags with @debug.Debug::{to_repr}
+
+///|
 pub extend MouseTrackingMode with Eq::{equal, not_equal}
+
+///|
+pub extend MouseTrackingMode with @debug.Debug::{to_repr}

@@ -454,3 +454,58 @@ test "stdout window size when stdout is a tty" {
     }
   }
 }
+
+///|
+test "command values compare structurally" {
+  let commands : Array[@tty.Command] = [
+    CursorPosition(3, 4),
+    Print("hello"),
+    SetForeground(Basic(Red)),
+  ]
+  @debug.assert_eq(commands, [
+    CursorPosition(3, 4),
+    Print("hello"),
+    SetForeground(Basic(Red)),
+  ])
+  assert_true(commands != [CursorPosition(3, 5), Print("hello")])
+  assert_true(@tty.Command::Print("a") != Print("b"))
+}
+
+///|
+test "command values debug print" {
+  let commands : Array[@tty.Command] = [
+    HideCursor,
+    CursorPosition(3, 4),
+    Print("hello"),
+    SetBackground(Indexed(42)),
+    PushKeyboardEnhancementFlags(@tty.KeyboardEnhancementFlags::disambiguate()),
+  ]
+  debug_inspect(
+    commands,
+    content=(
+      #|[
+      #|  HideCursor,
+      #|  CursorPosition(3, 4),
+      #|  Print(<StringView: "hello">),
+      #|  SetBackground(Indexed(42)),
+      #|  PushKeyboardEnhancementFlags(KeyboardEnhancementFlags(1)),
+      #|]
+    ),
+  )
+}
+
+///|
+test "event and mouse tracking mode debug print" {
+  debug_inspect(
+    @tty.Event::Input(FocusIn),
+    content=(
+      #|Input(FocusIn)
+    ),
+  )
+  debug_inspect(
+    @tty.MouseTrackingMode::Drag,
+    content=(
+      #|Drag
+    ),
+  )
+}

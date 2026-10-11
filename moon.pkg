@@ -8,6 +8,7 @@ import {
   "moonbitlang/async/os_error",
   "moonbitlang/async/io" @async/io,
   "moonbitlang/core/buffer",
+  "moonbitlang/core/debug",
   "moonbit-community/tty/color",
   "moonbit-community/tty/input" @public_input,
   "moonbit-community/tty/internal/lock",

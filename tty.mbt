@@ -5,14 +5,14 @@
 pub struct CursorPosition {
   row : Int
   col : Int
-} derive(Eq)
+} derive(Eq, Debug)
 
 ///|
 /// Terminal event reported by the coordinated root `Tty` handle.
 pub(all) enum Event {
   Input(@public_input.InputEvent)
   Resize(WindowSize)
-} derive(Eq)
+} derive(Eq, Debug)
 
 ///|
 /// Coordinated terminal input/output handle.
@@ -287,4 +287,10 @@ async fn Tty::query_dynamic_color(
 pub extend CursorPosition with Eq::{equal, not_equal}
 
 ///|
+pub extend CursorPosition with @debug.Debug::{to_repr}
+
+///|
 pub extend Event with Eq::{equal, not_equal}
+
+///|
+pub extend Event with @debug.Debug::{to_repr}

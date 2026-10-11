@@ -46,6 +46,9 @@ operations:
 - DEC auto wrap mode helpers through `Tty`
 - DEC cursor save/restore commands through `Tty`, without tracking the saved
   state
+- inert `Command` values for batched output through `Tty::execute`; `Command`
+  and the other root value types derive `Eq` and `Debug` so callers can compare
+  and snapshot them in tests
 - terminal state operations such as `Tty::get_state`, `Tty::set_state`, and raw
   mode helpers through `Tty`
 
