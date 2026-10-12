@@ -2,7 +2,7 @@
 const DecimalBenchSampleCount = 256
 
 ///|
-fn count_decimal_digits(n : Int) -> Int {
+fn count_decimal_digits(n : Int32) -> Int32 {
   guard n >= 0 else {
     abort("count_decimal_digits: n should be greater or equal to 0")
   }
@@ -16,10 +16,10 @@ fn count_decimal_digits(n : Int) -> Int {
 ///|
 fn write_decimal_digits(
   buf : FixedArray[Byte],
-  n : Int,
-  offset? : Int = 0,
-  length? : Int = count_decimal_digits(n),
-) -> Int {
+  n : Int32,
+  offset~ : Int32 = 0,
+  length~ : Int32 = count_decimal_digits(n),
+) -> Int32 {
   let mut value = n
   for i in 0..<length {
     let index = offset + length - i - 1
@@ -30,12 +30,12 @@ fn write_decimal_digits(
 }
 
 ///|
-fn decimal_bytes_string_utf8(n : Int) -> Bytes {
+fn decimal_bytes_string_utf8(n : Int32) -> Bytes {
   @utf8.encode("\{n}")
 }
 
 ///|
-fn decimal_bytes_manual_recount(n : Int) -> Bytes {
+fn decimal_bytes_manual_recount(n : Int32) -> Bytes {
   let len = count_decimal_digits(n)
   let buf : FixedArray[Byte] = FixedArray::make(len, 0)
   ignore(write_decimal_digits(buf, n))
@@ -43,7 +43,7 @@ fn decimal_bytes_manual_recount(n : Int) -> Bytes {
 }
 
 ///|
-fn decimal_bytes_manual_counted(n : Int) -> Bytes {
+fn decimal_bytes_manual_counted(n : Int32) -> Bytes {
   let len = count_decimal_digits(n)
   let buf : FixedArray[Byte] = FixedArray::make(len, 0)
   ignore(write_decimal_digits(buf, n, length=len))
@@ -51,13 +51,13 @@ fn decimal_bytes_manual_counted(n : Int) -> Bytes {
 }
 
 ///|
-fn decimal_bytes_scratch_copy(n : Int) -> Bytes {
+fn decimal_bytes_scratch_copy(n : Int32) -> Bytes {
   let scratch : FixedArray[Byte] = FixedArray::make(20, 0)
   decimal_bytes_scratch_reuse(n, scratch)
 }
 
 ///|
-fn decimal_bytes_scratch_reuse(n : Int, scratch : FixedArray[Byte]) -> Bytes {
+fn decimal_bytes_scratch_reuse(n : Int32, scratch : FixedArray[Byte]) -> Bytes {
   let mut value = n
   let mut pos = scratch.length()
   while true {
@@ -75,7 +75,7 @@ fn decimal_bytes_scratch_reuse(n : Int, scratch : FixedArray[Byte]) -> Bytes {
 }
 
 ///|
-fn decimal_bytes_fast_small(n : Int) -> Bytes {
+fn decimal_bytes_fast_small(n : Int32) -> Bytes {
   if n < 10 {
     let buf : FixedArray[Byte] = FixedArray::make(1, 0)
     buf[0] = (n + b'0'.to_int()).to_byte()
@@ -91,8 +91,8 @@ fn decimal_bytes_fast_small(n : Int) -> Bytes {
 }
 
 ///|
-fn make_decimal_bench_inputs(limit : Int) -> FixedArray[Int] {
-  let rng = @random.Rand::new()
+fn make_decimal_bench_inputs(limit : Int32) -> FixedArray[Int32] {
+  let rng = @random.Rand()
   FixedArray::makei(DecimalBenchSampleCount, _ => rng.int(limit~))
 }
 
@@ -100,8 +100,8 @@ fn make_decimal_bench_inputs(limit : Int) -> FixedArray[Int] {
 fn bench_decimal_bytes(
   b : @bench.T,
   name : String,
-  inputs : FixedArray[Int],
-  write : (Int) -> Bytes,
+  inputs : FixedArray[Int32],
+  write : (Int32) -> Bytes,
 ) -> Unit {
   b.bench(
     () => {

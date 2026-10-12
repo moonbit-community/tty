@@ -24,9 +24,9 @@ pub(all) enum BasicColor {
 ///
 /// Components are expected to be in the range `0..65535`.
 pub(all) struct Rgb16 {
-  red : Int
-  green : Int
-  blue : Int
+  red : Int32
+  green : Int32
+  blue : Int32
 } derive(Eq, Debug)
 
 ///|
@@ -34,8 +34,8 @@ pub(all) struct Rgb16 {
 pub(all) enum Color {
   Default
   Basic(BasicColor)
-  Indexed(Int)
-  Rgb(Int, Int, Int)
+  Indexed(Int32)
+  Rgb(Int32, Int32, Int32)
 } derive(Eq, Debug)
 
 ///|

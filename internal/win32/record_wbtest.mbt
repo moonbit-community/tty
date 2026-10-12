@@ -1,5 +1,5 @@
 ///|
-fn test_raw_record(event_type : Int) -> FixedArray[Byte] {
+fn test_raw_record(event_type : Int32) -> FixedArray[Byte] {
   let buf = FixedArray::make(20, b'\x00')
   test_set_u16_le(buf, 0, event_type)
   buf
@@ -11,13 +11,21 @@ fn test_input_record(buf : FixedArray[Byte]) -> InputRecord {
 }
 
 ///|
-fn test_set_u16_le(buf : FixedArray[Byte], offset : Int, value : Int) -> Unit {
+fn test_set_u16_le(
+  buf : FixedArray[Byte],
+  offset : Int32,
+  value : Int32,
+) -> Unit {
   buf[offset] = (value & 0xff).to_byte()
   buf[offset + 1] = ((value / 0x100) & 0xff).to_byte()
 }
 
 ///|
-fn test_set_u32_le(buf : FixedArray[Byte], offset : Int, value : Int) -> Unit {
+fn test_set_u32_le(
+  buf : FixedArray[Byte],
+  offset : Int32,
+  value : Int32,
+) -> Unit {
   buf[offset] = (value & 0xff).to_byte()
   buf[offset + 1] = ((value / 0x100) & 0xff).to_byte()
   buf[offset + 2] = ((value / 0x10000) & 0xff).to_byte()

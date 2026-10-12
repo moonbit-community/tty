@@ -35,10 +35,10 @@ pub struct KeyEvent {
 /// Construct a key event.
 pub fn KeyEvent::new(
   code : KeyCode,
-  modifiers? : KeyModifiers = KeyModifiers::new(),
+  modifiers~ : KeyModifiers = KeyModifiers::new(),
   text? : String,
-  kind? : KeyEventKind = Press,
-  state? : KeyEventState = KeyEventState::new(),
+  kind~ : KeyEventKind = Press,
+  state~ : KeyEventState = KeyEventState::new(),
   shifted_code? : KeyCode,
   base_code? : KeyCode,
 ) -> KeyEvent {
@@ -175,21 +175,21 @@ pub(all) enum ModifierKeyCode {
 
 ///|
 /// Opaque set of key modifiers.
-struct KeyModifiers(Int) derive(Eq, Debug)
+struct KeyModifiers(Int32) derive(Eq, Debug)
 
 ///|
 /// Opaque set of keyboard event state flags.
-struct KeyEventState(Int) derive(Eq, Debug)
+struct KeyEventState(Int32) derive(Eq, Debug)
 
 ///|
 /// Construct a modifier set.
 pub fn KeyModifiers::new(
-  shift? : Bool = false,
-  alt? : Bool = false,
-  ctrl? : Bool = false,
-  meta? : Bool = false,
-  super_? : Bool = false,
-  hyper? : Bool = false,
+  shift~ : Bool = false,
+  alt~ : Bool = false,
+  ctrl~ : Bool = false,
+  meta~ : Bool = false,
+  super_~ : Bool = false,
+  hyper~ : Bool = false,
 ) -> KeyModifiers {
   let mut bits = 0
   if shift {
@@ -252,9 +252,9 @@ pub fn KeyModifiers::hyper(self : KeyModifiers) -> Bool {
 ///|
 /// Construct a keyboard event state set.
 pub fn KeyEventState::new(
-  keypad? : Bool = false,
-  caps_lock? : Bool = false,
-  num_lock? : Bool = false,
+  keypad~ : Bool = false,
+  caps_lock~ : Bool = false,
+  num_lock~ : Bool = false,
 ) -> KeyEventState {
   let mut bits = 0
   if keypad {
@@ -293,8 +293,8 @@ pub fn KeyEventState::num_lock(self : KeyEventState) -> Bool {
 /// Rows and columns are 1-based terminal cell coordinates.
 pub struct MouseEvent {
   kind : MouseEventKind
-  row : Int
-  col : Int
+  row : Int32
+  col : Int32
   modifiers : KeyModifiers
 } derive(Eq, Debug)
 
@@ -302,9 +302,9 @@ pub struct MouseEvent {
 /// Construct a mouse event with optional key modifiers.
 pub fn MouseEvent::new(
   kind : MouseEventKind,
-  row : Int,
-  col : Int,
-  modifiers? : KeyModifiers = KeyModifiers::new(),
+  row : Int32,
+  col : Int32,
+  modifiers~ : KeyModifiers = KeyModifiers::new(),
 ) -> MouseEvent {
   { kind, row, col, modifiers, }
 }

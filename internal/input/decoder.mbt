@@ -2,7 +2,7 @@
 const Esc : Byte = b'\x1b'
 
 ///|
-const EventReaderInitialBufferCapacity : Int = 8
+const EventReaderInitialBufferCapacity : Int32 = 8
 
 ///|
 /// Internal low-level terminal byte stream decoder.
@@ -12,9 +12,9 @@ const EventReaderInitialBufferCapacity : Int = 8
 struct EventReader {
   reader : &@io.Reader
   mut data : FixedArray[Byte]
-  mut head : Int
-  mut read : Int
-  mut tail : Int
+  mut head : Int32
+  mut read : Int32
+  mut tail : Int32
 }
 
 ///|
@@ -36,7 +36,7 @@ pub fn EventReader::new(reader : &@io.Reader) -> EventReader {
 /// disambiguate standalone Esc and incomplete multi-byte sequences.
 pub async fn EventReader::read_event(
   self : EventReader,
-  esc_timeout_ms? : Int = 50,
+  esc_timeout_ms~ : Int32 = 50,
 ) -> Event {
   let start = self.read
   errdefer self.rollback_to(start)
@@ -78,7 +78,7 @@ fn EventReader::unread_byte(self : EventReader) -> Unit {
 }
 
 ///|
-fn EventReader::rollback_to(self : EventReader, read : Int) -> Unit {
+fn EventReader::rollback_to(self : EventReader, read : Int32) -> Unit {
   self.read = read
 }
 
@@ -88,7 +88,7 @@ fn EventReader::view(self : EventReader) -> BytesView {
 }
 
 ///|
-fn EventReader::ensure_capacity(self : EventReader, extra : Int) -> Unit {
+fn EventReader::ensure_capacity(self : EventReader, extra : Int32) -> Unit {
   let required = self.tail + extra
   if required <= self.data.length() {
     return
@@ -125,7 +125,7 @@ fn EventReader::commit(self : EventReader) -> Unit {
 }
 
 ///|
-async fn read_escape(reader : EventReader, esc_timeout_ms : Int) -> Event {
+async fn read_escape(reader : EventReader, esc_timeout_ms : Int32) -> Event {
   guard @async.with_timeout_opt(esc_timeout_ms, () => reader.read_byte())
     is Some(byte) else {
     Input(Key(@public_input.KeyEvent::new(Escape)))
@@ -152,7 +152,7 @@ async fn read_escape(reader : EventReader, esc_timeout_ms : Int) -> Event {
 }
 
 ///|
-async fn read_osc(reader : EventReader, esc_timeout_ms~ : Int) -> Event {
+async fn read_osc(reader : EventReader, esc_timeout_ms~ : Int32) -> Event {
   for ;; {
     guard @async.with_timeout_opt(esc_timeout_ms, () => reader.read_byte())
       is Some(byte) else {
@@ -205,7 +205,11 @@ fn parse_osc_body(osc : BytesView, body : BytesView) -> Event {
 }
 
 ///|
-fn parse_dynamic_color(code : Int, osc : BytesView, spec : BytesView) -> Event {
+fn parse_dynamic_color(
+  code : Int32,
+  osc : BytesView,
+  spec : BytesView,
+) -> Event {
   guard parse_xparse_rgb(spec) is Some((red, green, blue)) else {
     return Input(Unknown(osc.to_owned()))
   }
@@ -213,7 +217,7 @@ fn parse_dynamic_color(code : Int, osc : BytesView, spec : BytesView) -> Event {
 }
 
 ///|
-fn parse_xparse_rgb(spec : BytesView) -> (Int, Int, Int)? {
+fn parse_xparse_rgb(spec : BytesView) -> (Int32, Int32, Int32)? {
   guard parse_hex_color_component(spec, 0) is Some((red, offset)) else {
     return None
   }
@@ -230,7 +234,10 @@ fn parse_xparse_rgb(spec : BytesView) -> (Int, Int, Int)? {
 }
 
 ///|
-fn parse_hex_color_component(spec : BytesView, offset : Int) -> (Int, Int)? {
+fn parse_hex_color_component(
+  spec : BytesView,
+  offset : Int32,
+) -> (Int32, Int32)? {
   let mut index = offset
   let mut value = 0
   let mut length = 0
@@ -254,11 +261,11 @@ fn parse_hex_color_component(spec : BytesView, offset : Int) -> (Int, Int)? {
 }
 
 ///|
-fn hex_digit(byte : Byte) -> Int? {
+fn hex_digit(byte : Byte) -> Int32? {
   match byte {
-    b'0'..=b'9' => Some(byte.to_int() - b'0'.to_int())
-    b'a'..=b'f' => Some(byte.to_int() - b'a'.to_int() + 10)
-    b'A'..=b'F' => Some(byte.to_int() - b'A'.to_int() + 10)
+    b'0'..<=b'9' => Some(byte.to_int() - b'0'.to_int())
+    b'a'..<=b'f' => Some(byte.to_int() - b'a'.to_int() + 10)
+    b'A'..<=b'F' => Some(byte.to_int() - b'A'.to_int() + 10)
     _ => None
   }
 }
@@ -266,7 +273,7 @@ fn hex_digit(byte : Byte) -> Int? {
 ///|
 async fn read_ss3(
   reader : EventReader,
-  esc_timeout_ms~ : Int,
+  esc_timeout_ms~ : Int32,
 ) -> @public_input.InputEvent {
   guard @async.with_timeout_opt(esc_timeout_ms, () => reader.read_byte())
     is Some(byte) else {
@@ -280,7 +287,7 @@ async fn read_ss3(
 }
 
 ///|
-async fn read_csi(reader : EventReader, esc_timeout_ms~ : Int) -> Event {
+async fn read_csi(reader : EventReader, esc_timeout_ms~ : Int32) -> Event {
   let mut seen_intermediate = false
   for ;; {
     guard @async.with_timeout_opt(esc_timeout_ms, () => reader.read_byte())
@@ -325,7 +332,7 @@ fn is_bracketed_paste_start(csi : BytesView) -> Bool {
 ///|
 async fn read_bracketed_paste(
   reader : EventReader,
-  esc_timeout_ms~ : Int,
+  esc_timeout_ms~ : Int32,
 ) -> Event {
   for ;; {
     guard @async.with_timeout_opt(esc_timeout_ms, () => reader.read_byte())
@@ -442,7 +449,7 @@ fn parse_primary_device_attributes(
 }
 
 ///|
-fn parse_cursor_position_params(params : Array[Int?]) -> (Int, Int)? {
+fn parse_cursor_position_params(params : Array[Int32?]) -> (Int32, Int32)? {
   match params {
     [Some(row), Some(col)] if row >= 1 && col >= 1 => Some((row, col))
     _ => None
@@ -480,7 +487,7 @@ fn parse_sgr_mouse(
 
 ///|
 fn mouse_event_kind_from_cb(
-  cb : Int,
+  cb : Int32,
   release~ : Bool,
 ) -> @public_input.MouseEventKind? {
   if cb < 0 || cb > 127 {
@@ -526,7 +533,7 @@ fn mouse_event_kind_from_cb(
 }
 
 ///|
-fn mouse_modifiers_from_cb(cb : Int) -> @public_input.KeyModifiers {
+fn mouse_modifiers_from_cb(cb : Int32) -> @public_input.KeyModifiers {
   @public_input.KeyModifiers::new(
     shift=(cb & 4) != 0,
     alt=(cb & 8) != 0,
@@ -551,7 +558,7 @@ fn parse_csi_key(
 
 ///|
 fn parse_csi_key_event(
-  params : Array[Array[Int?]],
+  params : Array[Array[Int32?]],
   code : @public_input.KeyCode,
 ) -> @public_input.KeyEvent? {
   match params {
@@ -616,7 +623,7 @@ fn parse_csi_tilde_key(
 }
 
 ///|
-fn tilde_key_code(code : Int) -> @public_input.KeyCode? {
+fn tilde_key_code(code : Int32) -> @public_input.KeyCode? {
   match code {
     1 | 7 => Some(Home)
     2 => Some(Insert)
@@ -641,7 +648,7 @@ fn tilde_key_code(code : Int) -> @public_input.KeyCode? {
 }
 
 ///|
-fn legacy_modifiers_from_param(param : Int) -> @public_input.KeyModifiers {
+fn legacy_modifiers_from_param(param : Int32) -> @public_input.KeyModifiers {
   let bits = param - 1
   if bits <= 0 {
     @public_input.KeyModifiers::new()
@@ -673,7 +680,7 @@ fn parse_kitty_key(
 async fn read_byte_event(
   reader : EventReader,
   byte : Byte,
-  esc_timeout_ms : Int,
+  esc_timeout_ms : Int32,
 ) -> @public_input.InputEvent {
   match byte {
     b'\r' => Key(@public_input.KeyEvent::new(Enter))
@@ -693,14 +700,14 @@ async fn read_byte_event(
           modifiers=@public_input.KeyModifiers::new(ctrl=true),
         ),
       )
-    0x01..=0x1a =>
+    0x01..<=0x1a =>
       Key(
         @public_input.KeyEvent::new(
           Char((byte.to_int() - 1 + 'a'.to_int()).unsafe_to_char()),
           modifiers=@public_input.KeyModifiers::new(ctrl=true),
         ),
       )
-    0x1c..=0x1f =>
+    0x1c..<=0x1f =>
       Key(
         @public_input.KeyEvent::new(
           Char((byte.to_int() - 0x1c + '4'.to_int()).unsafe_to_char()),
@@ -719,7 +726,7 @@ async fn read_byte_event(
 async fn read_utf8_text(
   reader : EventReader,
   first : Byte,
-  esc_timeout_ms~ : Int,
+  esc_timeout_ms~ : Int32,
 ) -> @public_input.InputEvent {
   guard utf8_sequence_length(first) is Some(len) else {
     return Unknown([first])
@@ -760,11 +767,11 @@ fn text_event(text : String) -> @public_input.InputEvent {
 }
 
 ///|
-fn utf8_sequence_length(first : Byte) -> Int? {
+fn utf8_sequence_length(first : Byte) -> Int32? {
   match first {
-    0xc2..=0xdf => Some(2)
-    0xe0..=0xef => Some(3)
-    0xf0..=0xf4 => Some(4)
+    0xc2..<=0xdf => Some(2)
+    0xe0..<=0xef => Some(3)
+    0xf0..<=0xf4 => Some(4)
     _ => None
   }
 }

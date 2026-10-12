@@ -5,8 +5,8 @@
 /// treated as 1. If `bottom` is less than `top`, it is treated as `top`.
 pub fn write_set_top_bottom_margins(
   buf : @buffer.Buffer,
-  top : Int,
-  bottom : Int,
+  top : Int32,
+  bottom : Int32,
 ) -> Unit {
   let top = if top <= 1 { 1 } else { top }
   let bottom = if bottom < top { top } else { bottom }
@@ -18,7 +18,7 @@ pub fn write_set_top_bottom_margins(
 ///
 /// `top` and `bottom` are 1-based inclusive rows. Values less than 1 are
 /// treated as 1. If `bottom` is less than `top`, it is treated as `top`.
-pub fn set_top_bottom_margins(top : Int, bottom : Int) -> Bytes {
+pub fn set_top_bottom_margins(top : Int32, bottom : Int32) -> Bytes {
   let top = if top <= 1 { 1 } else { top }
   let bottom = if bottom < top { top } else { bottom }
   let len1 = count_decimal_digits(top)

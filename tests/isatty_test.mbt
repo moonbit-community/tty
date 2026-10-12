@@ -20,7 +20,7 @@ fn runner_args(name : String) -> Array[String] {
 async fn read_until_text(
   pty : @pty.Pty,
   text : String,
-  timeout_ms? : Int = 10000,
+  timeout_ms~ : Int32 = 10000,
 ) -> String {
   let reader = pty.reader()
   let needle = @utf8.encode(text)

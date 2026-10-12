@@ -5,10 +5,10 @@
 /// user input.
 pub(all) enum Event {
   Input(@public_input.InputEvent)
-  CursorPosition(row~ : Int, col~ : Int)
-  KeyboardEnhancementFlags(Int)
+  CursorPosition(row~ : Int32, col~ : Int32)
+  KeyboardEnhancementFlags(Int32)
   PrimaryDeviceAttributes(Bytes)
-  DynamicColor(code~ : Int, red~ : Int, green~ : Int, blue~ : Int)
+  DynamicColor(code~ : Int32, red~ : Int32, green~ : Int32, blue~ : Int32)
 } derive(Eq, Debug)
 
 ///|

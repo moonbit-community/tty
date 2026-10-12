@@ -1,5 +1,5 @@
 ///|
-let esc_timeout_ms : Int = 50
+let esc_timeout_ms : Int32 = 50
 
 ///|
 async fn writeln(tty : @tty.Tty, line : String) -> Unit {
@@ -218,7 +218,7 @@ fn describe_mouse(mouse : @tty/input.MouseEvent) -> String {
 }
 
 ///|
-fn string_char_count(text : String) -> Int {
+fn string_char_count(text : String) -> Int32 {
   let mut count = 0
   for _ in text {
     count += 1

@@ -56,7 +56,7 @@ async fn Tty::read_resize_event(self : Self) -> Event {
 #cfg(not(platform="windows"))
 async fn Tty::read_event_from_sources(
   self : Self,
-  esc_timeout_ms : Int,
+  esc_timeout_ms : Int32,
 ) -> Event {
   @async.with_task_group() <| group => {
     group.spawn_bg(no_wait=true) <| () => {
@@ -70,7 +70,7 @@ async fn Tty::read_event_from_sources(
 
 ///|
 #cfg(not(platform="windows"))
-extern "C" fn install_sigwinch_handler(fd : @async/types.Fd) -> Int = "moonbit_tty_install_sigwinch_handler"
+extern "C" fn install_sigwinch_handler(fd : @async/types.Fd) -> Int32 = "moonbit_tty_install_sigwinch_handler"
 
 ///|
 #cfg(not(platform="windows"))

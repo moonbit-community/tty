@@ -31,7 +31,7 @@ fn WindowsInput::close(self : WindowsInput) -> Unit {
 #cfg(platform="windows")
 async fn Tty::read_win32_console_event(
   self : Self,
-  esc_timeout_ms : Int,
+  esc_timeout_ms : Int32,
 ) -> Event {
   match self.input_backend {
     Console(reader) => self.read_win32_event(reader, esc_timeout_ms)
@@ -44,7 +44,7 @@ async fn Tty::read_win32_console_event(
 async fn Tty::read_win32_event(
   self : Self,
   reader : @win32.EventReader,
-  esc_timeout_ms : Int,
+  esc_timeout_ms : Int32,
 ) -> Event {
   for ;; {
     match reader.read_event(esc_timeout_ms~) {
@@ -64,7 +64,7 @@ async fn Tty::read_win32_event(
 #cfg(platform="windows")
 async fn Tty::read_internal_event_from_sources(
   self : Self,
-  esc_timeout_ms : Int,
+  esc_timeout_ms : Int32,
 ) -> @input.Event {
   match self.input_backend {
     Console(reader) => reader.read_internal_event(esc_timeout_ms~)
@@ -76,7 +76,7 @@ async fn Tty::read_internal_event_from_sources(
 #cfg(not(platform="windows"))
 async fn Tty::read_internal_event_from_sources(
   self : Self,
-  esc_timeout_ms : Int,
+  esc_timeout_ms : Int32,
 ) -> @input.Event {
   self.reader.read_event(esc_timeout_ms~)
 }

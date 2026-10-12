@@ -6,9 +6,9 @@ priv struct KeyCode {
 
 ///|
 priv struct KeyFields {
-  key_codes : Array[Int?]
-  modifier_event : Array[Int?]?
-  associated_text : Array[Int?]?
+  key_codes : Array[Int32?]
+  modifier_event : Array[Int32?]?
+  associated_text : Array[Int32?]?
 }
 
 ///|
@@ -53,7 +53,7 @@ pub fn ModifierReport::key_event(
 }
 
 ///|
-pub fn parse_csi_key_report(params : Array[Array[Int?]]) -> ModifierReport? {
+pub fn parse_csi_key_report(params : Array[Array[Int32?]]) -> ModifierReport? {
   match params {
     [] | [[None | Some(1)]] | [[None | Some(1)], [None]] =>
       Some(ModifierReport::default())
@@ -63,7 +63,7 @@ pub fn parse_csi_key_report(params : Array[Array[Int?]]) -> ModifierReport? {
 }
 
 ///|
-pub fn parse_modifier_report(param : Array[Int?]) -> ModifierReport? {
+pub fn parse_modifier_report(param : Array[Int32?]) -> ModifierReport? {
   let (modifier, kind) = match param {
     [None] => (1, 1)
     [Some(modifier)] => (modifier, 1)
@@ -91,7 +91,7 @@ pub fn parse_modifier_report(param : Array[Int?]) -> ModifierReport? {
 }
 
 ///|
-fn parse_key_event_kind(kind : Int) -> @public_input.KeyEventKind? {
+fn parse_key_event_kind(kind : Int32) -> @public_input.KeyEventKind? {
   match kind {
     1 => Some(Press)
     2 => Some(Repeat)
@@ -101,7 +101,7 @@ fn parse_key_event_kind(kind : Int) -> @public_input.KeyEventKind? {
 }
 
 ///|
-fn parse_key_fields(params : Array[Array[Int?]]) -> KeyFields? {
+fn parse_key_fields(params : Array[Array[Int32?]]) -> KeyFields? {
   match params {
     [key_codes] =>
       Some({ key_codes, modifier_event: None, associated_text: None, })
@@ -187,7 +187,7 @@ fn key_event_from_parts(
 }
 
 ///|
-pub fn parse_key(params : Array[Array[Int?]]) -> @public_input.KeyEvent? {
+pub fn parse_key(params : Array[Array[Int32?]]) -> @public_input.KeyEvent? {
   guard parse_key_fields(params) is Some(fields) else { return None }
   guard fields.key_codes.length() > 0 && fields.key_codes.length() <= 3 else {
     return None
@@ -316,8 +316,8 @@ fn modifiers_with_modifier_key(
 
 ///|
 fn parse_optional_key_code(
-  param : Array[Int?],
-  index : Int,
+  param : Array[Int32?],
+  index : Int32,
 ) -> ParsedOptionalKeyCode {
   if index >= param.length() {
     return OptionalKeyCode(None)
@@ -337,7 +337,7 @@ fn parse_optional_key_code(
 }
 
 ///|
-fn parse_associated_text(param : Array[Int?]) -> ParsedAssociatedText {
+fn parse_associated_text(param : Array[Int32?]) -> ParsedAssociatedText {
   let builder = StringBuilder()
   let mut seen = false
   for part in param {
@@ -399,7 +399,7 @@ fn default_key_text(
 }
 
 ///|
-fn key_code_from_codepoint(codepoint : Int) -> KeyCode? {
+fn key_code_from_codepoint(codepoint : Int32) -> KeyCode? {
   if key_code_from_functional_key(codepoint) is Some(key) {
     return Some(key)
   }
@@ -419,7 +419,7 @@ fn key_code_from_codepoint(codepoint : Int) -> KeyCode? {
 }
 
 ///|
-fn key_code_from_functional_key(codepoint : Int) -> KeyCode? {
+fn key_code_from_functional_key(codepoint : Int32) -> KeyCode? {
   match codepoint {
     57358 => Some({ code: CapsLock, keypad: false, })
     57359 => Some({ code: ScrollLock, keypad: false, })

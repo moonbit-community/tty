@@ -66,7 +66,7 @@ pub let query_cursor_color : Bytes = b"\x1b]12;?\x1b\\"
 /// Push kitty keyboard protocol progressive enhancement flags.
 pub fn write_push_keyboard_enhancement_flags(
   buf : @buffer.Buffer,
-  flags : Int,
+  flags : Int32,
 ) -> Unit {
   let flags = if flags < 0 { 0 } else { flags }
   buf.write_byte(b'\x1b')
@@ -78,7 +78,7 @@ pub fn write_push_keyboard_enhancement_flags(
 
 ///|
 /// Push kitty keyboard protocol progressive enhancement flags.
-pub fn push_keyboard_enhancement_flags(flags : Int) -> Bytes {
+pub fn push_keyboard_enhancement_flags(flags : Int32) -> Bytes {
   let flags = if flags < 0 { 0 } else { flags }
   let len = count_decimal_digits(flags)
   bytes_from_buffer(4 + len, buf => {

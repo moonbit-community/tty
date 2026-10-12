@@ -1,9 +1,9 @@
 ///|
 /// Parse semicolon-separated CSI parameters.
-pub fn parse_params(params_bytes : BytesView) -> Array[Int?]? {
+pub fn parse_params(params_bytes : BytesView) -> Array[Int32?]? {
   let parsed = parse_subparams(params_bytes)
   guard parsed is Some(params) else { return None }
-  let flattened : Array[Int?] = []
+  let flattened : Array[Int32?] = []
   for param in params {
     guard param.length() == 1 else { return None }
     flattened.push(param[0])
@@ -13,18 +13,18 @@ pub fn parse_params(params_bytes : BytesView) -> Array[Int?]? {
 
 ///|
 /// Parse semicolon-separated CSI parameters with colon subparameters.
-pub fn parse_subparams(params_bytes : BytesView) -> Array[Array[Int?]]? {
-  let params : Array[Array[Int?]] = []
+pub fn parse_subparams(params_bytes : BytesView) -> Array[Array[Int32?]]? {
+  let params : Array[Array[Int32?]] = []
   if params_bytes.length() == 0 {
     return Some(params)
   }
-  let mut param : Array[Int?] = []
+  let mut param : Array[Int32?] = []
   let mut value = 0
   let mut seen = false
   for i = 0; i < params_bytes.length(); {
     let byte = params_bytes[i]
     match byte {
-      b'0'..=b'9' => {
+      b'0'..<=b'9' => {
         seen = true
         value = value * 10 + byte.to_int() - b'0'.to_int()
         continue i + 1
@@ -53,13 +53,13 @@ pub fn parse_subparams(params_bytes : BytesView) -> Array[Array[Int?]]? {
 
 ///|
 /// Parse a non-empty decimal CSI parameter payload.
-pub fn parse_decimal(params : BytesView) -> Int? {
+pub fn parse_decimal(params : BytesView) -> Int32? {
   guard params.length() > 0 else { return None }
   let mut value = 0
   for i = 0; i < params.length(); {
     let byte = params[i]
     match byte {
-      b'0'..=b'9' => {
+      b'0'..<=b'9' => {
         value = value * 10 + byte.to_int() - b'0'.to_int()
         continue i + 1
       }
@@ -77,7 +77,7 @@ pub fn is_primary_device_attributes_params(params : BytesView) -> Bool {
   for i = 0; i < params.length(); {
     let byte = params[i]
     match byte {
-      b'0'..=b'9' => {
+      b'0'..<=b'9' => {
         part_has_digit = true
         continue i + 1
       }

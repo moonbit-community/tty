@@ -44,25 +44,30 @@ pub let reset_reverse : Bytes = b"\x1b[27m"
 
 ///|
 /// Construct an SGR sequence with one parameter.
-pub fn write_sgr1(buf : @buffer.Buffer, p1 : Int) -> Unit {
+pub fn write_sgr1(buf : @buffer.Buffer, p1 : Int32) -> Unit {
   write_csi1(buf, p1, b'm')
 }
 
 ///|
 /// Construct an SGR sequence with one parameter.
-pub fn sgr1(p1 : Int) -> Bytes {
+pub fn sgr1(p1 : Int32) -> Bytes {
   csi1(p1, b'm')
 }
 
 ///|
 /// Construct an SGR sequence with three parameters.
-pub fn write_sgr3(buf : @buffer.Buffer, p1 : Int, p2 : Int, p3 : Int) -> Unit {
+pub fn write_sgr3(
+  buf : @buffer.Buffer,
+  p1 : Int32,
+  p2 : Int32,
+  p3 : Int32,
+) -> Unit {
   write_csi3(buf, p1, p2, p3, b'm')
 }
 
 ///|
 /// Construct an SGR sequence with three parameters.
-pub fn sgr3(p1 : Int, p2 : Int, p3 : Int) -> Bytes {
+pub fn sgr3(p1 : Int32, p2 : Int32, p3 : Int32) -> Bytes {
   let len1 = count_decimal_digits(p1)
   let len2 = count_decimal_digits(p2)
   let len3 = count_decimal_digits(p3)
@@ -73,18 +78,24 @@ pub fn sgr3(p1 : Int, p2 : Int, p3 : Int) -> Bytes {
 /// Construct an SGR sequence with five parameters.
 pub fn write_sgr5(
   buf : @buffer.Buffer,
-  p1 : Int,
-  p2 : Int,
-  p3 : Int,
-  p4 : Int,
-  p5 : Int,
+  p1 : Int32,
+  p2 : Int32,
+  p3 : Int32,
+  p4 : Int32,
+  p5 : Int32,
 ) -> Unit {
   write_csi5(buf, p1, p2, p3, p4, p5, b'm')
 }
 
 ///|
 /// Construct an SGR sequence with five parameters.
-pub fn sgr5(p1 : Int, p2 : Int, p3 : Int, p4 : Int, p5 : Int) -> Bytes {
+pub fn sgr5(
+  p1 : Int32,
+  p2 : Int32,
+  p3 : Int32,
+  p4 : Int32,
+  p5 : Int32,
+) -> Bytes {
   let len1 = count_decimal_digits(p1)
   let len2 = count_decimal_digits(p2)
   let len3 = count_decimal_digits(p3)
@@ -96,7 +107,7 @@ pub fn sgr5(p1 : Int, p2 : Int, p3 : Int, p4 : Int, p5 : Int) -> Bytes {
 }
 
 ///|
-fn clamp_byte_value(value : Int) -> Int {
+fn clamp_byte_value(value : Int32) -> Int32 {
   if value < 0 {
     0
   } else if value > 255 {
@@ -107,7 +118,7 @@ fn clamp_byte_value(value : Int) -> Int {
 }
 
 ///|
-fn basic_foreground_code(color : @color.BasicColor) -> Int {
+fn basic_foreground_code(color : @color.BasicColor) -> Int32 {
   match color {
     Black => 30
     Red => 31
@@ -129,7 +140,7 @@ fn basic_foreground_code(color : @color.BasicColor) -> Int {
 }
 
 ///|
-fn basic_background_code(color : @color.BasicColor) -> Int {
+fn basic_background_code(color : @color.BasicColor) -> Int32 {
   match color {
     Black => 40
     Red => 41
