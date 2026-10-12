@@ -3,8 +3,8 @@
 ///
 /// Rows and columns are 1-based terminal coordinates.
 pub struct CursorPosition {
-  row : Int
-  col : Int
+  row : Int32
+  col : Int32
 } derive(Eq, Debug)
 
 ///|
@@ -117,7 +117,10 @@ pub fn Tty::close(self : Self) -> Unit {
 ///
 /// `esc_timeout_ms` controls the short wait used to distinguish a standalone
 /// Escape key from the start of a longer escape sequence.
-pub async fn Tty::read_event(self : Self, esc_timeout_ms? : Int = 50) -> Event {
+pub async fn Tty::read_event(
+  self : Self,
+  esc_timeout_ms~ : Int32 = 50,
+) -> Event {
   if self.pending_input.length() > 0 {
     return Input(self.pending_input.remove(0))
   }
@@ -127,7 +130,7 @@ pub async fn Tty::read_event(self : Self, esc_timeout_ms? : Int = 50) -> Event {
 ///|
 async fn read_decoded_input_event(
   reader : @input.EventReader,
-  esc_timeout_ms : Int,
+  esc_timeout_ms : Int32,
 ) -> Event {
   for ;; {
     match reader.read_event(esc_timeout_ms~) {
@@ -143,7 +146,7 @@ async fn read_decoded_input_event(
 ///|
 async fn Tty::read_internal_event(
   self : Self,
-  esc_timeout_ms? : Int = 50,
+  esc_timeout_ms~ : Int32 = 50,
 ) -> @input.Event {
   self.read_internal_event_from_sources(esc_timeout_ms)
 }
@@ -177,7 +180,7 @@ pub async fn Tty::write_string(self : Self, string : String) -> Unit {
 /// for the terminal response is preserved for later `Tty::read_event` calls.
 pub async fn Tty::query_cursor_position(
   self : Self,
-  timeout_ms? : Int = 50,
+  timeout_ms~ : Int32 = 50,
 ) -> CursorPosition? {
   @async.with_timeout_opt(timeout_ms, () => {
     self.write(@vt.request_cursor_position)
@@ -200,7 +203,7 @@ pub async fn Tty::query_cursor_position(
 /// later `Tty::read_event` calls.
 pub async fn Tty::query_kitty_keyboard_support(
   self : Self,
-  timeout_ms? : Int = 50,
+  timeout_ms~ : Int32 = 50,
 ) -> Bool {
   match
     @async.with_timeout_opt(timeout_ms, () => {
@@ -229,7 +232,7 @@ pub async fn Tty::query_kitty_keyboard_support(
 /// later `Tty::read_event` calls.
 pub async fn Tty::query_default_foreground_color(
   self : Self,
-  timeout_ms? : Int = 50,
+  timeout_ms~ : Int32 = 50,
 ) -> @color.Rgb16? {
   self.query_dynamic_color(10, @vt.query_default_foreground_color, timeout_ms~)
 }
@@ -242,7 +245,7 @@ pub async fn Tty::query_default_foreground_color(
 /// later `Tty::read_event` calls.
 pub async fn Tty::query_default_background_color(
   self : Self,
-  timeout_ms? : Int = 50,
+  timeout_ms~ : Int32 = 50,
 ) -> @color.Rgb16? {
   self.query_dynamic_color(11, @vt.query_default_background_color, timeout_ms~)
 }
@@ -255,7 +258,7 @@ pub async fn Tty::query_default_background_color(
 /// later `Tty::read_event` calls.
 pub async fn Tty::query_cursor_color(
   self : Self,
-  timeout_ms? : Int = 50,
+  timeout_ms~ : Int32 = 50,
 ) -> @color.Rgb16? {
   self.query_dynamic_color(12, @vt.query_cursor_color, timeout_ms~)
 }
@@ -263,9 +266,9 @@ pub async fn Tty::query_cursor_color(
 ///|
 async fn Tty::query_dynamic_color(
   self : Self,
-  expected_code : Int,
+  expected_code : Int32,
   request : Bytes,
-  timeout_ms~ : Int,
+  timeout_ms~ : Int32,
 ) -> @color.Rgb16? {
   @async.with_timeout_opt(timeout_ms, () => {
     self.write(request)

@@ -1,6 +1,6 @@
 ///|
 /// Cursor Up (CUU), ECMA-48.
-pub fn write_cursor_up(buf : @buffer.Buffer, n : Int) -> Unit {
+pub fn write_cursor_up(buf : @buffer.Buffer, n : Int32) -> Unit {
   if n <= 1 {
     buf.write_bytes(b"\x1b[A")
   } else {
@@ -10,7 +10,7 @@ pub fn write_cursor_up(buf : @buffer.Buffer, n : Int) -> Unit {
 
 ///|
 /// Cursor Up (CUU), ECMA-48.
-pub fn cursor_up(n : Int) -> Bytes {
+pub fn cursor_up(n : Int32) -> Bytes {
   if n <= 1 {
     b"\x1b[A"
   } else {
@@ -36,7 +36,7 @@ pub let restore_cursor : Bytes = b"\x1b8"
 
 ///|
 /// Cursor Down (CUD), ECMA-48.
-pub fn write_cursor_down(buf : @buffer.Buffer, n : Int) -> Unit {
+pub fn write_cursor_down(buf : @buffer.Buffer, n : Int32) -> Unit {
   if n <= 1 {
     buf.write_bytes(b"\x1b[B")
   } else {
@@ -46,7 +46,7 @@ pub fn write_cursor_down(buf : @buffer.Buffer, n : Int) -> Unit {
 
 ///|
 /// Cursor Down (CUD), ECMA-48.
-pub fn cursor_down(n : Int) -> Bytes {
+pub fn cursor_down(n : Int32) -> Bytes {
   if n <= 1 {
     b"\x1b[B"
   } else {
@@ -56,7 +56,7 @@ pub fn cursor_down(n : Int) -> Bytes {
 
 ///|
 /// Cursor Forward (CUF), ECMA-48.
-pub fn write_cursor_forward(buf : @buffer.Buffer, n : Int) -> Unit {
+pub fn write_cursor_forward(buf : @buffer.Buffer, n : Int32) -> Unit {
   if n <= 1 {
     buf.write_bytes(b"\x1b[C")
   } else {
@@ -66,7 +66,7 @@ pub fn write_cursor_forward(buf : @buffer.Buffer, n : Int) -> Unit {
 
 ///|
 /// Cursor Forward (CUF), ECMA-48.
-pub fn cursor_forward(n : Int) -> Bytes {
+pub fn cursor_forward(n : Int32) -> Bytes {
   if n <= 1 {
     b"\x1b[C"
   } else {
@@ -76,7 +76,7 @@ pub fn cursor_forward(n : Int) -> Bytes {
 
 ///|
 /// Cursor Backward (CUB), ECMA-48.
-pub fn write_cursor_back(buf : @buffer.Buffer, n : Int) -> Unit {
+pub fn write_cursor_back(buf : @buffer.Buffer, n : Int32) -> Unit {
   if n <= 1 {
     buf.write_bytes(b"\x1b[D")
   } else {
@@ -86,7 +86,7 @@ pub fn write_cursor_back(buf : @buffer.Buffer, n : Int) -> Unit {
 
 ///|
 /// Cursor Backward (CUB), ECMA-48.
-pub fn cursor_back(n : Int) -> Bytes {
+pub fn cursor_back(n : Int32) -> Bytes {
   if n <= 1 {
     b"\x1b[D"
   } else {
@@ -96,7 +96,7 @@ pub fn cursor_back(n : Int) -> Bytes {
 
 ///|
 /// Cursor Next Line (CNL), ECMA-48.
-pub fn write_cursor_next_line(buf : @buffer.Buffer, n : Int) -> Unit {
+pub fn write_cursor_next_line(buf : @buffer.Buffer, n : Int32) -> Unit {
   if n <= 1 {
     buf.write_bytes(b"\x1b[E")
   } else {
@@ -106,7 +106,7 @@ pub fn write_cursor_next_line(buf : @buffer.Buffer, n : Int) -> Unit {
 
 ///|
 /// Cursor Next Line (CNL), ECMA-48.
-pub fn cursor_next_line(n : Int) -> Bytes {
+pub fn cursor_next_line(n : Int32) -> Bytes {
   if n <= 1 {
     b"\x1b[E"
   } else {
@@ -116,7 +116,7 @@ pub fn cursor_next_line(n : Int) -> Bytes {
 
 ///|
 /// Cursor Previous Line (CPL), ECMA-48.
-pub fn write_cursor_prev_line(buf : @buffer.Buffer, n : Int) -> Unit {
+pub fn write_cursor_prev_line(buf : @buffer.Buffer, n : Int32) -> Unit {
   if n <= 1 {
     buf.write_bytes(b"\x1b[F")
   } else {
@@ -126,7 +126,7 @@ pub fn write_cursor_prev_line(buf : @buffer.Buffer, n : Int) -> Unit {
 
 ///|
 /// Cursor Previous Line (CPL), ECMA-48.
-pub fn cursor_prev_line(n : Int) -> Bytes {
+pub fn cursor_prev_line(n : Int32) -> Bytes {
   if n <= 1 {
     b"\x1b[F"
   } else {
@@ -136,7 +136,10 @@ pub fn cursor_prev_line(n : Int) -> Bytes {
 
 ///|
 /// Cursor Character Absolute (CHA), ECMA-48.
-pub fn write_cursor_horizontal_absolute(buf : @buffer.Buffer, n : Int) -> Unit {
+pub fn write_cursor_horizontal_absolute(
+  buf : @buffer.Buffer,
+  n : Int32,
+) -> Unit {
   if n <= 1 {
     buf.write_bytes(b"\x1b[G")
   } else {
@@ -146,7 +149,7 @@ pub fn write_cursor_horizontal_absolute(buf : @buffer.Buffer, n : Int) -> Unit {
 
 ///|
 /// Cursor Character Absolute (CHA), ECMA-48.
-pub fn cursor_horizontal_absolute(n : Int) -> Bytes {
+pub fn cursor_horizontal_absolute(n : Int32) -> Bytes {
   if n <= 1 {
     b"\x1b[G"
   } else {
@@ -160,8 +163,8 @@ pub fn cursor_horizontal_absolute(n : Int) -> Bytes {
 /// `row` and `col` are 1-based. Values less than 1 are treated as 1.
 pub fn write_cursor_position(
   buf : @buffer.Buffer,
-  row : Int,
-  col : Int,
+  row : Int32,
+  col : Int32,
 ) -> Unit {
   let row = if row <= 1 { 1 } else { row }
   let col = if col <= 1 { 1 } else { col }
@@ -176,7 +179,7 @@ pub fn write_cursor_position(
 /// Cursor Position (CUP), ECMA-48.
 ///
 /// `row` and `col` are 1-based. Values less than 1 are treated as 1.
-pub fn cursor_position(row : Int, col : Int) -> Bytes {
+pub fn cursor_position(row : Int32, col : Int32) -> Bytes {
   let row = if row <= 1 { 1 } else { row }
   let col = if col <= 1 { 1 } else { col }
   if row == 1 && col == 1 {

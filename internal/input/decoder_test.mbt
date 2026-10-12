@@ -18,7 +18,7 @@ async fn with_input(
 async fn with_delayed_input(
   first : Bytes,
   second : Bytes,
-  delay : Int,
+  delay : Int32,
   f : async (@input.EventReader) -> Unit,
 ) -> Unit {
   @async.with_task_group() <| group => {

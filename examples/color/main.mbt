@@ -10,7 +10,7 @@ async fn writeln(tty : @tty.Tty, text : String) -> Unit {
 }
 
 ///|
-fn pad_right(text : String, width : Int) -> String {
+fn pad_right(text : String, width : Int32) -> String {
   if text.length() >= width {
     text
   } else {
@@ -19,7 +19,7 @@ fn pad_right(text : String, width : Int) -> String {
 }
 
 ///|
-fn basic_color(index : Int) -> @tty_color.BasicColor {
+fn basic_color(index : Int32) -> @tty_color.BasicColor {
   match index {
     0 => Black
     1 => Red
@@ -41,7 +41,7 @@ fn basic_color(index : Int) -> @tty_color.BasicColor {
 }
 
 ///|
-fn basic_name(index : Int) -> String {
+fn basic_name(index : Int32) -> String {
   match index {
     0 => "black"
     1 => "red"
@@ -63,7 +63,7 @@ fn basic_name(index : Int) -> String {
 }
 
 ///|
-fn light_basic_background(index : Int) -> Bool {
+fn light_basic_background(index : Int32) -> Bool {
   index == 3 ||
   index == 6 ||
   index == 7 ||
@@ -110,7 +110,7 @@ async fn write_basic_backgrounds(tty : @tty.Tty) -> Unit {
 }
 
 ///|
-async fn write_index_swatch(tty : @tty.Tty, index : Int) -> Unit {
+async fn write_index_swatch(tty : @tty.Tty, index : Int32) -> Unit {
   tty.set_background(Indexed(index))
   write(tty, "  ")
   tty.reset_style()

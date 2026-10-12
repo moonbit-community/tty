@@ -1,10 +1,10 @@
 ///|
-let esc_timeout_ms : Int = 50
+let esc_timeout_ms : Int32 = 50
 
 ///|
 priv struct PagerSize {
-  rows : Int
-  cols : Int
+  rows : Int32
+  cols : Int32
 }
 
 ///|
@@ -49,7 +49,7 @@ fn parse_cli_args() -> PagerArgs raise {
 }
 
 ///|
-fn clamp(value : Int, min : Int, max : Int) -> Int {
+fn clamp(value : Int32, min : Int32, max : Int32) -> Int32 {
   if value < min {
     min
   } else if value > max {
@@ -81,7 +81,7 @@ fn terminal_size(tty : @tty.Tty) -> PagerSize {
 }
 
 ///|
-fn body_rows(size : PagerSize) -> Int {
+fn body_rows(size : PagerSize) -> Int32 {
   if size.rows <= 1 {
     1
   } else {
@@ -90,7 +90,7 @@ fn body_rows(size : PagerSize) -> Int {
 }
 
 ///|
-fn status_row(size : PagerSize) -> Int {
+fn status_row(size : PagerSize) -> Int32 {
   if size.rows <= 1 {
     1
   } else {
@@ -99,7 +99,7 @@ fn status_row(size : PagerSize) -> Int {
 }
 
 ///|
-fn page_step(size : PagerSize) -> Int {
+fn page_step(size : PagerSize) -> Int32 {
   let rows = body_rows(size)
   if rows <= 1 {
     1
@@ -109,7 +109,7 @@ fn page_step(size : PagerSize) -> Int {
 }
 
 ///|
-fn max_offset(lines : Array[String], rows : Int) -> Int {
+fn max_offset(lines : Array[String], rows : Int32) -> Int32 {
   let value = lines.length() - rows
   if value < 0 {
     0
@@ -119,7 +119,7 @@ fn max_offset(lines : Array[String], rows : Int) -> Int {
 }
 
 ///|
-fn clamp_offset(offset : Int, lines : Array[String], rows : Int) -> Int {
+fn clamp_offset(offset : Int32, lines : Array[String], rows : Int32) -> Int32 {
   clamp(offset, 0, max_offset(lines, rows))
 }
 
@@ -144,7 +144,7 @@ async fn load_content(args : PagerArgs) -> (String, Array[String]) {
 }
 
 ///|
-fn fit_line(text : String, cols : Int) -> String {
+fn fit_line(text : String, cols : Int32) -> String {
   if cols <= 0 {
     ""
   } else {
@@ -163,7 +163,7 @@ fn fit_line(text : String, cols : Int) -> String {
 }
 
 ///|
-fn line_at(lines : Array[String], index : Int) -> String {
+fn line_at(lines : Array[String], index : Int32) -> String {
   if index < 0 || index >= lines.length() {
     ""
   } else {
@@ -174,9 +174,9 @@ fn line_at(lines : Array[String], index : Int) -> String {
 ///|
 async fn render_content_row(
   tty : @tty.Tty,
-  row : Int,
+  row : Int32,
   text : String,
-  cols : Int,
+  cols : Int32,
 ) -> Unit {
   tty.set_cursor_position(row, 1)
   tty.erase_line_all()
@@ -188,7 +188,7 @@ async fn render_status(
   tty : @tty.Tty,
   title : String,
   lines : Array[String],
-  offset : Int,
+  offset : Int32,
   size : PagerSize,
 ) -> Unit {
   tty.set_cursor_position(status_row(size), 1)
@@ -200,7 +200,7 @@ async fn render_status_current(
   tty : @tty.Tty,
   title : String,
   lines : Array[String],
-  offset : Int,
+  offset : Int32,
   size : PagerSize,
 ) -> Unit {
   let rows = body_rows(size)
@@ -221,7 +221,7 @@ async fn render_status_current(
 async fn write_inline_content_row(
   tty : @tty.Tty,
   text : String,
-  cols : Int,
+  cols : Int32,
 ) -> Unit {
   tty.write(fit_line(text, cols))
   tty.write("\r\n")
@@ -232,7 +232,7 @@ async fn render_initial(
   tty : @tty.Tty,
   title : String,
   lines : Array[String],
-  offset : Int,
+  offset : Int32,
   size : PagerSize,
 ) -> Unit {
   let rows = body_rows(size)
@@ -257,7 +257,7 @@ async fn render_full(
   tty : @tty.Tty,
   title : String,
   lines : Array[String],
-  offset : Int,
+  offset : Int32,
   size : PagerSize,
 ) -> Unit {
   let rows = body_rows(size)
@@ -273,7 +273,7 @@ async fn scroll_forward_one(
   tty : @tty.Tty,
   title : String,
   lines : Array[String],
-  offset : Int,
+  offset : Int32,
   size : PagerSize,
 ) -> Unit {
   let rows = body_rows(size)
@@ -289,7 +289,7 @@ async fn scroll_backward_one(
   tty : @tty.Tty,
   title : String,
   lines : Array[String],
-  offset : Int,
+  offset : Int32,
   size : PagerSize,
 ) -> Unit {
   let rows = body_rows(size)
@@ -310,8 +310,8 @@ async fn redraw(
   tty : @tty.Tty,
   title : String,
   lines : Array[String],
-  old_offset : Int,
-  new_offset : Int,
+  old_offset : Int32,
+  new_offset : Int32,
   old_size : PagerSize,
   new_size : PagerSize,
 ) -> Unit {

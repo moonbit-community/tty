@@ -102,32 +102,32 @@ pub async fn[T] Tty::with_focus_tracking(self : Self, f : async () -> T) -> T {
 }
 
 ///|
-const KeyboardDisambiguateEscapeCodes : Int = 1
+const KeyboardDisambiguateEscapeCodes : Int32 = 1
 
 ///|
-const KeyboardReportEventTypes : Int = 2
+const KeyboardReportEventTypes : Int32 = 2
 
 ///|
-const KeyboardReportAlternateKeys : Int = 4
+const KeyboardReportAlternateKeys : Int32 = 4
 
 ///|
-const KeyboardReportAllKeysAsEscapeCodes : Int = 8
+const KeyboardReportAllKeysAsEscapeCodes : Int32 = 8
 
 ///|
-const KeyboardReportAssociatedText : Int = 16
+const KeyboardReportAssociatedText : Int32 = 16
 
 ///|
 /// Kitty keyboard protocol progressive enhancement flags.
-struct KeyboardEnhancementFlags(Int) derive(Eq, Debug)
+struct KeyboardEnhancementFlags(Int32) derive(Eq, Debug)
 
 ///|
 /// Construct kitty keyboard protocol progressive enhancement flags.
 pub fn KeyboardEnhancementFlags::new(
-  disambiguate_escape_codes? : Bool = false,
-  report_event_types? : Bool = false,
-  report_alternate_keys? : Bool = false,
-  report_all_keys_as_escape_codes? : Bool = false,
-  report_associated_text? : Bool = false,
+  disambiguate_escape_codes~ : Bool = false,
+  report_event_types~ : Bool = false,
+  report_alternate_keys~ : Bool = false,
+  report_all_keys_as_escape_codes~ : Bool = false,
+  report_associated_text~ : Bool = false,
 ) -> KeyboardEnhancementFlags {
   let mut bits = 0
   if disambiguate_escape_codes {
@@ -168,7 +168,7 @@ pub fn KeyboardEnhancementFlags::full() -> KeyboardEnhancementFlags {
 
 ///|
 /// Return the raw kitty protocol bitset.
-pub fn KeyboardEnhancementFlags::bits(self : KeyboardEnhancementFlags) -> Int {
+pub fn KeyboardEnhancementFlags::bits(self : KeyboardEnhancementFlags) -> Int32 {
   self.0
 }
 
@@ -331,27 +331,27 @@ pub async fn Tty::set_clipboard(self : Self, text : StringView) -> Unit {
 /// Move the terminal cursor to a 1-based row and column.
 pub async fn Tty::set_cursor_position(
   self : Self,
-  row : Int,
-  col : Int,
+  row : Int32,
+  col : Int32,
 ) -> Unit {
   self.write(@vt.cursor_position(row, col))
 }
 
 ///|
 /// Cursor Up (CUU), ECMA-48.
-pub async fn Tty::cursor_up(self : Self, n : Int) -> Unit {
+pub async fn Tty::cursor_up(self : Self, n : Int32) -> Unit {
   self.write(@vt.cursor_up(n))
 }
 
 ///|
 /// Cursor Forward (CUF), ECMA-48.
-pub async fn Tty::cursor_forward(self : Self, n : Int) -> Unit {
+pub async fn Tty::cursor_forward(self : Self, n : Int32) -> Unit {
   self.write(@vt.cursor_forward(n))
 }
 
 ///|
 /// Cursor Back (CUB), ECMA-48.
-pub async fn Tty::cursor_back(self : Self, n : Int) -> Unit {
+pub async fn Tty::cursor_back(self : Self, n : Int32) -> Unit {
   self.write(@vt.cursor_back(n))
 }
 
@@ -377,8 +377,8 @@ pub async fn Tty::erase_scrollback(self : Self) -> Unit {
 /// Set Top and Bottom Margins (DECSTBM).
 pub async fn Tty::set_top_bottom_margins(
   self : Self,
-  top : Int,
-  bottom : Int,
+  top : Int32,
+  bottom : Int32,
 ) -> Unit {
   self.write(@vt.set_top_bottom_margins(top, bottom))
 }

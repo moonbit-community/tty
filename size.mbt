@@ -1,8 +1,8 @@
 ///|
 /// Terminal window size in rows and columns.
 pub struct WindowSize {
-  rows : Int
-  cols : Int
+  rows : Int32
+  cols : Int32
 } derive(Eq, Debug)
 
 ///|
@@ -21,9 +21,9 @@ pub fn Tty::window_size(self : Self) -> WindowSize raise @os_error.OSError {
 #borrow(rows, cols)
 extern "c" fn tty_get_window_size(
   fd : @async/types.Fd,
-  rows : Ref[Int],
-  cols : Ref[Int],
-) -> Int = "moonbit_tty_get_window_size"
+  rows : Ref[Int32],
+  cols : Ref[Int32],
+) -> Int32 = "moonbit_tty_get_window_size"
 
 ///|
 pub extend WindowSize with Eq::{equal, not_equal}

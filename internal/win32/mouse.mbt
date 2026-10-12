@@ -82,8 +82,8 @@ fn MouseRecord::modifiers(self : MouseRecord) -> @public_input.KeyModifiers {
 
 ///|
 fn newly_pressed_mouse_button(
-  previous : Int,
-  buttons : Int,
+  previous : Int32,
+  buttons : Int32,
 ) -> @public_input.MouseButton? {
   if (buttons & MouseLeftButton) != 0 && (previous & MouseLeftButton) == 0 {
     Some(Left)
@@ -100,8 +100,8 @@ fn newly_pressed_mouse_button(
 
 ///|
 fn newly_released_mouse_button(
-  previous : Int,
-  buttons : Int,
+  previous : Int32,
+  buttons : Int32,
 ) -> @public_input.MouseButton? {
   if (previous & MouseLeftButton) != 0 && (buttons & MouseLeftButton) == 0 {
     Some(Left)
@@ -117,7 +117,7 @@ fn newly_released_mouse_button(
 }
 
 ///|
-fn mouse_button_from_state(state : Int) -> @public_input.MouseButton? {
+fn mouse_button_from_state(state : Int32) -> @public_input.MouseButton? {
   if (state & MouseLeftButton) != 0 {
     Some(Left)
   } else if (state & MouseMiddleButton) != 0 {
@@ -130,7 +130,7 @@ fn mouse_button_from_state(state : Int) -> @public_input.MouseButton? {
 }
 
 ///|
-fn signed_high_word(value : Int) -> Int {
+fn signed_high_word(value : Int32) -> Int32 {
   let low_word = value & 0xffff
   (value - low_word) / 0x10000
 }

@@ -22,20 +22,20 @@ pub(all) enum Command {
   ShowCursor
   SaveCursor
   RestoreCursor
-  CursorUp(Int)
-  CursorDown(Int)
-  CursorForward(Int)
-  CursorBack(Int)
-  CursorNextLine(Int)
-  CursorPrevLine(Int)
-  CursorHorizontalAbsolute(Int)
-  CursorPosition(Int, Int)
+  CursorUp(Int32)
+  CursorDown(Int32)
+  CursorForward(Int32)
+  CursorBack(Int32)
+  CursorNextLine(Int32)
+  CursorPrevLine(Int32)
+  CursorHorizontalAbsolute(Int32)
+  CursorPosition(Int32, Int32)
   EraseLineAll
   EraseLineLeft
   EraseLineRight
   EraseDisplay
   EraseScrollback
-  SetTopBottomMargins(Int, Int)
+  SetTopBottomMargins(Int32, Int32)
   ResetTopBottomMargins
   ReverseIndex
   SetForeground(@color.Color)

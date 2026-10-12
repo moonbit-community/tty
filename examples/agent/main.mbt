@@ -1,19 +1,19 @@
 ///|
-let esc_timeout_ms : Int = 50
+let esc_timeout_ms : Int32 = 50
 
 ///|
-let queued_submit_delay_ms : Int = 1000
+let queued_submit_delay_ms : Int32 = 1000
 
 ///|
-let input_text_rows : Int = 2
+let input_text_rows : Int32 = 2
 
 ///|
-let composer_rows : Int = input_text_rows + 2
+let composer_rows : Int32 = input_text_rows + 2
 
 ///|
 priv struct AgentSize {
-  rows : Int
-  cols : Int
+  rows : Int32
+  cols : Int32
 }
 
 ///|
@@ -21,7 +21,7 @@ priv enum AgentEvent {
   Terminal(@tty.Event)
   TerminalClosed
   QueuedInput(text~ : String, shell_mode~ : Bool)
-  ShellResult(command~ : String, exit_code~ : Int, output~ : String)
+  ShellResult(command~ : String, exit_code~ : Int32, output~ : String)
 }
 
 ///|
@@ -46,12 +46,12 @@ fn terminal_size(tty : @tty.Tty) -> AgentSize {
 }
 
 ///|
-fn display_width(text : String) -> Int {
+fn display_width(text : String) -> Int32 {
   @unicodewidth.str_width(text)
 }
 
 ///|
-fn fit_line(text : String, cols : Int) -> String {
+fn fit_line(text : String, cols : Int32) -> String {
   if cols <= 0 {
     ""
   } else {
@@ -75,7 +75,7 @@ fn split_input_lines(text : String) -> Array[String] {
 }
 
 ///|
-fn line_at(lines : Array[String], index : Int) -> String {
+fn line_at(lines : Array[String], index : Int32) -> String {
   if index < 0 || index >= lines.length() {
     ""
   } else {
@@ -84,7 +84,7 @@ fn line_at(lines : Array[String], index : Int) -> String {
 }
 
 ///|
-fn clamp_int(value : Int, min_value : Int, max_value : Int) -> Int {
+fn clamp_int(value : Int32, min_value : Int32, max_value : Int32) -> Int32 {
   if value < min_value {
     min_value
   } else if value > max_value {
@@ -95,12 +95,12 @@ fn clamp_int(value : Int, min_value : Int, max_value : Int) -> Int {
 }
 
 ///|
-fn grapheme_count(text : String) -> Int {
+fn grapheme_count(text : String) -> Int32 {
   @grapheme.graphemes(text).length()
 }
 
 ///|
-fn grapheme_slice(text : String, start : Int, end : Int) -> String {
+fn grapheme_slice(text : String, start : Int32, end : Int32) -> String {
   let graphemes = @grapheme.graphemes(text)
   let length = graphemes.length()
   let start = clamp_int(start, 0, length)
@@ -114,17 +114,17 @@ fn is_newline_grapheme(grapheme : StringView) -> Bool {
 }
 
 ///|
-fn line_count(text : String) -> Int {
+fn line_count(text : String) -> Int32 {
   split_input_lines(text).length()
 }
 
 ///|
-fn line_display_width(lines : Array[String], line : Int) -> Int {
+fn line_display_width(lines : Array[String], line : Int32) -> Int32 {
   display_width(line_at(lines, line))
 }
 
 ///|
-fn max_view_start(text : String) -> Int {
+fn max_view_start(text : String) -> Int32 {
   let value = line_count(text) - input_text_rows
   if value < 0 {
     0
@@ -134,19 +134,19 @@ fn max_view_start(text : String) -> Int {
 }
 
 ///|
-fn clamp_view_start(text : String, view_start : Int) -> Int {
+fn clamp_view_start(text : String, view_start : Int32) -> Int32 {
   clamp_int(view_start, 0, max_view_start(text))
 }
 
 ///|
 priv struct CursorPoint {
-  line : Int
-  grapheme_column : Int
-  display_column : Int
+  line : Int32
+  grapheme_column : Int32
+  display_column : Int32
 }
 
 ///|
-fn cursor_point_for(text : String, cursor : Int) -> CursorPoint {
+fn cursor_point_for(text : String, cursor : Int32) -> CursorPoint {
   let target = clamp_int(cursor, 0, grapheme_count(text))
   let mut index = 0
   let mut line = 0
@@ -170,7 +170,7 @@ fn cursor_point_for(text : String, cursor : Int) -> CursorPoint {
 }
 
 ///|
-fn line_start_cursor(text : String, line : Int) -> Int {
+fn line_start_cursor(text : String, line : Int32) -> Int32 {
   let line = clamp_int(line, 0, line_count(text) - 1)
   if line == 0 {
     0
@@ -193,9 +193,9 @@ fn line_start_cursor(text : String, line : Int) -> Int {
 ///|
 fn cursor_for_line_display_column(
   text : String,
-  line : Int,
-  display_column : Int,
-) -> Int {
+  line : Int32,
+  display_column : Int32,
+) -> Int32 {
   let lines = split_input_lines(text)
   let line = clamp_int(line, 0, lines.length() - 1)
   let target = clamp_int(display_column, 0, line_display_width(lines, line))
@@ -213,7 +213,11 @@ fn cursor_for_line_display_column(
 }
 
 ///|
-fn ensure_cursor_visible(text : String, cursor : Int, view_start : Int) -> Int {
+fn ensure_cursor_visible(
+  text : String,
+  cursor : Int32,
+  view_start : Int32,
+) -> Int32 {
   let point = cursor_point_for(text, cursor)
   let mut start = clamp_view_start(text, view_start)
   if point.line < start {
@@ -227,19 +231,19 @@ fn ensure_cursor_visible(text : String, cursor : Int, view_start : Int) -> Int {
 ///|
 priv struct Editor {
   text : String
-  cursor : Int
-  preferred_column : Int?
-  view_start : Int
+  cursor : Int32
+  preferred_column : Int32?
+  view_start : Int32
   shell_mode : Bool
 }
 
 ///|
 fn make_editor(
   text : String,
-  cursor : Int,
-  preferred_column : Int?,
-  view_start : Int,
-  shell_mode? : Bool = false,
+  cursor : Int32,
+  preferred_column : Int32?,
+  view_start : Int32,
+  shell_mode~ : Bool = false,
 ) -> Editor {
   let cursor = clamp_int(cursor, 0, grapheme_count(text))
   let view_start = ensure_cursor_visible(text, cursor, view_start)
@@ -264,8 +268,8 @@ fn Editor::cursor_point(self : Editor) -> CursorPoint {
 ///|
 fn Editor::move_to_cursor(
   self : Editor,
-  cursor : Int,
-  preferred_column : Int?,
+  cursor : Int32,
+  preferred_column : Int32?,
 ) -> Editor {
   make_editor(
     self.text,
@@ -386,7 +390,7 @@ fn Editor::move_end(self : Editor) -> Editor {
 }
 
 ///|
-fn Editor::move_vertical(self : Editor, delta : Int) -> Editor {
+fn Editor::move_vertical(self : Editor, delta : Int32) -> Editor {
   let point = self.cursor_point()
   let lines = split_input_lines(self.text)
   let target_line = clamp_int(point.line + delta, 0, lines.length() - 1)
@@ -399,9 +403,9 @@ fn Editor::move_vertical(self : Editor, delta : Int) -> Editor {
 
 ///|
 fn input_prefix(
-  row_index : Int,
-  start : Int,
-  shell_mode? : Bool = false,
+  row_index : Int32,
+  start : Int32,
+  shell_mode~ : Bool = false,
 ) -> String {
   if start == 0 && row_index == 0 {
     if shell_mode {
@@ -415,7 +419,7 @@ fn input_prefix(
 }
 
 ///|
-fn editor_cursor_row(editor : Editor) -> Int {
+fn editor_cursor_row(editor : Editor) -> Int32 {
   let row = editor.cursor_point().line - editor.view_start
   if row < 0 {
     0
@@ -427,7 +431,7 @@ fn editor_cursor_row(editor : Editor) -> Int {
 }
 
 ///|
-fn input_cursor_offset(editor : Editor, cols : Int) -> Int {
+fn input_cursor_offset(editor : Editor, cols : Int32) -> Int32 {
   let lines = split_input_lines(editor.text)
   let point = editor.cursor_point()
   let row = editor_cursor_row(editor)
@@ -443,7 +447,7 @@ fn input_cursor_offset(editor : Editor, cols : Int) -> Int {
 }
 
 ///|
-fn viewport_top_from_cursor(row : Int, editor : Editor) -> Int {
+fn viewport_top_from_cursor(row : Int32, editor : Editor) -> Int32 {
   let top = row - editor_cursor_row(editor) - 1
   if top < 1 {
     1
@@ -453,7 +457,7 @@ fn viewport_top_from_cursor(row : Int, editor : Editor) -> Int {
 }
 
 ///|
-fn max_viewport_top(size : AgentSize) -> Int {
+fn max_viewport_top(size : AgentSize) -> Int32 {
   let top = size.rows - composer_rows + 1
   if top < 1 {
     1
@@ -463,17 +467,17 @@ fn max_viewport_top(size : AgentSize) -> Int {
 }
 
 ///|
-fn clamp_viewport_top(top : Int, size : AgentSize) -> Int {
+fn clamp_viewport_top(top : Int32, size : AgentSize) -> Int32 {
   clamp_int(top, 1, max_viewport_top(size))
 }
 
 ///|
-fn viewport_bottom(top : Int) -> Int {
+fn viewport_bottom(top : Int32) -> Int32 {
   top + composer_rows - 1
 }
 
 ///|
-fn min_int(a : Int, b : Int) -> Int {
+fn min_int(a : Int32, b : Int32) -> Int32 {
   if a < b {
     a
   } else {
@@ -519,7 +523,7 @@ fn shell_args(command : String) -> Array[String] {
 ///|
 fn format_shell_result(
   command : String,
-  exit_code : Int,
+  exit_code : Int32,
   output : String,
 ) -> String {
   let output = output
@@ -546,14 +550,14 @@ async fn write(tty : @tty.Tty, text : String) -> Unit {
 }
 
 ///|
-async fn move_up(tty : @tty.Tty, rows : Int) -> Unit {
+async fn move_up(tty : @tty.Tty, rows : Int32) -> Unit {
   if rows > 0 {
     tty.cursor_up(rows)
   }
 }
 
 ///|
-async fn move_forward(tty : @tty.Tty, cols : Int) -> Unit {
+async fn move_forward(tty : @tty.Tty, cols : Int32) -> Unit {
   if cols > 0 {
     tty.cursor_forward(cols)
   }
@@ -577,7 +581,7 @@ async fn erase_current_line(tty : @tty.Tty) -> Unit {
 }
 
 ///|
-async fn render_separator_current(tty : @tty.Tty, cols : Int) -> Unit {
+async fn render_separator_current(tty : @tty.Tty, cols : Int32) -> Unit {
   erase_current_line(tty)
   tty.set_foreground(Basic(BrightBlack))
   write(tty, String::make(cols, '-'))
@@ -589,7 +593,7 @@ async fn render_prompt_current(
   tty : @tty.Tty,
   prefix : String,
   line : String,
-  cols : Int,
+  cols : Int32,
 ) -> Unit {
   erase_current_line(tty)
   write_colored_text(tty, BrightGreen, prefix)
@@ -600,7 +604,7 @@ async fn render_prompt_current(
 async fn render_status_current(
   tty : @tty.Tty,
   status : String,
-  cols : Int,
+  cols : Int32,
 ) -> Unit {
   erase_current_line(tty)
   tty.set_foreground(Basic(BrightBlack))
@@ -672,7 +676,7 @@ async fn redraw_input_from(
 ///|
 async fn render_input_at_top(
   tty : @tty.Tty,
-  top : Int,
+  top : Int32,
   editor : Editor,
   status : String,
   size : AgentSize,
@@ -698,7 +702,7 @@ async fn render_input_at_top(
 ///|
 async fn place_input_cursor_at_top(
   tty : @tty.Tty,
-  top : Int,
+  top : Int32,
   editor : Editor,
   size : AgentSize,
 ) -> Unit {
@@ -711,7 +715,7 @@ async fn place_input_cursor_at_top(
 ///|
 async fn redraw_input_at_top(
   tty : @tty.Tty,
-  top : Int,
+  top : Int32,
   editor : Editor,
   status : String,
   size : AgentSize,
@@ -845,10 +849,10 @@ async fn append_shell(
 ///|
 async fn shift_viewport_down_for_insert(
   tty : @tty.Tty,
-  top : Int,
-  lines : Int,
+  top : Int32,
+  lines : Int32,
   size : AgentSize,
-) -> Int {
+) -> Int32 {
   let space = size.rows - viewport_bottom(top)
   let shift = min_int(lines, if space < 0 { 0 } else { space })
   if shift <= 0 {
@@ -867,7 +871,7 @@ async fn shift_viewport_down_for_insert(
 ///|
 async fn insert_transcript_row_above_viewport(
   tty : @tty.Tty,
-  top : Int,
+  top : Int32,
   prefix : String,
   color : @color.BasicColor,
   text : String,
@@ -888,14 +892,14 @@ async fn insert_transcript_row_above_viewport(
 ///|
 async fn append_transcript_above_viewport(
   tty : @tty.Tty,
-  top : Int,
+  top : Int32,
   role : String,
   color : @color.BasicColor,
   text : String,
   editor : Editor,
   status : String,
   size : AgentSize,
-) -> Int {
+) -> Int32 {
   let prefix = "\{role}: "
   let continuation = String::make(display_width(prefix), ' ')
   let lines = split_input_lines(text)
@@ -919,12 +923,12 @@ async fn append_transcript_above_viewport(
 ///|
 async fn append_user_above_viewport(
   tty : @tty.Tty,
-  top : Int,
+  top : Int32,
   text : String,
   editor : Editor,
   status : String,
   size : AgentSize,
-) -> Int {
+) -> Int32 {
   append_transcript_above_viewport(
     tty,
     top,
@@ -940,12 +944,12 @@ async fn append_user_above_viewport(
 ///|
 async fn append_agent_above_viewport(
   tty : @tty.Tty,
-  top : Int,
+  top : Int32,
   text : String,
   editor : Editor,
   status : String,
   size : AgentSize,
-) -> Int {
+) -> Int32 {
   append_transcript_above_viewport(
     tty,
     top,
@@ -961,12 +965,12 @@ async fn append_agent_above_viewport(
 ///|
 async fn append_shell_above_viewport(
   tty : @tty.Tty,
-  top : Int,
+  top : Int32,
   text : String,
   editor : Editor,
   status : String,
   size : AgentSize,
-) -> Int {
+) -> Int32 {
   append_transcript_above_viewport(
     tty,
     top,
@@ -987,7 +991,7 @@ async fn restore_terminal(tty : @tty.Tty) -> Unit {
 }
 
 ///|
-fn exit_newline_count(editor : Editor) -> Int {
+fn exit_newline_count(editor : Editor) -> Int32 {
   input_text_rows - editor_cursor_row(editor) + 1
 }
 
@@ -995,7 +999,7 @@ fn exit_newline_count(editor : Editor) -> Int {
 async fn leave_agent(
   tty : @tty.Tty,
   editor : Editor,
-  viewport_top : Int?,
+  viewport_top : Int32?,
 ) -> Unit {
   restore_terminal(tty)
   match viewport_top {
@@ -1034,12 +1038,12 @@ fn is_newline_key(key : @tty/input.KeyEvent) -> Bool {
 ///|
 async fn redraw_input(
   tty : @tty.Tty,
-  viewport_top : Int?,
+  viewport_top : Int32?,
   old_editor : Editor,
   editor : Editor,
   status : String,
   size : AgentSize,
-) -> Int? {
+) -> Int32? {
   match viewport_top {
     Some(top) => {
       let top = clamp_viewport_top(top, size)
@@ -1058,7 +1062,7 @@ async fn detect_viewport_top(
   tty : @tty.Tty,
   editor : Editor,
   size : AgentSize,
-) -> Int? {
+) -> Int32? {
   try tty.query_cursor_position(timeout_ms=esc_timeout_ms) catch {
     _ => None
   } noraise {
@@ -1139,8 +1143,8 @@ async fn append_user_turn(
   editor : Editor,
   status : String,
   size : AgentSize,
-  viewport_top : Int?,
-) -> Int? {
+  viewport_top : Int32?,
+) -> Int32? {
   match viewport_top {
     Some(top) => {
       let top = clamp_viewport_top(top, size)
@@ -1158,11 +1162,11 @@ async fn append_user_turn(
 async fn append_shell_result(
   tty : @tty.Tty,
   command : String,
-  exit_code : Int,
+  exit_code : Int32,
   output : String,
   editor : Editor,
-  viewport_top : Int?,
-) -> Int? {
+  viewport_top : Int32?,
+) -> Int32? {
   let size = terminal_size(tty)
   let text = format_shell_result(command, exit_code, output)
   match viewport_top {
@@ -1189,8 +1193,8 @@ async fn submit_text(
   shell_mode : Bool,
   cursor_editor : Editor,
   editor : Editor,
-  viewport_top : Int?,
-) -> Int? {
+  viewport_top : Int32?,
+) -> Int32? {
   if shell_mode {
     let command = shell_command_text(text)
     let display_text = "!\{text}"
@@ -1237,7 +1241,7 @@ async fn run_agent(tty : @tty.Tty) -> Unit {
   @async.with_task_group() <| group => {
     let events : @aqueue.Queue[AgentEvent] = Queue(kind=Unbounded)
     let mut editor = Editor::new()
-    let mut viewport_top : Int? = None
+    let mut viewport_top : Int32? = None
     defer @async.protect_from_cancel(() => {
       leave_agent(tty, editor, viewport_top)
     })

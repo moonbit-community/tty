@@ -10,7 +10,7 @@ struct EventReader {
   byte_queue : @internal_io.ByteQueue
   decoder : @input.EventReader
   events : @async.Queue[Event]
-  pending_surrogate : Ref[Int]
+  pending_surrogate : Ref[Int32]
   mouse_button_state : MouseButtonState
 }
 
@@ -36,7 +36,7 @@ pub fn EventReader::close(self : EventReader) -> Unit {
 ///|
 pub async fn EventReader::read_event(
   self : EventReader,
-  esc_timeout_ms? : Int = 50,
+  esc_timeout_ms~ : Int32 = 50,
 ) -> Event? {
   @async.with_task_group() <| group => {
     group.spawn_bg(no_wait=true) <| () => { self.read_records() }
@@ -47,7 +47,7 @@ pub async fn EventReader::read_event(
 ///|
 pub async fn EventReader::read_internal_event(
   self : EventReader,
-  esc_timeout_ms? : Int = 50,
+  esc_timeout_ms~ : Int32 = 50,
 ) -> @input.Event {
   @async.with_task_group() <| group => {
     group.spawn_bg(no_wait=true) <| () => { self.read_records() }
@@ -58,7 +58,7 @@ pub async fn EventReader::read_internal_event(
 ///|
 async fn EventReader::read_input_event(
   self : EventReader,
-  esc_timeout_ms : Int,
+  esc_timeout_ms : Int32,
 ) -> Event? {
   @async.with_task_group() <| group => {
     group.spawn_bg(no_wait=true) <| () => {
@@ -76,7 +76,7 @@ async fn EventReader::read_input_event(
 ///|
 async fn EventReader::read_decoded_input_event(
   self : EventReader,
-  esc_timeout_ms : Int,
+  esc_timeout_ms : Int32,
 ) -> Event? {
   for ;; {
     match self.decoder.read_event(esc_timeout_ms~) {
@@ -178,17 +178,17 @@ fn EventReader::read_mouse_record(
 }
 
 ///|
-extern "c" fn sizeof_input_record() -> Int = "moonbit_tty_get_sizeof_input_record"
+extern "c" fn sizeof_input_record() -> Int32 = "moonbit_tty_get_sizeof_input_record"
 
 ///|
-let sizeof_win32_input_record : Int = sizeof_input_record()
+let sizeof_win32_input_record : Int32 = sizeof_input_record()
 
 ///|
 #borrow(record)
 extern "c" fn read_console_input_record_ffi(
   fd : @async/types.Fd,
   record : Bytes,
-) -> Int = "moonbit_tty_read_console_input_record"
+) -> Int32 = "moonbit_tty_read_console_input_record"
 
 ///|
 fn read_console_input_record(fd : @async/types.Fd) -> InputRecord? raise {

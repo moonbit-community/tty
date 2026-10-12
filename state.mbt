@@ -76,10 +76,10 @@ pub async fn[T] Tty::with_raw_mode(self : Self, f : async () -> T) -> T {
 }
 
 ///|
-extern "c" fn get_sizeof_state() -> Int = "moonbit_tty_get_sizeof_state"
+extern "c" fn get_sizeof_state() -> Int32 = "moonbit_tty_get_sizeof_state"
 
 ///|
-let sizeof_state : Int = get_sizeof_state()
+let sizeof_state : Int32 = get_sizeof_state()
 
 ///|
 fn State::new() -> State {
@@ -92,7 +92,7 @@ extern "c" fn tty_get_state(
   input_fd : @async/types.Fd,
   output_fd : @async/types.Fd,
   state : State,
-) -> Int = "moonbit_tty_get_state"
+) -> Int32 = "moonbit_tty_get_state"
 
 ///|
 #borrow(state)
@@ -100,7 +100,7 @@ extern "c" fn tty_set_state(
   input_fd : @async/types.Fd,
   output_fd : @async/types.Fd,
   state : State,
-) -> Int = "moonbit_tty_set_state"
+) -> Int32 = "moonbit_tty_set_state"
 
 ///|
 #borrow(state, raw)

@@ -14,7 +14,7 @@ extern "C" fn open_console_output() -> @async/types.Fd = "moonbit_tty_open_conso
 
 ///|
 #cfg(platform="windows")
-extern "C" fn console_handle_is_valid(fd : @async/types.Fd) -> Int = "moonbit_tty_handle_is_valid"
+extern "C" fn console_handle_is_valid(fd : @async/types.Fd) -> Int32 = "moonbit_tty_handle_is_valid"
 
 ///|
 /// Open the controlling terminal as one coordinated terminal handle.

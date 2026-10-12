@@ -1,9 +1,9 @@
 ///|
 fn win32_test_key_record(
   char : Char,
-  virtual_key_code? : Int = 0,
-  control_key_state? : Int = 0,
-  key_down? : Int = 1,
+  virtual_key_code~ : Int32 = 0,
+  control_key_state~ : Int32 = 0,
+  key_down~ : Int32 = 1,
 ) -> KeyRecord {
   KeyRecord::new(
     key_down~,
@@ -17,10 +17,10 @@ fn win32_test_key_record(
 
 ///|
 fn win32_test_key_record_charcode(
-  charcode : Int,
-  virtual_key_code? : Int = 0,
-  control_key_state? : Int = 0,
-  key_down? : Int = 1,
+  charcode : Int32,
+  virtual_key_code~ : Int32 = 0,
+  control_key_state~ : Int32 = 0,
+  key_down~ : Int32 = 1,
 ) -> KeyRecord {
   KeyRecord::new(
     key_down~,
@@ -34,11 +34,11 @@ fn win32_test_key_record_charcode(
 
 ///|
 fn win32_test_mouse_record(
-  x? : Int = 0,
-  y? : Int = 0,
-  button_state? : Int = 0,
-  control_key_state? : Int = 0,
-  event_flags? : Int = 0,
+  x~ : Int32 = 0,
+  y~ : Int32 = 0,
+  button_state~ : Int32 = 0,
+  control_key_state~ : Int32 = 0,
+  event_flags~ : Int32 = 0,
 ) -> MouseRecord {
   MouseRecord::new(x~, y~, button_state~, control_key_state~, event_flags~)
 }

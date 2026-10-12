@@ -1,8 +1,8 @@
 ///|
 pub async fn[T] Tty::with_top_bottom_margins(
   tty : Tty,
-  top : Int,
-  bottom : Int,
+  top : Int32,
+  bottom : Int32,
   body : async () -> T,
 ) -> T {
   tty.set_top_bottom_margins(top, bottom)

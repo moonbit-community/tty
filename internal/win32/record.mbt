@@ -1,62 +1,62 @@
 ///|
-pub const RecordKey : Int = 0x0001
+pub const RecordKey : Int32 = 0x0001
 
 ///|
-pub const RecordMouse : Int = 0x0002
+pub const RecordMouse : Int32 = 0x0002
 
 ///|
-pub const RecordWindowBufferSize : Int = 0x0004
+pub const RecordWindowBufferSize : Int32 = 0x0004
 
 ///|
-pub const RecordFocus : Int = 0x0010
+pub const RecordFocus : Int32 = 0x0010
 
 ///|
-pub const RightAltPressed : Int = 0x0001
+pub const RightAltPressed : Int32 = 0x0001
 
 ///|
-pub const LeftAltPressed : Int = 0x0002
+pub const LeftAltPressed : Int32 = 0x0002
 
 ///|
-pub const RightCtrlPressed : Int = 0x0004
+pub const RightCtrlPressed : Int32 = 0x0004
 
 ///|
-pub const LeftCtrlPressed : Int = 0x0008
+pub const LeftCtrlPressed : Int32 = 0x0008
 
 ///|
-pub const ShiftPressed : Int = 0x0010
+pub const ShiftPressed : Int32 = 0x0010
 
 ///|
-pub const NumLockOn : Int = 0x0020
+pub const NumLockOn : Int32 = 0x0020
 
 ///|
-pub const CapsLockOn : Int = 0x0080
+pub const CapsLockOn : Int32 = 0x0080
 
 ///|
-pub const EnhancedKey : Int = 0x0100
+pub const EnhancedKey : Int32 = 0x0100
 
 ///|
-pub const MouseMoved : Int = 0x0001
+pub const MouseMoved : Int32 = 0x0001
 
 ///|
-pub const MouseDoubleClick : Int = 0x0002
+pub const MouseDoubleClick : Int32 = 0x0002
 
 ///|
-pub const MouseWheeled : Int = 0x0004
+pub const MouseWheeled : Int32 = 0x0004
 
 ///|
-pub const MouseHorizontalWheeled : Int = 0x0008
+pub const MouseHorizontalWheeled : Int32 = 0x0008
 
 ///|
-pub const MouseLeftButton : Int = 0x0001
+pub const MouseLeftButton : Int32 = 0x0001
 
 ///|
-pub const MouseRightButton : Int = 0x0002
+pub const MouseRightButton : Int32 = 0x0002
 
 ///|
-pub const MouseMiddleButton : Int = 0x0004
+pub const MouseMiddleButton : Int32 = 0x0004
 
 ///|
-const MouseButtonMask : Int = 0x0007
+const MouseButtonMask : Int32 = 0x0007
 
 ///|
 pub(all) enum InputRecord {
@@ -64,47 +64,47 @@ pub(all) enum InputRecord {
   Mouse(MouseRecord)
   WindowBufferSize(Coord)
   Focus(Bool)
-  Unsupported(Int)
+  Unsupported(Int32)
 }
 
 ///|
 pub struct Coord {
-  x : Int
-  y : Int
+  x : Int32
+  y : Int32
 }
 
 ///|
 pub struct KeyRecord {
-  key_down : Int
-  repeat_count : Int
-  virtual_key_code : Int
-  virtual_scan_code : Int
-  unicode_char : Int
+  key_down : Int32
+  repeat_count : Int32
+  virtual_key_code : Int32
+  virtual_scan_code : Int32
+  unicode_char : Int32
   control_key_state : ControlKeyState
 }
 
 ///|
 pub struct MouseRecord {
-  x : Int
-  y : Int
-  button_state : Int
+  x : Int32
+  y : Int32
+  button_state : Int32
   control_key_state : ControlKeyState
-  event_flags : Int
+  event_flags : Int32
 }
 
 ///|
 pub struct MouseButtonState {
-  mut buttons : Int
+  mut buttons : Int32
 }
 
 ///|
 pub fn KeyRecord::new(
-  key_down? : Int = 1,
-  repeat_count? : Int = 1,
-  virtual_key_code? : Int = 0,
-  virtual_scan_code? : Int = 0,
-  unicode_char? : Int = 0,
-  control_key_state? : Int = 0,
+  key_down~ : Int32 = 1,
+  repeat_count~ : Int32 = 1,
+  virtual_key_code~ : Int32 = 0,
+  virtual_scan_code~ : Int32 = 0,
+  unicode_char~ : Int32 = 0,
+  control_key_state~ : Int32 = 0,
 ) -> KeyRecord {
   {
     key_down,
@@ -118,11 +118,11 @@ pub fn KeyRecord::new(
 
 ///|
 pub fn MouseRecord::new(
-  x? : Int = 0,
-  y? : Int = 0,
-  button_state? : Int = 0,
-  control_key_state? : Int = 0,
-  event_flags? : Int = 0,
+  x~ : Int32 = 0,
+  y~ : Int32 = 0,
+  button_state~ : Int32 = 0,
+  control_key_state~ : Int32 = 0,
+  event_flags~ : Int32 = 0,
 ) -> MouseRecord {
   {
     x,
@@ -221,12 +221,12 @@ fn parse_focus_record(bytes : BytesView) -> InputRecord {
 }
 
 ///|
-fn bool_at(bytes : BytesView, offset : Int) -> Bool? {
+fn bool_at(bytes : BytesView, offset : Int32) -> Bool? {
   dword_at(bytes, offset).map(value => value != 0)
 }
 
 ///|
-fn i16_at(bytes : BytesView, offset : Int) -> Int? {
+fn i16_at(bytes : BytesView, offset : Int32) -> Int32? {
   guard u16_at(bytes, offset) is Some(value) else { return None }
   if value >= 0x8000 {
     Some(value - 0x10000)
@@ -236,7 +236,7 @@ fn i16_at(bytes : BytesView, offset : Int) -> Int? {
 }
 
 ///|
-fn u16_at(bytes : BytesView, offset : Int) -> Int? {
+fn u16_at(bytes : BytesView, offset : Int32) -> Int32? {
   if offset < 0 || offset + 1 >= bytes.length() {
     return None
   }
@@ -244,7 +244,7 @@ fn u16_at(bytes : BytesView, offset : Int) -> Int? {
 }
 
 ///|
-fn dword_at(bytes : BytesView, offset : Int) -> Int? {
+fn dword_at(bytes : BytesView, offset : Int32) -> Int32? {
   guard u16_at(bytes, offset) is Some(low) else { return None }
   guard i16_at(bytes, offset + 2) is Some(high) else { return None }
   Some(low + high * 0x10000)

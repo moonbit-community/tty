@@ -4,7 +4,7 @@ pub fn KeyRecord::is_down(self : KeyRecord) -> Bool {
 }
 
 ///|
-pub fn KeyRecord::repeat_count(self : KeyRecord) -> Int {
+pub fn KeyRecord::repeat_count(self : KeyRecord) -> Int32 {
   if self.repeat_count > 0 {
     self.repeat_count
   } else {
@@ -46,7 +46,7 @@ fn KeyRecord::is_alt_gr_text(self : KeyRecord) -> Bool {
 ///|
 pub fn KeyRecord::text(
   self : KeyRecord,
-  pending_surrogate : Ref[Int],
+  pending_surrogate : Ref[Int32],
 ) -> String? {
   if self.key_down == 0 {
     return None
@@ -74,7 +74,7 @@ pub fn KeyRecord::text(
 ///|
 pub fn KeyRecord::input(
   self : KeyRecord,
-  pending_surrogate : Ref[Int],
+  pending_surrogate : Ref[Int32],
 ) -> @public_input.InputEvent? {
   guard self.key_event(pending_surrogate) is Some(event) else { return None }
   Some(Key(event))
@@ -108,7 +108,7 @@ fn KeyRecord::key_state(self : KeyRecord) -> @public_input.KeyEventState {
 ///|
 fn KeyRecord::key_event(
   self : KeyRecord,
-  pending_surrogate : Ref[Int],
+  pending_surrogate : Ref[Int32],
 ) -> @public_input.KeyEvent? {
   let kind = self.key_kind()
   let modifiers = self.modifiers()
@@ -203,7 +203,7 @@ fn text_for_key(record : KeyRecord, char : Char) -> String? {
 }
 
 ///|
-fn key_code_from_virtual_key(vk : Int) -> @public_input.KeyCode? {
+fn key_code_from_virtual_key(vk : Int32) -> @public_input.KeyCode? {
   if vk >= 0x70 && vk <= 0x87 {
     return function_key(vk - 0x6f)
   }
@@ -238,18 +238,19 @@ fn key_code_from_virtual_key(vk : Int) -> @public_input.KeyCode? {
 }
 
 ///|
-fn control_code_from_char(charcode : Int) -> @public_input.KeyCode? {
+fn control_code_from_char(charcode : Int32) -> @public_input.KeyCode? {
   match charcode {
     0x00 => Some(Char(' '))
-    0x01..=0x1a => Some(Char(codepoint_to_char(charcode - 1 + 'a'.to_int())))
+    0x01..<=0x1a => Some(Char(codepoint_to_char(charcode - 1 + 'a'.to_int())))
     0x1b => Some(Escape)
-    0x1c..=0x1f => Some(Char(codepoint_to_char(charcode - 0x1c + '4'.to_int())))
+    0x1c..<=0x1f =>
+      Some(Char(codepoint_to_char(charcode - 0x1c + '4'.to_int())))
     _ => None
   }
 }
 
 ///|
-fn control_code_from_virtual_key(vk : Int) -> @public_input.KeyCode? {
+fn control_code_from_virtual_key(vk : Int32) -> @public_input.KeyCode? {
   if vk == 0x20 {
     Some(Char(' '))
   } else if vk >= 0x41 && vk <= 0x5a {
@@ -260,7 +261,7 @@ fn control_code_from_virtual_key(vk : Int) -> @public_input.KeyCode? {
 }
 
 ///|
-fn function_key(number : Int) -> @public_input.KeyCode? {
+fn function_key(number : Int32) -> @public_input.KeyCode? {
   match number {
     1 => Some(F1)
     2 => Some(F2)
@@ -291,7 +292,7 @@ fn function_key(number : Int) -> @public_input.KeyCode? {
 }
 
 ///|
-fn keypad_digit(number : Int) -> @public_input.KeyCode? {
+fn keypad_digit(number : Int32) -> @public_input.KeyCode? {
   match number {
     0 => Some(Keypad0)
     1 => Some(Keypad1)
@@ -308,12 +309,12 @@ fn keypad_digit(number : Int) -> @public_input.KeyCode? {
 }
 
 ///|
-fn virtual_key_is_keypad(vk : Int) -> Bool {
+fn virtual_key_is_keypad(vk : Int32) -> Bool {
   vk >= 0x60 && vk <= 0x6f
 }
 
 ///|
-fn virtual_key_is_navigation(vk : Int) -> Bool {
+fn virtual_key_is_navigation(vk : Int32) -> Bool {
   match vk {
     0x21 | 0x22 | 0x23 | 0x24 | 0x25 | 0x26 | 0x27 | 0x28 | 0x2d | 0x2e => true
     _ => false
@@ -321,22 +322,22 @@ fn virtual_key_is_navigation(vk : Int) -> Bool {
 }
 
 ///|
-fn is_high_surrogate(code : Int) -> Bool {
+fn is_high_surrogate(code : Int32) -> Bool {
   code >= 0xd800 && code <= 0xdbff
 }
 
 ///|
-fn is_low_surrogate(code : Int) -> Bool {
+fn is_low_surrogate(code : Int32) -> Bool {
   code >= 0xdc00 && code <= 0xdfff
 }
 
 ///|
-fn decode_surrogate_pair(high : Int, low : Int) -> Char {
+fn decode_surrogate_pair(high : Int32, low : Int32) -> Char {
   let code = 0x10000 + (high - 0xd800) * 0x400 + (low - 0xdc00)
   codepoint_to_char(code)
 }
 
 ///|
-fn codepoint_to_char(code : Int) -> Char {
+fn codepoint_to_char(code : Int32) -> Char {
   code.to_char().unwrap_or('\u{FFFD}')
 }

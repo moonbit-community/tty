@@ -14,14 +14,14 @@ async fn[T] with_screen(tty : @tty.Tty, f : async () -> T) -> T {
 
 ///|
 struct Size {
-  width : Int
-  height : Int
+  width : Int32
+  height : Int32
 }
 
 ///|
 struct Anchor {
-  top : Int
-  left : Int
+  top : Int32
+  left : Int32
 }
 
 ///|
@@ -31,7 +31,7 @@ async fn restore_screen(tty : @tty.Tty) -> Unit {
 }
 
 ///|
-fn clamp(value : Int, min : Int, max : Int) -> Int {
+fn clamp(value : Int32, min : Int32, max : Int32) -> Int32 {
   if value < min {
     min
   } else if value > max {
@@ -54,13 +54,23 @@ async fn draw_box(tty : @tty.Tty, anchor : Anchor, size : Size) -> Unit {
 }
 
 ///|
-async fn draw_marker(tty : @tty.Tty, pos : Anchor, x : Int, y : Int) -> Unit {
+async fn draw_marker(
+  tty : @tty.Tty,
+  pos : Anchor,
+  x : Int32,
+  y : Int32,
+) -> Unit {
   tty.set_cursor_position(pos.top + 1 + y, pos.left + 1 + x)
   tty.write("@")
 }
 
 ///|
-async fn erase_marker(tty : @tty.Tty, pos : Anchor, x : Int, y : Int) -> Unit {
+async fn erase_marker(
+  tty : @tty.Tty,
+  pos : Anchor,
+  x : Int32,
+  y : Int32,
+) -> Unit {
   tty.set_cursor_position(pos.top + 1 + y, pos.left + 1 + x)
   tty.write(" ")
 }
@@ -70,8 +80,8 @@ async fn draw_status(
   tty : @tty.Tty,
   pos : Anchor,
   size : Size,
-  x : Int,
-  y : Int,
+  x : Int32,
+  y : Int32,
   visible : Bool,
 ) -> Unit {
   tty.set_cursor_position(pos.top + size.height + 3, pos.left)

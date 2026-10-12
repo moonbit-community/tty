@@ -1,5 +1,5 @@
 ///|
-extern "c" fn tty_isatty(fd : @async/types.Fd) -> Int = "moonbit_tty_isatty"
+extern "c" fn tty_isatty(fd : @async/types.Fd) -> Int32 = "moonbit_tty_isatty"
 
 ///|
 /// Return whether a handle refers to a terminal.
