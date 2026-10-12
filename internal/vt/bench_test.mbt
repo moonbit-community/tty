@@ -92,7 +92,7 @@ fn decimal_bytes_fast_small(n : Int32) -> Bytes {
 
 ///|
 fn make_decimal_bench_inputs(limit : Int32) -> FixedArray[Int32] {
-  let rng = @random.Rand::new()
+  let rng = @random.Rand()
   FixedArray::makei(DecimalBenchSampleCount, _ => rng.int(limit~))
 }
 

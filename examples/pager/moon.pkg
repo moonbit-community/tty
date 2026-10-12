@@ -5,7 +5,7 @@ import {
   "moonbitlang/core/argparse",
   "moonbitlang/core/env",
   "kawaz/grapheme",
-  "rami3l/unicodewidth",
+  "moonbit-community/unicodewidth",
   "moonbit-community/tty",
 }
 
