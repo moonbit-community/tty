@@ -14,6 +14,7 @@ import {
 pub(all) enum Event {
   Input(@moonbit-community/tty/input.InputEvent)
   CursorPosition(row~ : Int, col~ : Int)
+  Win32InputMode(Int)
   KeyboardEnhancementFlags(Int)
   PrimaryDeviceAttributes(Bytes)
   DynamicColor(code~ : Int, red~ : Int, green~ : Int, blue~ : Int)

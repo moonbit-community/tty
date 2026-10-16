@@ -41,6 +41,8 @@ pub let disable_mouse_motion : Bytes
 
 pub let disable_sgr_mouse : Bytes
 
+pub let disable_win32_input_mode : Bytes
+
 pub let enable_auto_wrap : Bytes
 
 pub let enable_bracketed_paste : Bytes
@@ -54,6 +56,8 @@ pub let enable_mouse_drag : Bytes
 pub let enable_mouse_motion : Bytes
 
 pub let enable_sgr_mouse : Bytes
+
+pub let enable_win32_input_mode : Bytes
 
 pub let end_synchronized_update : Bytes
 
@@ -86,6 +90,8 @@ pub let query_default_background_color : Bytes
 pub let query_default_foreground_color : Bytes
 
 pub let query_keyboard_enhancement_flags : Bytes
+
+pub let query_win32_input_mode : Bytes
 
 pub let request_cursor_position : Bytes
 

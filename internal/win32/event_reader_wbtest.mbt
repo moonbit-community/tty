@@ -1,395 +1,139 @@
 ///|
-fn win32_test_key_record(
-  char : Char,
-  virtual_key_code~ : Int32 = 0,
-  control_key_state~ : Int32 = 0,
-  key_down~ : Int32 = 1,
-) -> KeyRecord {
-  KeyRecord::new(
-    key_down~,
-    repeat_count=1,
-    virtual_key_code~,
-    virtual_scan_code=0,
-    unicode_char=char.to_int(),
-    control_key_state~,
-  )
-}
-
-///|
-fn win32_test_key_record_charcode(
-  charcode : Int32,
-  virtual_key_code~ : Int32 = 0,
-  control_key_state~ : Int32 = 0,
-  key_down~ : Int32 = 1,
-) -> KeyRecord {
-  KeyRecord::new(
-    key_down~,
-    repeat_count=1,
-    virtual_key_code~,
-    virtual_scan_code=0,
-    unicode_char=charcode,
-    control_key_state~,
-  )
-}
-
-///|
-fn win32_test_mouse_record(
-  x~ : Int32 = 0,
-  y~ : Int32 = 0,
-  button_state~ : Int32 = 0,
-  control_key_state~ : Int32 = 0,
-  event_flags~ : Int32 = 0,
-) -> MouseRecord {
-  MouseRecord::new(x~, y~, button_state~, control_key_state~, event_flags~)
-}
-
-///|
-fn win32_test_event_reader() -> EventReader raise {
+fn test_console_reader() -> EventReader raise {
   let (read, write) = @async/pipe.pipe()
-  write.close()
-  let reader = EventReader::new(read.fd())
-  read.close()
-  reader
+  defer read.close()
+  defer write.close()
+  EventReader::new(read.fd())
 }
 
 ///|
-fn win32_test_try_get_event(reader : EventReader) -> Event? {
-  try reader.events.try_get() catch {
-    _ => None
-  } noraise {
-    event => event
-  }
-}
-
-///|
-async test "win32 event reader ignores key-up records" {
-  let reader = win32_test_event_reader()
-  defer reader.close()
-  reader.read_key_record(win32_test_key_record('a', key_down=0))
-  match win32_test_try_get_event(reader) {
-    None => ()
-    Some(_) => fail("expected key-up record to be ignored")
+fn feed_console_text(reader : EventReader, text : String) -> Unit raise {
+  for char in text {
+    reader.read_record(Character(code_unit=char.to_int(), repeat_count=1))
   }
 }
 
 ///|
-async test "win32 event reader decodes bracketed paste key records" {
-  let reader = win32_test_event_reader()
-  defer reader.close()
-  for char in "\u{1B}[200~hello\u{1B}[201~" {
-    reader.read_key_record(win32_test_key_record(char))
+test "native records expose only character payload and resize" {
+  // Key-down A with Shift and a virtual key. Metadata is deliberately absent
+  // from the resulting transport record.
+  let bytes = b"\x01\x00\x00\x00\x01\x00\x00\x00\x02\x00\x41\x00\x1e\x00\x41\x00\x10\x00\x00\x00"
+  guard InputRecord::parse(bytes) is Character(code_unit=65, repeat_count=2) else {
+    fail("expected repeated character payload")
   }
-  match reader.read_decoded_input_event(50) {
-    Some(Input(Paste(text))) => @debug.assert_eq(text, "hello")
-    _ => fail("expected bracketed paste event")
+  guard InputRecord::parse(b"\x04\x00\x00\x00\x50\x00\x18\x00") is Resize else {
+    fail("expected resize")
   }
-}
-
-///|
-async test "win32 event reader preserves native events during internal reads" {
-  let reader = win32_test_event_reader()
-  defer reader.close()
-  reader.read_record(Focus(true))
-  for char in "\u{1B}[7;9R" {
-    reader.read_key_record(win32_test_key_record(char))
-  }
-  match reader.decoder.read_event(esc_timeout_ms=50) {
-    CursorPosition(row~, col~) => {
-      @debug.assert_eq(row, 7)
-      @debug.assert_eq(col, 9)
+  for
+    bytes in [
+      b"\x02\x00", b"\x10\x00", b"\x01", b"\x01\x00\x00\x00\x00\x00\x00\x00\x01\x00\x41\x00\x1e\x00\x41\x00",
+    ] {
+    guard InputRecord::parse(bytes) is Ignored else {
+      fail("expected ignored record")
     }
-    _ => fail("expected cursor position event")
-  }
-  match win32_test_try_get_event(reader) {
-    Some(Input(FocusIn)) => ()
-    _ => fail("expected native focus event to remain queued")
   }
 }
 
 ///|
-async test "win32 event reader propagates cancellation while waiting for native events" {
-  let reader = win32_test_event_reader()
+async test "native characters all use the byte decoder" {
+  let reader = test_console_reader()
   defer reader.close()
-  match @async.with_timeout_opt(1, () => reader.read_input_event(50)) {
-    None => ()
-    Some(_) => fail("expected timeout cancellation to propagate")
-  }
-}
-
-///|
-async test "win32 event reader keeps queued bytes after native event" {
-  let reader = win32_test_event_reader()
-  defer reader.close()
-  reader.read_record(Focus(true))
-  for char in "\u{1B}[<0;20;4M" {
-    reader.read_key_record(win32_test_key_record(char))
-  }
-  match win32_test_try_get_event(reader) {
-    Some(Input(FocusIn)) => ()
-    _ => fail("expected native focus event to remain queued")
-  }
-  match reader.read_decoded_input_event(50) {
-    Some(Input(Mouse(event))) =>
-      @debug.assert_eq(event, @public_input.MouseEvent::new(Press(Left), 4, 20))
-    _ => fail("expected complete queued SGR mouse event")
-  }
-}
-
-///|
-async test "win32 event reader maps native mouse records" {
-  let reader = win32_test_event_reader()
-  defer reader.close()
-  reader.read_mouse_record(
-    win32_test_mouse_record(x=30, y=2, event_flags=MouseMoved),
+  feed_console_text(
+    reader, "\u{1b}[65;30;65;1;16_\u{1b}[I\u{1b}[<0;20;4M\u{1b}[200~hello\u{1b}[201~",
   )
-  match win32_test_try_get_event(reader) {
-    Some(Input(Mouse(event))) =>
-      @debug.assert_eq(event, @public_input.MouseEvent::new(Move, 3, 31))
-    _ => fail("expected mouse move event")
-  }
-  reader.read_mouse_record(
-    win32_test_mouse_record(x=30, y=2, button_state=MouseLeftButton),
-  )
-  match win32_test_try_get_event(reader) {
-    Some(Input(Mouse(event))) =>
-      @debug.assert_eq(event, @public_input.MouseEvent::new(Press(Left), 3, 31))
-    _ => fail("expected left mouse press event")
-  }
-  reader.read_mouse_record(
-    win32_test_mouse_record(
-      x=31,
-      y=2,
-      button_state=MouseLeftButton,
-      control_key_state=ShiftPressed,
-      event_flags=MouseMoved,
+  assert_console_event(
+    reader.read_decoded_input_event(50),
+    Some(
+      Input(
+        Key(
+          @public_input.KeyEvent::new(
+            Char('A'),
+            text="A",
+            modifiers=@public_input.KeyModifiers::new(shift=true),
+          ),
+        ),
+      ),
     ),
   )
-  match win32_test_try_get_event(reader) {
-    Some(Input(Mouse(event))) =>
-      @debug.assert_eq(
-        event,
-        @public_input.MouseEvent::new(
-          Drag(Left),
-          3,
-          32,
-          modifiers=@public_input.KeyModifiers::new(shift=true),
-        ),
-      )
-    _ => fail("expected left mouse drag event")
-  }
-  reader.read_mouse_record(win32_test_mouse_record(x=31, y=2))
-  match win32_test_try_get_event(reader) {
-    Some(Input(Mouse(event))) =>
-      @debug.assert_eq(
-        event,
-        @public_input.MouseEvent::new(Release(Left), 3, 32),
-      )
-    _ => fail("expected left mouse release event")
-  }
-  reader.read_mouse_record(
-    win32_test_mouse_record(
-      x=31,
-      y=2,
-      button_state=120 * 0x10000,
-      event_flags=MouseWheeled,
-    ),
+  assert_console_event(
+    reader.read_decoded_input_event(50),
+    Some(Input(FocusIn)),
   )
-  match win32_test_try_get_event(reader) {
-    Some(Input(Mouse(event))) =>
-      @debug.assert_eq(event, @public_input.MouseEvent::new(Scroll(Up), 3, 32))
-    _ => fail("expected mouse wheel up event")
-  }
+  assert_console_event(
+    reader.read_decoded_input_event(50),
+    Some(Input(Mouse(@public_input.MouseEvent::new(Press(Left), 4, 20)))),
+  )
+  assert_console_event(
+    reader.read_decoded_input_event(50),
+    Some(Input(Paste("hello"))),
+  )
 }
 
 ///|
-async test "win32 event reader preserves printable key modifiers" {
-  let reader = win32_test_event_reader()
+async test "native resize survives queries and coalesces" {
+  let reader = test_console_reader()
   defer reader.close()
-  reader.read_key_record(
-    win32_test_key_record('a', control_key_state=LeftAltPressed),
-  )
-  match win32_test_try_get_event(reader) {
-    Some(Input(Key(event))) =>
-      @debug.assert_eq(
-        event,
-        @public_input.KeyEvent::new(
-          Char('a'),
-          modifiers=@public_input.KeyModifiers::new(alt=true),
-          text="a",
-        ),
-      )
-    _ => fail("expected Alt+a key event")
-  }
-  reader.read_key_record(
-    win32_test_key_record('X', control_key_state=ShiftPressed | RightAltPressed),
-  )
-  match win32_test_try_get_event(reader) {
-    Some(Input(Key(event))) =>
-      @debug.assert_eq(
-        event,
-        @public_input.KeyEvent::new(
-          Char('X'),
-          modifiers=@public_input.KeyModifiers::new(shift=true, alt=true),
-          text="X",
-        ),
-      )
-    _ => fail("expected Shift+Alt+X key event")
-  }
+  reader.read_record(Resize)
+  reader.read_record(Resize)
+  feed_console_text(reader, "\u{1b}[7;9R")
+  @debug.assert_eq(reader.decoder.read_event(), CursorPosition(row=7, col=9))
+  assert_true(reader.resize_notifications.try_get() is Some(_))
+  assert_true(reader.resize_notifications.try_get() is None)
 }
 
 ///|
-async test "win32 event reader preserves ctrl left bracket" {
-  let reader = win32_test_event_reader()
+async test "resize cancellation retains a partial keyboard sequence" {
+  let reader = test_console_reader()
   defer reader.close()
-  reader.read_key_record(
-    win32_test_key_record(
-      '\u{1B}',
-      virtual_key_code=0xdb,
-      control_key_state=LeftCtrlPressed,
-    ),
-  )
-  match win32_test_try_get_event(reader) {
-    Some(Input(Key(event))) =>
-      @debug.assert_eq(
-        event,
-        @public_input.KeyEvent::new(
-          Escape,
-          modifiers=@public_input.KeyModifiers::new(ctrl=true),
-        ),
-      )
-    _ => fail("expected Ctrl+[ escape key event")
+  feed_console_text(reader, "\u{1b}[65;30;")
+  @async.with_task_group() <| group => {
+    group.spawn_bg(() => {
+      @async.sleep(5)
+      reader.read_record(Resize)
+    })
+    assert_console_event(reader.read_input_event(100), Some(Resize))
   }
+  feed_console_text(reader, "97;1_")
+  assert_console_event(
+    reader.read_input_event(50),
+    Some(Input(Key(@public_input.KeyEvent::new(Char('a'), text="a")))),
+  )
 }
 
 ///|
-async test "win32 event reader preserves ctrl space" {
-  let reader = win32_test_event_reader()
+async test "native UTF16 transport survives resize between surrogate halves" {
+  let reader = test_console_reader()
   defer reader.close()
-  reader.read_key_record(
-    win32_test_key_record_charcode(
-      0,
-      virtual_key_code=0x20,
-      control_key_state=LeftCtrlPressed,
-    ),
+  reader.read_record(Character(code_unit=0xd83d, repeat_count=1))
+  reader.read_record(Resize)
+  reader.read_record(Ignored)
+  reader.read_record(Character(code_unit=0xde00, repeat_count=1))
+  assert_console_event(
+    reader.read_decoded_input_event(50),
+    Some(Input(Key(@public_input.KeyEvent::new(Char('😀'), text="😀")))),
   )
-  match win32_test_try_get_event(reader) {
-    Some(Input(Key(event))) =>
-      @debug.assert_eq(
-        event,
-        @public_input.KeyEvent::new(
-          Char(' '),
-          modifiers=@public_input.KeyModifiers::new(ctrl=true),
-        ),
-      )
-    _ => fail("expected Ctrl+Space key event")
-  }
 }
 
 ///|
-async test "win32 event reader preserves AltGr text input" {
-  let reader = win32_test_event_reader()
+async test "native wait remains cancellable" {
+  let reader = test_console_reader()
   defer reader.close()
-  reader.read_key_record(
-    win32_test_key_record(
-      '@',
-      control_key_state=RightAltPressed | LeftCtrlPressed,
-    ),
+  assert_true(
+    @async.with_timeout_opt(5, () => reader.read_input_event(50)) is None,
   )
-  match reader.read_decoded_input_event(50) {
-    Some(Input(Key(event))) =>
-      @debug.assert_eq(event, @public_input.KeyEvent::new(Char('@'), text="@"))
-    _ => fail("expected decoded AltGr text key event")
-  }
+  feed_console_text(reader, "a")
+  assert_console_event(
+    reader.read_input_event(50),
+    Some(Input(Key(@public_input.KeyEvent::new(Char('a'), text="a")))),
+  )
 }
 
 ///|
-async test "win32 event reader preserves keypad key metadata" {
-  let reader = win32_test_event_reader()
-  defer reader.close()
-  reader.read_key_record(
-    win32_test_key_record(
-      '1',
-      virtual_key_code=0x61,
-      control_key_state=NumLockOn,
-    ),
-  )
-  match win32_test_try_get_event(reader) {
-    Some(Input(Key(event))) =>
-      @debug.assert_eq(
-        event,
-        @public_input.KeyEvent::new(
-          Keypad1,
-          state=@public_input.KeyEventState::new(keypad=true, num_lock=true),
-        ),
-      )
-    _ => fail("expected keypad 1 key event")
-  }
-  reader.read_key_record(win32_test_key_record('*', virtual_key_code=0x6a))
-  match win32_test_try_get_event(reader) {
-    Some(Input(Key(event))) =>
-      @debug.assert_eq(
-        event,
-        @public_input.KeyEvent::new(
-          KeypadMultiply,
-          state=@public_input.KeyEventState::new(keypad=true),
-        ),
-      )
-    _ => fail("expected keypad multiply key event")
-  }
-}
-
-///|
-async test "win32 event reader preserves keypad enter metadata" {
-  let reader = win32_test_event_reader()
-  defer reader.close()
-  reader.read_key_record(
-    win32_test_key_record(
-      '\r',
-      virtual_key_code=0x0d,
-      control_key_state=EnhancedKey,
-    ),
-  )
-  match win32_test_try_get_event(reader) {
-    Some(Input(Key(event))) =>
-      @debug.assert_eq(
-        event,
-        @public_input.KeyEvent::new(
-          KeypadEnter,
-          state=@public_input.KeyEventState::new(keypad=true),
-        ),
-      )
-    _ => fail("expected keypad enter key event")
-  }
-}
-
-///|
-async test "win32 event reader preserves keypad navigation metadata" {
-  let reader = win32_test_event_reader()
-  defer reader.close()
-  reader.read_key_record(
-    win32_test_key_record_charcode(0, virtual_key_code=0x23),
-  )
-  match win32_test_try_get_event(reader) {
-    Some(Input(Key(event))) =>
-      @debug.assert_eq(
-        event,
-        @public_input.KeyEvent::new(
-          End,
-          state=@public_input.KeyEventState::new(keypad=true),
-        ),
-      )
-    _ => fail("expected keypad End key event")
-  }
-  reader.read_key_record(
-    win32_test_key_record_charcode(
-      0,
-      virtual_key_code=0x23,
-      control_key_state=EnhancedKey,
-    ),
-  )
-  match win32_test_try_get_event(reader) {
-    Some(Input(Key(event))) =>
-      @debug.assert_eq(event, @public_input.KeyEvent::new(End))
-    _ => fail("expected enhanced End key event")
+fn assert_console_event(actual : Event?, expected : Event?) -> Unit raise {
+  match (actual, expected) {
+    (Some(Input(actual)), Some(Input(expected))) =>
+      @debug.assert_eq(actual, expected)
+    (Some(Resize), Some(Resize)) | (None, None) => ()
+    _ => fail("unexpected console event kind")
   }
 }

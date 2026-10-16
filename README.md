@@ -75,6 +75,21 @@ Root `Tty` methods turn `Color` values into SGR output.
 Terminal dynamic color queries live on root `Tty` because they coordinate output
 requests with input-stream responses.
 
+## Windows input
+
+Windows console sessions use one native reader for character transport and resize
+notifications. Keyboard, mouse, focus, paste, and terminal replies all use the
+same byte decoder as other platforms. During raw sessions, the first event read
+or query probes win32-input-mode (up to 100 ms) and enables it when supported;
+restoring the saved terminal state also restores that mode. Nested raw sessions
+preserve the outer session's setting.
+
+The existing Windows key-down-only behavior is retained. Enable mouse and focus
+tracking through the existing `Tty` methods to receive those VT events. Terminals
+without mode 9001 support use ordinary VT input, with the metadata that encoding
+can provide. The console reader retains its cancellable polling loop; this
+change unifies decoding rather than introducing a new OS waiting mechanism.
+
 ## Usage
 
 Add the module and import the packages you need in `moon.pkg`:

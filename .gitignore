@@ -10,3 +10,6 @@ compile_flags.txt
 
 # Git worktree
 worktrees/
+
+# Fetched dependency sources
+.repos/

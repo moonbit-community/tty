@@ -231,10 +231,29 @@ screen buffer size while coordinating terminal input and output. The current
 query implementation uses the output-side handle. Unix resize notification is a
 process-global `SIGWINCH` source surfaced as coalesced root `Tty::read_event`
 resize events. Windows resize notification comes from native console input
-records. Resize/focus native events and decoded byte-stream input each preserve
-their own source order, but `Tty::read_event` does not guarantee a strict total
-order between native resize/focus notifications and terminal byte sequences;
-this matches the Unix signal-backed resize model.
+records. A single `ReadConsoleInputW` pump transports character payloads to the
+common byte decoder and coalesces native resize notifications. It does not map
+native keyboard metadata, mouse records, or focus records to user events. This
+avoids competing readers on the console input queue. `Tty::read_event` does not
+guarantee a strict total order between resize notifications and byte-stream
+input; this matches the Unix signal-backed resize model.
+
+In raw Windows console sessions, the first event read or terminal query probes
+private mode 9001 (DECRQM, up to 100 ms). If supported, win32-input-mode encodes
+keyboard metadata in CSI sequences consumed by `internal/input`. Character-only
+envelopes, including wrapped VT traffic, are normalized in its rollback buffer;
+inside bracketed paste, encoded key payloads are treated as pasted text. Native
+transport keeps only UTF-16 character conversion and repeat expansion. Keyboard
+mapping, AltGr, keypad state, and encoded repeats belong to the common decoder.
+The existing Windows key-down-only behavior is preserved.
+
+Protocol negotiation runs before issuing other terminal queries, so it cannot
+consume their responses. Interleaved input and resize remain queued. State
+snapshots retain private mode ownership, allowing nested raw sessions and
+synchronous cancellation cleanup to restore the prior 9001 setting. Unrecognized
+or unanswered probes fall back to ordinary VT decoding; richer keyboard metadata
+then depends on the terminal's available encoding. Native mouse/focus records
+are ignored: callers must enable the existing VT tracking modes.
 
 ## Raw Mode
 

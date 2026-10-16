@@ -25,6 +25,7 @@ struct Tty {
   input_fd : @async/types.Fd
   output : &Writer
   output_fd : @async/types.Fd
+  mut win32_input_mode : Win32InputMode
   input_backend : WindowsInput
   pending_input : Array[@public_input.InputEvent]
   // Serializes output writes so a single `write`/`write_string` call lands on
@@ -60,6 +61,7 @@ pub fn[I : Reader, O : Writer] Tty::new(input : I, output : O) -> Tty raise {
     input_fd,
     output,
     output_fd,
+    win32_input_mode: Unchecked,
     input_backend,
     pending_input: [],
     write_lock: @lock.Lock::new(),
@@ -97,6 +99,9 @@ pub fn Tty::stdio() -> Tty raise {
 /// Closing stdio-backed handles is a no-op.
 #cfg(platform="windows")
 pub fn Tty::close(self : Self) -> Unit {
+  self.restore_win32_input_mode(Unchecked) catch {
+    _ => ()
+  }
   self.input_backend.close()
   self.input.close()
   self.output.close()
@@ -136,6 +141,7 @@ async fn read_decoded_input_event(
     match reader.read_event(esc_timeout_ms~) {
       Input(event) => return Input(event)
       CursorPosition(..) => ()
+      Win32InputMode(_) => ()
       KeyboardEnhancementFlags(_) => ()
       PrimaryDeviceAttributes(_) => ()
       DynamicColor(..) => ()
@@ -182,12 +188,14 @@ pub async fn Tty::query_cursor_position(
   self : Self,
   timeout_ms~ : Int32 = 50,
 ) -> CursorPosition? {
+  self.prepare_input_protocol()
   @async.with_timeout_opt(timeout_ms, () => {
     self.write(@vt.request_cursor_position)
     for ;; {
       match self.read_internal_event() {
         CursorPosition(row~, col~) => return { row, col, }
         Input(event) => self.pending_input.push(event)
+        Win32InputMode(_) => ()
         KeyboardEnhancementFlags(_) => ()
         PrimaryDeviceAttributes(_) => ()
         DynamicColor(..) => ()
@@ -205,12 +213,14 @@ pub async fn Tty::query_kitty_keyboard_support(
   self : Self,
   timeout_ms~ : Int32 = 50,
 ) -> Bool {
+  self.prepare_input_protocol()
   match
     @async.with_timeout_opt(timeout_ms, () => {
       self.write(@vt.query_keyboard_enhancement_flags)
       self.write(@vt.request_primary_device_attributes)
       for ;; {
         match self.read_internal_event() {
+          Win32InputMode(_) => ()
           KeyboardEnhancementFlags(_) => return true
           PrimaryDeviceAttributes(_) => return false
           CursorPosition(..) => ()
@@ -270,6 +280,7 @@ async fn Tty::query_dynamic_color(
   request : Bytes,
   timeout_ms~ : Int32,
 ) -> @color.Rgb16? {
+  self.prepare_input_protocol()
   @async.with_timeout_opt(timeout_ms, () => {
     self.write(request)
     for ;; {
@@ -278,6 +289,7 @@ async fn Tty::query_dynamic_color(
           return { red, green, blue, }
         DynamicColor(..) => ()
         CursorPosition(..) => ()
+        Win32InputMode(_) => ()
         KeyboardEnhancementFlags(_) => ()
         PrimaryDeviceAttributes(_) => ()
         Input(event) => self.pending_input.push(event)

@@ -47,6 +47,17 @@ pub let disable_auto_wrap : Bytes = b"\x1b[?7l"
 pub let query_keyboard_enhancement_flags : Bytes = b"\x1b[?u"
 
 ///|
+/// Query Microsoft win32-input-mode (DECRQM, private mode 9001).
+pub let query_win32_input_mode : Bytes = b"\x1b[?9001$p"
+
+///|
+/// Request keyboard records encoded as CSI Vk;Sc;Uc;Kd;Cs;Rc _.
+pub let enable_win32_input_mode : Bytes = b"\x1b[?9001h"
+
+///|
+pub let disable_win32_input_mode : Bytes = b"\x1b[?9001l"
+
+///|
 /// Primary Device Attributes (DA1) request.
 pub let request_primary_device_attributes : Bytes = b"\x1b[c"
 

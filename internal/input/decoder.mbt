@@ -15,6 +15,11 @@ struct EventReader {
   mut head : Int32
   mut read : Int32
   mut tail : Int32
+  win32_surrogate : Ref[Int32?]
+  mut win32_repeat : (@public_input.KeyEvent, Int32)?
+  mut in_paste : Bool
+  mut timeout_boundary : Int32?
+  mut esc_timeout_ms : Int32
 }
 
 ///|
@@ -26,6 +31,11 @@ pub fn EventReader::new(reader : &@io.Reader) -> EventReader {
     head: 0,
     read: 0,
     tail: 0,
+    win32_surrogate: Ref(None),
+    win32_repeat: None,
+    in_paste: false,
+    timeout_boundary: None,
+    esc_timeout_ms: 50,
   }
 }
 
@@ -38,20 +48,56 @@ pub async fn EventReader::read_event(
   self : EventReader,
   esc_timeout_ms~ : Int32 = 50,
 ) -> Event {
-  let start = self.read
-  errdefer self.rollback_to(start)
-  let byte = self.read_byte()
-  let event = if byte == Esc {
-    read_escape(self, esc_timeout_ms)
-  } else {
-    Input(read_byte_event(self, byte, esc_timeout_ms))
+  if self.win32_repeat is Some((key, remaining)) {
+    self.win32_repeat = if remaining > 1 {
+      Some((key, remaining - 1))
+    } else {
+      None
+    }
+    return Input(Key(key))
   }
-  self.commit()
-  event
+  self.timeout_boundary = None
+  self.esc_timeout_ms = esc_timeout_ms
+  for ;; {
+    let start = self.read
+    let surrogate = self.win32_surrogate.val
+    errdefer {
+      self.rollback_to(start)
+      self.win32_surrogate.val = surrogate
+    }
+    let byte = self.read_byte()
+    let event = if byte == Esc {
+      read_escape(self, esc_timeout_ms)
+    } else {
+      Input(read_byte_event(self, byte, esc_timeout_ms))
+    }
+    if event is Input(Unknown(bytes)) &&
+      bytes[:] is [Esc, b'[', .. params, b'_'] &&
+      parse_win32_key(params) is Some(record) {
+      // Preserve the existing Windows key-down-only contract. In particular,
+      // do not let key-up records split a UTF-16 pair from key-down records.
+      let key = if record.key_down != 0 {
+        record.key_event(self.win32_surrogate)
+      } else {
+        None
+      }
+      self.commit()
+      if key is Some(key) {
+        if record.repeat_count > 1 {
+          self.win32_repeat = Some((key, record.repeat_count - 1))
+        }
+        return Input(Key(key))
+      }
+    } else {
+      self.win32_surrogate.val = None
+      self.commit()
+      return event
+    }
+  }
 }
 
 ///|
-async fn EventReader::read_byte(self : EventReader) -> Byte {
+async fn EventReader::read_wire_byte(self : EventReader) -> Byte {
   if self.read < self.tail {
     let byte = self.data[self.read]
     self.read += 1
@@ -126,8 +172,7 @@ fn EventReader::commit(self : EventReader) -> Unit {
 
 ///|
 async fn read_escape(reader : EventReader, esc_timeout_ms : Int32) -> Event {
-  guard @async.with_timeout_opt(esc_timeout_ms, () => reader.read_byte())
-    is Some(byte) else {
+  guard reader.read_byte_timeout(esc_timeout_ms) is Some(byte) else {
     Input(Key(@public_input.KeyEvent::new(Escape)))
   }
   match byte {
@@ -154,8 +199,7 @@ async fn read_escape(reader : EventReader, esc_timeout_ms : Int32) -> Event {
 ///|
 async fn read_osc(reader : EventReader, esc_timeout_ms~ : Int32) -> Event {
   for ;; {
-    guard @async.with_timeout_opt(esc_timeout_ms, () => reader.read_byte())
-      is Some(byte) else {
+    guard reader.read_byte_timeout(esc_timeout_ms) is Some(byte) else {
       return match reader.view() {
         [Esc, b']'] =>
           Input(
@@ -172,8 +216,7 @@ async fn read_osc(reader : EventReader, esc_timeout_ms~ : Int32) -> Event {
     match byte {
       b'\x07' => return parse_osc(reader.view())
       Esc => {
-        guard @async.with_timeout_opt(esc_timeout_ms, () => reader.read_byte())
-          is Some(byte) else {
+        guard reader.read_byte_timeout(esc_timeout_ms) is Some(byte) else {
           return Input(Unknown(reader.view().to_owned()))
         }
         if byte == b'\\' {
@@ -275,8 +318,7 @@ async fn read_ss3(
   reader : EventReader,
   esc_timeout_ms~ : Int32,
 ) -> @public_input.InputEvent {
-  guard @async.with_timeout_opt(esc_timeout_ms, () => reader.read_byte())
-    is Some(byte) else {
+  guard reader.read_byte_timeout(esc_timeout_ms) is Some(byte) else {
     return Unknown(reader.view().to_owned())
   }
   if byte == Esc {
@@ -290,8 +332,7 @@ async fn read_ss3(
 async fn read_csi(reader : EventReader, esc_timeout_ms~ : Int32) -> Event {
   let mut seen_intermediate = false
   for ;; {
-    guard @async.with_timeout_opt(esc_timeout_ms, () => reader.read_byte())
-      is Some(byte) else {
+    guard reader.read_byte_timeout(esc_timeout_ms) is Some(byte) else {
       return match reader.view() {
         [Esc, b'['] =>
           Input(
@@ -334,9 +375,12 @@ async fn read_bracketed_paste(
   reader : EventReader,
   esc_timeout_ms~ : Int32,
 ) -> Event {
+  reader.in_paste = true
+  defer {
+    reader.in_paste = false
+  }
   for ;; {
-    guard @async.with_timeout_opt(esc_timeout_ms, () => reader.read_byte())
-      is Some(_) else {
+    guard reader.read_byte_timeout(esc_timeout_ms) is Some(_) else {
       return Input(Unknown(reader.view().to_owned()))
     }
     let view = reader.view()
@@ -381,6 +425,8 @@ fn ss3_event(ss3 : BytesView) -> @public_input.InputEvent {
 ///|
 fn parse_csi(csi : BytesView) -> Event {
   match csi {
+    [Esc, b'[', .. b"?9001;", status, b'$', b'y'] if status >= b'0' &&
+      status <= b'4' => Win32InputMode(status.to_int() - b'0'.to_int())
     [Esc, b'[', b'?', .. params, b'u'] =>
       parse_keyboard_enhancement_flags(csi, params)
     [Esc, b'[', b'?', .. params, b'c'] =>
@@ -732,8 +778,7 @@ async fn read_utf8_text(
     return Unknown([first])
   }
   for _ in 1..<len {
-    guard @async.with_timeout_opt(esc_timeout_ms, () => reader.read_byte())
-      is Some(byte) else {
+    guard reader.read_byte_timeout(esc_timeout_ms) is Some(byte) else {
       return Unknown(reader.view().to_owned())
     }
     if !is_utf8_continuation(byte) {
