@@ -1,87 +1,91 @@
 ///|
-pub fn KeyRecord::is_down(self : KeyRecord) -> Bool {
-  self.key_down != 0
+// Microsoft win32-input-mode: CSI Vk;Sc;Uc;Kd;Cs;Rc _.
+priv struct Win32Key {
+  key_down : Int32
+  repeat_count : Int32
+  virtual_key_code : Int32
+  virtual_scan_code : Int32
+  unicode_char : Int32
+  control_key_state : Int32
 }
 
 ///|
-pub fn KeyRecord::repeat_count(self : KeyRecord) -> Int32 {
-  if self.repeat_count > 0 {
-    self.repeat_count
-  } else {
-    1
+fn parse_win32_key(params : BytesView) -> Win32Key? {
+  // Bound each field before multiplication; do not accept wrapped integers.
+  let values : Array[UInt32] = []
+  let mut value : UInt32 = 0
+  let mut present = false
+  for byte in params {
+    match byte {
+      b'0'..<=b'9' => {
+        guard value < 429496729 || (value == 429496729 && byte <= b'5') else {
+          return None
+        }
+        value = value * 10 + byte.to_uint() - b'0'.to_uint()
+        present = true
+      }
+      b';' => {
+        values.push(
+          if present {
+            value
+          } else if values.length() == 5 {
+            1
+          } else {
+            0
+          },
+        )
+        guard values.length() < 6 else { return None }
+        value = 0
+        present = false
+      }
+      _ => return None
+    }
   }
-}
-
-///|
-pub fn KeyRecord::text_uses_decoder(self : KeyRecord) -> Bool {
-  self.key_down != 0 && !self.has_direct_key_metadata()
-}
-
-///|
-fn KeyRecord::has_direct_key_metadata(self : KeyRecord) -> Bool {
-  (self.has_keyboard_modifier() && !self.is_alt_gr_text()) || self.is_keypad()
-}
-
-///|
-fn KeyRecord::has_keyboard_modifier(self : KeyRecord) -> Bool {
-  self.control_key_state.has_state(
-    ShiftPressed |
-    LeftAltPressed |
-    RightAltPressed |
-    LeftCtrlPressed |
-    RightCtrlPressed,
+  values.push(
+    if present {
+      value
+    } else if values.length() == 5 {
+      1
+    } else {
+      0
+    },
   )
+  while values.length() < 6 {
+    values.push(if values.length() == 5 { 1 } else { 0 })
+  }
+  match values {
+    [vk, sc, uc, kd, cs, rc] if vk <= 65535 &&
+      sc <= 65535 &&
+      uc <= 65535 &&
+      kd <= 1 &&
+      rc <= 65535 =>
+      Some({
+        virtual_key_code: vk.reinterpret_as_int(),
+        virtual_scan_code: sc.reinterpret_as_int(),
+        unicode_char: uc.reinterpret_as_int(),
+        key_down: kd.reinterpret_as_int(),
+        control_key_state: cs.reinterpret_as_int(),
+        repeat_count: rc.reinterpret_as_int(),
+      })
+    _ => None
+  }
 }
 
 ///|
-fn KeyRecord::is_alt_gr_text(self : KeyRecord) -> Bool {
-  let state = self.control_key_state
-  self.key_down != 0 &&
+fn Win32Key::has_state(self : Win32Key, mask : Int32) -> Bool {
+  (self.control_key_state & mask) != 0
+}
+
+///|
+fn Win32Key::is_alt_gr_text(self : Win32Key) -> Bool {
   self.unicode_char > 0x1f &&
-  state.has_state(RightAltPressed) &&
-  state.has_state(LeftCtrlPressed) &&
-  !state.has_state(LeftAltPressed | RightCtrlPressed)
+  self.has_state(0x01) &&
+  self.has_state(0x08) &&
+  !self.has_state(0x02 | 0x04)
 }
 
 ///|
-pub fn KeyRecord::text(
-  self : KeyRecord,
-  pending_surrogate : Ref[Int32],
-) -> String? {
-  if self.key_down == 0 {
-    return None
-  }
-  let charcode = self.unicode_char
-  if charcode == 0 {
-    pending_surrogate.val = 0
-    return None
-  }
-  if is_high_surrogate(charcode) {
-    pending_surrogate.val = charcode
-    return None
-  }
-  if is_low_surrogate(charcode) {
-    let high = pending_surrogate.val
-    pending_surrogate.val = 0
-    guard high != 0 else { return None }
-    let char = decode_surrogate_pair(high, charcode)
-    return Some([char])
-  }
-  pending_surrogate.val = 0
-  Some([codepoint_to_char(charcode)])
-}
-
-///|
-pub fn KeyRecord::input(
-  self : KeyRecord,
-  pending_surrogate : Ref[Int32],
-) -> @public_input.InputEvent? {
-  guard self.key_event(pending_surrogate) is Some(event) else { return None }
-  Some(Key(event))
-}
-
-///|
-fn KeyRecord::key_kind(self : KeyRecord) -> @public_input.KeyEventKind {
+fn Win32Key::key_kind(self : Win32Key) -> @public_input.KeyEventKind {
   if self.key_down == 0 {
     Release
   } else if self.repeat_count > 1 {
@@ -92,66 +96,70 @@ fn KeyRecord::key_kind(self : KeyRecord) -> @public_input.KeyEventKind {
 }
 
 ///|
-fn KeyRecord::modifiers(self : KeyRecord) -> @public_input.KeyModifiers {
-  self.control_key_state.modifiers()
-}
-
-///|
-fn KeyRecord::key_state(self : KeyRecord) -> @public_input.KeyEventState {
-  @public_input.KeyEventState::new(
-    keypad=self.is_keypad(),
-    caps_lock=self.control_key_state.has_state(CapsLockOn),
-    num_lock=self.control_key_state.has_state(NumLockOn),
+fn Win32Key::modifiers(self : Win32Key) -> @public_input.KeyModifiers {
+  @public_input.KeyModifiers::new(
+    shift=self.has_state(0x10),
+    alt=self.has_state(0x03) && !self.is_alt_gr_text(),
+    ctrl=self.has_state(0x0c) && !self.is_alt_gr_text(),
   )
 }
 
 ///|
-fn KeyRecord::key_event(
-  self : KeyRecord,
-  pending_surrogate : Ref[Int32],
+fn Win32Key::key_state(self : Win32Key) -> @public_input.KeyEventState {
+  @public_input.KeyEventState::new(
+    keypad=self.is_keypad(),
+    caps_lock=self.has_state(0x80),
+    num_lock=self.has_state(0x20),
+  )
+}
+
+///|
+fn Win32Key::key_event(
+  self : Win32Key,
+  pending_surrogate : Ref[Int32?],
 ) -> @public_input.KeyEvent? {
   let kind = self.key_kind()
   let modifiers = self.modifiers()
   let state = self.key_state()
   match self.key_code_from_virtual_key() {
     Some(code) => {
-      pending_surrogate.val = 0
+      pending_surrogate.val = None
       return Some(@public_input.KeyEvent::new(code, modifiers~, kind~, state~))
     }
     None => ()
   }
   let charcode = self.unicode_char
   if charcode == 0 {
-    pending_surrogate.val = 0
+    pending_surrogate.val = None
     return control_code_from_virtual_key(self.virtual_key_code).map(code => {
       @public_input.KeyEvent::new(code, modifiers~, kind~, state~)
     })
   }
   if charcode >= 0x00 && charcode <= 0x1f {
-    pending_surrogate.val = 0
+    pending_surrogate.val = None
     return control_code_from_char(charcode).map(code => {
       @public_input.KeyEvent::new(code, modifiers~, kind~, state~)
     })
   }
   if is_high_surrogate(charcode) {
-    pending_surrogate.val = charcode
+    pending_surrogate.val = Some(charcode)
     return None
   }
   if is_low_surrogate(charcode) {
     let high = pending_surrogate.val
-    pending_surrogate.val = 0
-    guard high != 0 else { return None }
+    pending_surrogate.val = None
+    guard high is Some(high) else { return None }
     let char = decode_surrogate_pair(high, charcode)
     return Some(self.char_key_event(char, modifiers, kind, state))
   }
-  pending_surrogate.val = 0
+  pending_surrogate.val = None
   let char = codepoint_to_char(charcode)
   Some(self.char_key_event(char, modifiers, kind, state))
 }
 
 ///|
-fn KeyRecord::key_code_from_virtual_key(
-  self : KeyRecord,
+fn Win32Key::key_code_from_virtual_key(
+  self : Win32Key,
 ) -> @public_input.KeyCode? {
   if self.is_keypad_enter() {
     Some(KeypadEnter)
@@ -161,26 +169,25 @@ fn KeyRecord::key_code_from_virtual_key(
 }
 
 ///|
-fn KeyRecord::is_keypad(self : KeyRecord) -> Bool {
+fn Win32Key::is_keypad(self : Win32Key) -> Bool {
   virtual_key_is_keypad(self.virtual_key_code) ||
   self.is_keypad_enter() ||
   self.is_keypad_navigation()
 }
 
 ///|
-fn KeyRecord::is_keypad_enter(self : KeyRecord) -> Bool {
-  self.virtual_key_code == 0x0d && self.control_key_state.has_state(EnhancedKey)
+fn Win32Key::is_keypad_enter(self : Win32Key) -> Bool {
+  self.virtual_key_code == 0x0d && self.has_state(0x100)
 }
 
 ///|
-fn KeyRecord::is_keypad_navigation(self : KeyRecord) -> Bool {
-  virtual_key_is_navigation(self.virtual_key_code) &&
-  !self.control_key_state.has_state(EnhancedKey)
+fn Win32Key::is_keypad_navigation(self : Win32Key) -> Bool {
+  virtual_key_is_navigation(self.virtual_key_code) && !self.has_state(0x100)
 }
 
 ///|
-fn KeyRecord::char_key_event(
-  self : KeyRecord,
+fn Win32Key::char_key_event(
+  self : Win32Key,
   char : Char,
   modifiers : @public_input.KeyModifiers,
   kind : @public_input.KeyEventKind,
@@ -194,7 +201,7 @@ fn KeyRecord::char_key_event(
 }
 
 ///|
-fn text_for_key(record : KeyRecord, char : Char) -> String? {
+fn text_for_key(record : Win32Key, char : Char) -> String? {
   if record.key_down == 0 {
     None
   } else {
@@ -205,7 +212,7 @@ fn text_for_key(record : KeyRecord, char : Char) -> String? {
 ///|
 fn key_code_from_virtual_key(vk : Int32) -> @public_input.KeyCode? {
   if vk >= 0x70 && vk <= 0x87 {
-    return function_key(vk - 0x6f)
+    return win32_function_key(vk - 0x6f)
   }
   match vk {
     0x08 => Some(Backspace)
@@ -242,7 +249,7 @@ fn control_code_from_char(charcode : Int32) -> @public_input.KeyCode? {
   match charcode {
     0x00 => Some(Char(' '))
     0x01..<=0x1a => Some(Char(codepoint_to_char(charcode - 1 + 'a'.to_int())))
-    0x1b => Some(Escape)
+    0x1b => Some(Char('['))
     0x1c..<=0x1f =>
       Some(Char(codepoint_to_char(charcode - 0x1c + '4'.to_int())))
     _ => None
@@ -261,7 +268,7 @@ fn control_code_from_virtual_key(vk : Int32) -> @public_input.KeyCode? {
 }
 
 ///|
-fn function_key(number : Int32) -> @public_input.KeyCode? {
+fn win32_function_key(number : Int32) -> @public_input.KeyCode? {
   match number {
     1 => Some(F1)
     2 => Some(F2)

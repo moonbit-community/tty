@@ -9,9 +9,8 @@ struct EventReader {
   input_fd : @async/types.Fd
   byte_queue : @internal_io.ByteQueue
   decoder : @input.EventReader
-  events : @async.Queue[Event]
-  pending_surrogate : Ref[Int32]
-  mouse_button_state : MouseButtonState
+  resize_notifications : @async.Queue[Unit]
+  mut pending_surrogate : Int32?
 }
 
 ///|
@@ -21,16 +20,15 @@ pub fn EventReader::new(input_fd : @async/types.Fd) -> EventReader {
     input_fd,
     byte_queue,
     decoder: @input.EventReader::new(byte_queue as &@async/io.Reader),
-    events: Queue(kind=Unbounded),
-    pending_surrogate: Ref(0),
-    mouse_button_state: MouseButtonState::new(),
+    resize_notifications: Queue(kind=DiscardLatest(1)),
+    pending_surrogate: None,
   }
 }
 
 ///|
 pub fn EventReader::close(self : EventReader) -> Unit {
   self.byte_queue.close()
-  self.events.close(clear=true)
+  self.resize_notifications.close(clear=true)
 }
 
 ///|
@@ -64,11 +62,11 @@ async fn EventReader::read_input_event(
     group.spawn_bg(no_wait=true) <| () => {
       group.return_immediately(self.read_decoded_input_event(esc_timeout_ms))
     }
-    try self.events.get() catch {
+    try self.resize_notifications.get() catch {
       @aqueue.QueueAlreadyClosed => None
       err => raise err
     } noraise {
-      event => Some(event)
+      _ => Some(Resize)
     }
   }
 }
@@ -82,6 +80,7 @@ async fn EventReader::read_decoded_input_event(
     match self.decoder.read_event(esc_timeout_ms~) {
       Input(event) => return Some(Input(event))
       CursorPosition(..) => ()
+      Win32InputMode(_) => ()
       KeyboardEnhancementFlags(_) => ()
       PrimaryDeviceAttributes(_) => ()
       DynamicColor(..) => ()
@@ -92,16 +91,15 @@ async fn EventReader::read_decoded_input_event(
 ///|
 async fn EventReader::read_records(self : EventReader) -> Unit {
   for ;; {
-    if !self.drain_records() {
-      @async.sleep(10)
-    }
+    let read_any = self.drain_records()
+    @async.sleep(if read_any { 0 } else { 10 })
   }
 }
 
 ///|
 fn EventReader::drain_records(self : EventReader) -> Bool raise {
   let mut read_any = false
-  for ;; {
+  for _ in 0..<64 {
     if read_console_input_record(self.input_fd) is Some(record) {
       read_any = true
       self.read_record(record)
@@ -109,71 +107,37 @@ fn EventReader::drain_records(self : EventReader) -> Bool raise {
       return read_any
     }
   }
+  read_any
 }
 
 ///|
-fn queue_event(events : @async.Queue[Event], event : Event) -> Unit {
-  guard! (try! events.try_put(event))
-}
-
-///|
-fn EventReader::read_record(self : EventReader, record : InputRecord) -> Unit {
-  match record {
-    Key(record) => self.read_key_record(record)
-    Mouse(record) => self.read_mouse_record(record)
-    WindowBufferSize(_) => {
-      self.pending_surrogate.val = 0
-      queue_event(self.events, Resize)
-    }
-    Focus(focus_set) => {
-      self.pending_surrogate.val = 0
-      if focus_set {
-        queue_event(self.events, Input(FocusIn))
-      } else {
-        queue_event(self.events, Input(FocusOut))
-      }
-    }
-    Unsupported(_) => self.pending_surrogate.val = 0
-  }
-}
-
-///|
-fn EventReader::read_key_record(self : EventReader, record : KeyRecord) -> Unit {
-  if !record.is_down() {
-    return
-  }
-  if !record.text_uses_decoder() {
-    return self.queue_key_input(record)
-  }
-  match record.text(self.pending_surrogate) {
-    Some(text) =>
-      for _ in 0..<record.repeat_count() {
-        self.byte_queue.put_data(text)
-      }
-    None => self.queue_key_input(record)
-  }
-}
-
-///|
-fn EventReader::queue_key_input(self : EventReader, record : KeyRecord) -> Unit {
-  match record.input(self.pending_surrogate) {
-    Some(input) =>
-      for _ in 0..<record.repeat_count() {
-        queue_event(self.events, Input(input))
-      }
-    None => ()
-  }
-}
-
-///|
-fn EventReader::read_mouse_record(
+fn EventReader::read_record(
   self : EventReader,
-  record : MouseRecord,
-) -> Unit {
-  self.pending_surrogate.val = 0
-  match self.mouse_button_state.input_event(record) {
-    Some(input) => queue_event(self.events, Input(input))
-    None => ()
+  record : InputRecord,
+) -> Unit raise {
+  match record {
+    Resize => ignore(self.resize_notifications.try_put(()))
+    Ignored => ()
+    Character(code_unit~, repeat_count~) =>
+      if code_unit >= 0xd800 && code_unit <= 0xdbff {
+        self.pending_surrogate = Some(code_unit)
+      } else {
+        let high = self.pending_surrogate
+        self.pending_surrogate = None
+        let codepoint = if code_unit >= 0xdc00 && code_unit <= 0xdfff {
+          if high is Some(high) {
+            0x10000 + (high - 0xd800) * 0x400 + code_unit - 0xdc00
+          } else {
+            0xfffd
+          }
+        } else {
+          code_unit
+        }
+        let text : String = [codepoint.to_char().unwrap_or('\u{FFFD}')]
+        for _ in 0..<repeat_count.max(1) {
+          self.byte_queue.put_data(text)
+        }
+      }
   }
 }
 

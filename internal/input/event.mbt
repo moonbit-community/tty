@@ -6,6 +6,7 @@
 pub(all) enum Event {
   Input(@public_input.InputEvent)
   CursorPosition(row~ : Int32, col~ : Int32)
+  Win32InputMode(Int32)
   KeyboardEnhancementFlags(Int32)
   PrimaryDeviceAttributes(Bytes)
   DynamicColor(code~ : Int32, red~ : Int32, green~ : Int32, blue~ : Int32)

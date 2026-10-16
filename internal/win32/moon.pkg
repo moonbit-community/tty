@@ -10,11 +10,6 @@ import {
 }
 
 import {
-  "moonbit-community/tty/input" @public_input,
-  "moonbitlang/core/debug",
-} for "test"
-
-import {
   "moonbitlang/async",
   "moonbitlang/async/pipe" @async/pipe,
   "moonbitlang/core/debug",

@@ -8,6 +8,42 @@
 #include <termios.h>
 #endif
 
+#ifdef _WIN32
+MOONBIT_FFI_EXPORT
+int32_t moonbit_tty_console_input_is_raw(HANDLE input) {
+  DWORD mode;
+  return GetConsoleMode(input, &mode) &&
+         (mode & ENABLE_VIRTUAL_TERMINAL_INPUT) &&
+         !(mode & (ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT));
+}
+
+/* Synchronous cleanup must work from defer, including task cancellation. */
+MOONBIT_FFI_EXPORT
+int32_t moonbit_tty_write_console_mode_sequence(
+  HANDLE output,
+  moonbit_bytes_t sequence
+) {
+  DWORD mode;
+  if (!GetConsoleMode(output, &mode)) {
+    return -1;
+  }
+  if (!SetConsoleMode(output, mode | ENABLE_PROCESSED_OUTPUT |
+                              ENABLE_VIRTUAL_TERMINAL_PROCESSING)) {
+    return -1;
+  }
+  DWORD length = (DWORD)Moonbit_array_length(sequence);
+  DWORD written = 0;
+  BOOL ok = WriteFile(output, sequence, length, &written, NULL);
+  DWORD error = ok ? ERROR_WRITE_FAULT : GetLastError();
+  BOOL restored = SetConsoleMode(output, mode);
+  if (!ok || written != length) {
+    SetLastError(error);
+    return -1;
+  }
+  return restored ? 0 : -1;
+}
+#endif
+
 typedef struct moonbit_tty_state {
 #ifdef _WIN32
   DWORD input_mode;

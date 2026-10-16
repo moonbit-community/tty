@@ -9,6 +9,11 @@ test "ensure capacity handles zero sized buffer" {
     head: 0,
     read: 0,
     tail: 0,
+    win32_surrogate: Ref(None),
+    win32_repeat: None,
+    in_paste: false,
+    timeout_boundary: None,
+    esc_timeout_ms: 50,
   }
   events.ensure_capacity(1)
   @debug.assert_eq(events.data.length(), EventReaderInitialBufferCapacity)
