@@ -11,21 +11,21 @@ pub let begin_synchronized_update : Bytes
 
 pub let bold : Bytes
 
-pub fn cursor_back(Int) -> Bytes
+pub fn cursor_back(Int32) -> Bytes
 
-pub fn cursor_down(Int) -> Bytes
+pub fn cursor_down(Int32) -> Bytes
 
-pub fn cursor_forward(Int) -> Bytes
+pub fn cursor_forward(Int32) -> Bytes
 
-pub fn cursor_horizontal_absolute(Int) -> Bytes
+pub fn cursor_horizontal_absolute(Int32) -> Bytes
 
-pub fn cursor_next_line(Int) -> Bytes
+pub fn cursor_next_line(Int32) -> Bytes
 
-pub fn cursor_position(Int, Int) -> Bytes
+pub fn cursor_position(Int32, Int32) -> Bytes
 
-pub fn cursor_prev_line(Int) -> Bytes
+pub fn cursor_prev_line(Int32) -> Bytes
 
-pub fn cursor_up(Int) -> Bytes
+pub fn cursor_up(Int32) -> Bytes
 
 pub let disable_auto_wrap : Bytes
 
@@ -77,7 +77,7 @@ pub let leave_alt_screen : Bytes
 
 pub let pop_keyboard_enhancement_flags : Bytes
 
-pub fn push_keyboard_enhancement_flags(Int) -> Bytes
+pub fn push_keyboard_enhancement_flags(Int32) -> Bytes
 
 pub let query_cursor_color : Bytes
 
@@ -121,35 +121,35 @@ pub fn set_clipboard(StringView) -> Bytes
 
 pub fn set_foreground(@color.Color) -> Bytes
 
-pub fn set_top_bottom_margins(Int, Int) -> Bytes
+pub fn set_top_bottom_margins(Int32, Int32) -> Bytes
 
-pub fn sgr1(Int) -> Bytes
+pub fn sgr1(Int32) -> Bytes
 
-pub fn sgr3(Int, Int, Int) -> Bytes
+pub fn sgr3(Int32, Int32, Int32) -> Bytes
 
-pub fn sgr5(Int, Int, Int, Int, Int) -> Bytes
+pub fn sgr5(Int32, Int32, Int32, Int32, Int32) -> Bytes
 
 pub let show_cursor : Bytes
 
 pub let underline : Bytes
 
-pub fn write_cursor_back(@buffer.Buffer, Int) -> Unit
+pub fn write_cursor_back(@buffer.Buffer, Int32) -> Unit
 
-pub fn write_cursor_down(@buffer.Buffer, Int) -> Unit
+pub fn write_cursor_down(@buffer.Buffer, Int32) -> Unit
 
-pub fn write_cursor_forward(@buffer.Buffer, Int) -> Unit
+pub fn write_cursor_forward(@buffer.Buffer, Int32) -> Unit
 
-pub fn write_cursor_horizontal_absolute(@buffer.Buffer, Int) -> Unit
+pub fn write_cursor_horizontal_absolute(@buffer.Buffer, Int32) -> Unit
 
-pub fn write_cursor_next_line(@buffer.Buffer, Int) -> Unit
+pub fn write_cursor_next_line(@buffer.Buffer, Int32) -> Unit
 
-pub fn write_cursor_position(@buffer.Buffer, Int, Int) -> Unit
+pub fn write_cursor_position(@buffer.Buffer, Int32, Int32) -> Unit
 
-pub fn write_cursor_prev_line(@buffer.Buffer, Int) -> Unit
+pub fn write_cursor_prev_line(@buffer.Buffer, Int32) -> Unit
 
-pub fn write_cursor_up(@buffer.Buffer, Int) -> Unit
+pub fn write_cursor_up(@buffer.Buffer, Int32) -> Unit
 
-pub fn write_push_keyboard_enhancement_flags(@buffer.Buffer, Int) -> Unit
+pub fn write_push_keyboard_enhancement_flags(@buffer.Buffer, Int32) -> Unit
 
 pub fn write_set_background(@buffer.Buffer, @color.Color) -> Unit
 
@@ -157,13 +157,13 @@ pub fn write_set_clipboard(@buffer.Buffer, StringView) -> Unit
 
 pub fn write_set_foreground(@buffer.Buffer, @color.Color) -> Unit
 
-pub fn write_set_top_bottom_margins(@buffer.Buffer, Int, Int) -> Unit
+pub fn write_set_top_bottom_margins(@buffer.Buffer, Int32, Int32) -> Unit
 
-pub fn write_sgr1(@buffer.Buffer, Int) -> Unit
+pub fn write_sgr1(@buffer.Buffer, Int32) -> Unit
 
-pub fn write_sgr3(@buffer.Buffer, Int, Int, Int) -> Unit
+pub fn write_sgr3(@buffer.Buffer, Int32, Int32, Int32) -> Unit
 
-pub fn write_sgr5(@buffer.Buffer, Int, Int, Int, Int, Int) -> Unit
+pub fn write_sgr5(@buffer.Buffer, Int32, Int32, Int32, Int32, Int32) -> Unit
 
 // Errors
 

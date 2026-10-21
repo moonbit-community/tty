@@ -6,53 +6,53 @@ import {
 }
 
 // Values
-pub const CapsLockOn : Int = 0x0080
+pub const CapsLockOn : Int32 = 0x0080
 
-pub const EnhancedKey : Int = 0x0100
+pub const EnhancedKey : Int32 = 0x0100
 
-pub const LeftAltPressed : Int = 0x0002
+pub const LeftAltPressed : Int32 = 0x0002
 
-pub const LeftCtrlPressed : Int = 0x0008
+pub const LeftCtrlPressed : Int32 = 0x0008
 
-pub const MouseDoubleClick : Int = 0x0002
+pub const MouseDoubleClick : Int32 = 0x0002
 
-pub const MouseHorizontalWheeled : Int = 0x0008
+pub const MouseHorizontalWheeled : Int32 = 0x0008
 
-pub const MouseLeftButton : Int = 0x0001
+pub const MouseLeftButton : Int32 = 0x0001
 
-pub const MouseMiddleButton : Int = 0x0004
+pub const MouseMiddleButton : Int32 = 0x0004
 
-pub const MouseMoved : Int = 0x0001
+pub const MouseMoved : Int32 = 0x0001
 
-pub const MouseRightButton : Int = 0x0002
+pub const MouseRightButton : Int32 = 0x0002
 
-pub const MouseWheeled : Int = 0x0004
+pub const MouseWheeled : Int32 = 0x0004
 
-pub const NumLockOn : Int = 0x0020
+pub const NumLockOn : Int32 = 0x0020
 
-pub const RecordFocus : Int = 0x0010
+pub const RecordFocus : Int32 = 0x0010
 
-pub const RecordKey : Int = 0x0001
+pub const RecordKey : Int32 = 0x0001
 
-pub const RecordMouse : Int = 0x0002
+pub const RecordMouse : Int32 = 0x0002
 
-pub const RecordWindowBufferSize : Int = 0x0004
+pub const RecordWindowBufferSize : Int32 = 0x0004
 
-pub const RightAltPressed : Int = 0x0001
+pub const RightAltPressed : Int32 = 0x0001
 
-pub const RightCtrlPressed : Int = 0x0004
+pub const RightCtrlPressed : Int32 = 0x0004
 
-pub const ShiftPressed : Int = 0x0010
+pub const ShiftPressed : Int32 = 0x0010
 
 // Errors
 
 // Types and methods
-pub struct ControlKeyState(Int)
-pub fn ControlKeyState::has_state(Self, Int) -> Bool
+pub struct ControlKeyState(Int32)
+pub fn ControlKeyState::has_state(Self, Int32) -> Bool
 
 pub struct Coord {
-  x : Int
-  y : Int
+  x : Int32
+  y : Int32
 }
 
 pub(all) enum Event {
@@ -64,48 +64,48 @@ pub fn Event::not_equal(Self, Self) -> Bool
 
 type EventReader
 pub fn EventReader::close(Self) -> Unit
-pub fn EventReader::new(Int) -> Self
-pub async fn EventReader::read_event(Self, esc_timeout_ms? : Int) -> Event?
-pub async fn EventReader::read_internal_event(Self, esc_timeout_ms? : Int) -> @moonbit-community/tty/internal/input.Event
+pub fn EventReader::new(Int32) -> Self
+pub async fn EventReader::read_event(Self, esc_timeout_ms? : Int32) -> Event?
+pub async fn EventReader::read_internal_event(Self, esc_timeout_ms? : Int32) -> @moonbit-community/tty/internal/input.Event
 
 pub(all) enum InputRecord {
   Key(KeyRecord)
   Mouse(MouseRecord)
   WindowBufferSize(Coord)
   Focus(Bool)
-  Unsupported(Int)
+  Unsupported(Int32)
 }
 pub fn InputRecord::parse(Bytes) -> Self
 
 pub struct KeyRecord {
-  key_down : Int
-  repeat_count : Int
-  virtual_key_code : Int
-  virtual_scan_code : Int
-  unicode_char : Int
+  key_down : Int32
+  repeat_count : Int32
+  virtual_key_code : Int32
+  virtual_scan_code : Int32
+  unicode_char : Int32
   control_key_state : ControlKeyState
 }
-pub fn KeyRecord::input(Self, @ref.Ref[Int]) -> @moonbit-community/tty/input.InputEvent?
+pub fn KeyRecord::input(Self, @ref.Ref[Int32]) -> @moonbit-community/tty/input.InputEvent?
 pub fn KeyRecord::is_down(Self) -> Bool
-pub fn KeyRecord::new(key_down? : Int, repeat_count? : Int, virtual_key_code? : Int, virtual_scan_code? : Int, unicode_char? : Int, control_key_state? : Int) -> Self
-pub fn KeyRecord::repeat_count(Self) -> Int
-pub fn KeyRecord::text(Self, @ref.Ref[Int]) -> String?
+pub fn KeyRecord::new(key_down? : Int32, repeat_count? : Int32, virtual_key_code? : Int32, virtual_scan_code? : Int32, unicode_char? : Int32, control_key_state? : Int32) -> Self
+pub fn KeyRecord::repeat_count(Self) -> Int32
+pub fn KeyRecord::text(Self, @ref.Ref[Int32]) -> String?
 pub fn KeyRecord::text_uses_decoder(Self) -> Bool
 
 pub struct MouseButtonState {
-  mut buttons : Int
+  mut buttons : Int32
 }
 pub fn MouseButtonState::input_event(Self, MouseRecord) -> @moonbit-community/tty/input.InputEvent?
 pub fn MouseButtonState::new() -> Self
 
 pub struct MouseRecord {
-  x : Int
-  y : Int
-  button_state : Int
+  x : Int32
+  y : Int32
+  button_state : Int32
   control_key_state : ControlKeyState
-  event_flags : Int
+  event_flags : Int32
 }
-pub fn MouseRecord::new(x? : Int, y? : Int, button_state? : Int, control_key_state? : Int, event_flags? : Int) -> Self
+pub fn MouseRecord::new(x? : Int32, y? : Int32, button_state? : Int32, control_key_state? : Int32, event_flags? : Int32) -> Self
 
 // Type aliases
 

@@ -13,10 +13,10 @@ import {
 // Types and methods
 pub(all) enum Event {
   Input(@moonbit-community/tty/input.InputEvent)
-  CursorPosition(row~ : Int, col~ : Int)
-  KeyboardEnhancementFlags(Int)
+  CursorPosition(row~ : Int32, col~ : Int32)
+  KeyboardEnhancementFlags(Int32)
   PrimaryDeviceAttributes(Bytes)
-  DynamicColor(code~ : Int, red~ : Int, green~ : Int, blue~ : Int)
+  DynamicColor(code~ : Int32, red~ : Int32, green~ : Int32, blue~ : Int32)
 } derive(Eq, @debug.Debug)
 pub fn Event::equal(Self, Self) -> Bool
 pub fn Event::not_equal(Self, Self) -> Bool
@@ -24,7 +24,7 @@ pub fn Event::to_repr(Self) -> @debug.Repr
 
 type EventReader
 pub fn EventReader::new(&@io.Reader) -> Self
-pub async fn EventReader::read_event(Self, esc_timeout_ms? : Int) -> Event
+pub async fn EventReader::read_event(Self, esc_timeout_ms? : Int32) -> Event
 
 // Type aliases
 

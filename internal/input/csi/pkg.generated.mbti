@@ -4,11 +4,11 @@ package "moonbit-community/tty/internal/input/csi"
 // Values
 pub fn is_primary_device_attributes_params(BytesView) -> Bool
 
-pub fn parse_decimal(BytesView) -> Int?
+pub fn parse_decimal(BytesView) -> Int32?
 
-pub fn parse_params(BytesView) -> Array[Int?]?
+pub fn parse_params(BytesView) -> Array[Int32?]?
 
-pub fn parse_subparams(BytesView) -> Array[Array[Int?]]?
+pub fn parse_subparams(BytesView) -> Array[Array[Int32?]]?
 
 // Errors
 

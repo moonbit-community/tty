@@ -200,12 +200,12 @@ pub fn MouseButton::to_repr(Self) -> @debug.Repr
 
 pub struct MouseEvent {
   kind : MouseEventKind
-  row : Int
-  col : Int
+  row : Int32
+  col : Int32
   modifiers : KeyModifiers
 } derive(Eq, @debug.Debug)
 pub fn MouseEvent::equal(Self, Self) -> Bool
-pub fn MouseEvent::new(MouseEventKind, Int, Int, modifiers? : KeyModifiers) -> Self
+pub fn MouseEvent::new(MouseEventKind, Int32, Int32, modifiers? : KeyModifiers) -> Self
 pub fn MouseEvent::not_equal(Self, Self) -> Bool
 pub fn MouseEvent::to_repr(Self) -> @debug.Repr
 
