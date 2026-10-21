@@ -169,8 +169,9 @@ Current shape:
   parsing. It does not know about terminal stream events or public input
   semantics.
 - `moonbit-community/tty/internal/input/kitty` owns kitty keyboard protocol
-  key-report parsing. The main internal input decoder owns CSI framing,
-  dispatch, and fallback to `Unknown`.
+  key-report parsing, and `moonbit-community/tty/internal/input/win32` owns
+  win32-input-mode key-report parsing. The main internal input decoder owns
+  CSI framing, dispatch, and fallback to `Unknown`.
 
 The decoder should stay focused on terminal input events. Higher-level line
 editing, Unicode grapheme management, completion queues, history, and prompt
@@ -230,11 +231,26 @@ Window size is exposed through `Tty` because callers usually need the visible
 screen buffer size while coordinating terminal input and output. The current
 query implementation uses the output-side handle. Unix resize notification is a
 process-global `SIGWINCH` source surfaced as coalesced root `Tty::read_event`
-resize events. Windows resize notification comes from native console input
-records. Resize/focus native events and decoded byte-stream input each preserve
-their own source order, but `Tty::read_event` does not guarantee a strict total
-order between native resize/focus notifications and terminal byte sequences;
-this matches the Unix signal-backed resize model.
+resize events. Unix resize events are not ordered against decoded byte-stream
+input.
+
+Windows console input handles deliver typed `INPUT_RECORD` values instead of a
+byte stream. Following charmbracelet/ultraviolet, the internal
+`internal/win32.ConsoleReader` serializes every record into the VT input bytes a
+terminal would send, and the shared byte decoder reads that one stream:
+
+- key records become their UTF-8 text when the console has VT input enabled
+  (raw mode), and win32-input-mode reports (`CSI Vk;Sc;Uc;Kd;Cs;Rc _`)
+  otherwise; `internal/input/win32` decodes those reports into key events
+- mouse records become SGR mouse reports
+- window buffer size records become text area size reports
+  (`CSI 8;rows;cols t`), which root `Tty` turns into resize events after
+  querying the visible window size
+- focus records become focus reports
+
+So Windows console keys, mouse, focus, and resize events keep record order.
+The win32-input-mode encoding is produced locally from console records; the
+package does not enable private mode 9001 on the terminal.
 
 ## Raw Mode
 

@@ -2,7 +2,7 @@
 package "moonbit-community/tty/internal/win32"
 
 import {
-  "moonbitlang/core/ref",
+  "moonbitlang/async/io",
 }
 
 // Values
@@ -47,6 +47,18 @@ pub const ShiftPressed : Int32 = 0x0010
 // Errors
 
 // Types and methods
+type ConsoleReader
+pub async fn ConsoleReader::_direct_read(Self, FixedArray[Byte], offset~ : Int32, max_len~ : Int32) -> Int32
+pub fn ConsoleReader::_get_internal_buffer(Self) -> @io.ReaderBuffer
+pub async fn ConsoleReader::drop(Self, Int32) -> Int32
+pub fn ConsoleReader::new(Int32) -> Self
+pub async fn ConsoleReader::read(Self, FixedArray[Byte], offset? : Int32, max_len? : Int32) -> Int32
+pub async fn ConsoleReader::read_all(Self) -> &@io.Data
+pub async fn ConsoleReader::read_exactly(Self, Int32) -> Bytes
+pub async fn ConsoleReader::read_some(Self, max_len? : Int32) -> Bytes?
+pub async fn ConsoleReader::read_until(Self, StringView) -> String?
+pub impl @io.Reader for ConsoleReader
+
 pub struct ControlKeyState(Int32)
 pub fn ControlKeyState::has_state(Self, Int32) -> Bool
 
@@ -54,19 +66,6 @@ pub struct Coord {
   x : Int32
   y : Int32
 }
-
-pub(all) enum Event {
-  Input(@moonbit-community/tty/input.InputEvent)
-  Resize
-} derive(Eq)
-pub fn Event::equal(Self, Self) -> Bool
-pub fn Event::not_equal(Self, Self) -> Bool
-
-type EventReader
-pub fn EventReader::close(Self) -> Unit
-pub fn EventReader::new(Int32) -> Self
-pub async fn EventReader::read_event(Self, esc_timeout_ms? : Int32) -> Event?
-pub async fn EventReader::read_internal_event(Self, esc_timeout_ms? : Int32) -> @moonbit-community/tty/internal/input.Event
 
 pub(all) enum InputRecord {
   Key(KeyRecord)
@@ -85,18 +84,7 @@ pub struct KeyRecord {
   unicode_char : Int32
   control_key_state : ControlKeyState
 }
-pub fn KeyRecord::input(Self, @ref.Ref[Int32]) -> @moonbit-community/tty/input.InputEvent?
-pub fn KeyRecord::is_down(Self) -> Bool
 pub fn KeyRecord::new(key_down? : Int32, repeat_count? : Int32, virtual_key_code? : Int32, virtual_scan_code? : Int32, unicode_char? : Int32, control_key_state? : Int32) -> Self
-pub fn KeyRecord::repeat_count(Self) -> Int32
-pub fn KeyRecord::text(Self, @ref.Ref[Int32]) -> String?
-pub fn KeyRecord::text_uses_decoder(Self) -> Bool
-
-pub struct MouseButtonState {
-  mut buttons : Int32
-}
-pub fn MouseButtonState::input_event(Self, MouseRecord) -> @moonbit-community/tty/input.InputEvent?
-pub fn MouseButtonState::new() -> Self
 
 pub struct MouseRecord {
   x : Int32

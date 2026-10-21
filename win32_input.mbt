@@ -1,82 +1,45 @@
 ///|
+/// Whether terminal input handles may be Windows consoles, which deliver typed
+/// input records instead of a byte stream.
 #cfg(platform="windows")
-priv enum WindowsInput {
-  ByteStream(@input.EventReader)
-  Console(@win32.EventReader)
-}
-
-///|
-#cfg(platform="windows")
-fn WindowsInput::new(
-  input_fd : @async/types.Fd,
-  fallback : &@async/io.Reader,
-) -> WindowsInput {
-  if tty_isatty(input_fd) > 0 {
-    Console(@win32.EventReader::new(input_fd))
-  } else {
-    ByteStream(@input.EventReader::new(fallback))
-  }
-}
-
-///|
-#cfg(platform="windows")
-fn WindowsInput::close(self : WindowsInput) -> Unit {
-  match self {
-    ByteStream(_) => ()
-    Console(reader) => reader.close()
-  }
-}
-
-///|
-#cfg(platform="windows")
-async fn Tty::read_win32_console_event(
-  self : Self,
-  esc_timeout_ms : Int32,
-) -> Event {
-  match self.input_backend {
-    Console(reader) => self.read_win32_event(reader, esc_timeout_ms)
-    ByteStream(reader) => read_decoded_input_event(reader, esc_timeout_ms)
-  }
-}
-
-///|
-#cfg(platform="windows")
-async fn Tty::read_win32_event(
-  self : Self,
-  reader : @win32.EventReader,
-  esc_timeout_ms : Int32,
-) -> Event {
-  for ;; {
-    match reader.read_event(esc_timeout_ms~) {
-      Some(Input(event)) => return Input(event)
-      Some(Resize) =>
-        try self.window_size() catch {
-          _ => ()
-        } noraise {
-          size => return Resize(size)
-        }
-      None => fail("Windows console input reader closed")
-    }
-  }
-}
-
-///|
-#cfg(platform="windows")
-async fn Tty::read_internal_event_from_sources(
-  self : Self,
-  esc_timeout_ms : Int32,
-) -> @input.Event {
-  match self.input_backend {
-    Console(reader) => reader.read_internal_event(esc_timeout_ms~)
-    ByteStream(reader) => reader.read_event(esc_timeout_ms~)
-  }
-}
+const ConsoleRecordInput : Bool = true
 
 ///|
 #cfg(not(platform="windows"))
-async fn Tty::read_internal_event_from_sources(
-  self : Self,
-  esc_timeout_ms : Int32,
-) -> @input.Event {
-  self.reader.read_event(esc_timeout_ms~)
+const ConsoleRecordInput : Bool = false
+
+///|
+/// Byte source for the terminal input decoder.
+///
+/// Windows console input handles are read through `@win32.ConsoleReader`,
+/// which serializes their input records into VT input bytes. Every other
+/// handle is already a byte stream.
+fn input_byte_source(
+  input : &Reader,
+  input_fd : @async/types.Fd,
+) -> &@async/io.Reader {
+  if ConsoleRecordInput && tty_isatty(input_fd) > 0 {
+    @win32.ConsoleReader::new(input_fd) as &@async/io.Reader
+  } else {
+    input as &@async/io.Reader
+  }
+}
+
+///|
+/// Root event for a decoded text area size report.
+///
+/// `@win32.ConsoleReader` encodes console window buffer size records as text
+/// area size reports. The record carries the screen buffer size, which in
+/// classic conhost includes scrollback rows, so the visible size is queried
+/// again instead of trusting the payload.
+///
+/// Unix terminals send the report only in reply to an XTWINOPS query, which
+/// the root package does not issue; resize comes from `SIGWINCH` instead.
+fn Tty::text_area_size_event(self : Self) -> Event? {
+  guard ConsoleRecordInput else { return None }
+  try self.window_size() catch {
+    _ => None
+  } noraise {
+    size => Some(Resize(size))
+  }
 }

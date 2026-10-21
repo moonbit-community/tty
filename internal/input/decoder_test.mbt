@@ -1206,3 +1206,41 @@ async test "decode repeated escape as two escape events" {
     )
   })
 }
+
+///|
+async test "decode win32-input-mode key reports" {
+  with_input(b"\x1b[65;30;97;1;0;1_\x1b[38;72;0;1;264;1_", events => {
+    @debug.assert_eq(
+      events.read_event(),
+      input_key(@public_input.KeyEvent::new(Char('a'), text="a")),
+    )
+    @debug.assert_eq(
+      events.read_event(),
+      input_key(
+        @public_input.KeyEvent::new(
+          Up,
+          modifiers=@public_input.KeyModifiers::new(ctrl=true),
+        ),
+      ),
+    )
+  })
+}
+
+///|
+async test "decode unmappable win32-input-mode key reports as unknown" {
+  with_input(b"\x1b[16;42;0;1;16;1_\x1b[65;30;97_", events => {
+    @debug.assert_eq(
+      events.read_event(),
+      input_unknown(b"\x1b[16;42;0;1;16;1_"),
+    )
+    @debug.assert_eq(events.read_event(), input_unknown(b"\x1b[65;30;97_"))
+  })
+}
+
+///|
+async test "decode text area size reports" {
+  with_input(b"\x1b[8;24;80t\x1b[4;480;640t", events => {
+    @debug.assert_eq(events.read_event(), TextAreaSize(rows=24, cols=80))
+    @debug.assert_eq(events.read_event(), input_unknown(b"\x1b[4;480;640t"))
+  })
+}

@@ -19,28 +19,15 @@ pub(all) enum Event {
 ///
 /// `Tty` is for terminal protocols that need to write a request and read the
 /// response from the same terminal input stream. It does not model a screen.
-#cfg(platform="windows")
-struct Tty {
-  input : &Reader
-  input_fd : @async/types.Fd
-  output : &Writer
-  output_fd : @async/types.Fd
-  input_backend : WindowsInput
-  pending_input : Array[@public_input.InputEvent]
-  // Serializes output writes so a single `write`/`write_string` call lands on
-  // the terminal atomically with respect to other concurrent writers.
-  write_lock : @lock.Lock
-}
-
-///|
-#cfg(not(platform="windows"))
 struct Tty {
   input : &Reader
   input_fd : @async/types.Fd
   output : &Writer
   output_fd : @async/types.Fd
   reader : @input.EventReader
-  pending_input : Array[@public_input.InputEvent]
+  // Root events read while a request/response query waited for its reply,
+  // replayed by later `read_event` calls.
+  pending_events : Array[Event]
   // Serializes output writes so a single `write`/`write_string` call lands on
   // the terminal atomically with respect to other concurrent writers.
   write_lock : @lock.Lock
@@ -48,27 +35,6 @@ struct Tty {
 
 ///|
 /// Create a coordinated terminal handle from input and output handles.
-#cfg(platform="windows")
-pub fn[I : Reader, O : Writer] Tty::new(input : I, output : O) -> Tty raise {
-  let input = input as &Reader
-  let input_fd = Fd::fd(input)
-  let output = output as &Writer
-  let output_fd = Fd::fd(output)
-  let input_backend = WindowsInput::new(input_fd, input as &@async/io.Reader)
-  {
-    input,
-    input_fd,
-    output,
-    output_fd,
-    input_backend,
-    pending_input: [],
-    write_lock: @lock.Lock::new(),
-  }
-}
-
-///|
-/// Create a coordinated terminal handle from input and output handles.
-#cfg(not(platform="windows"))
 pub fn[I : Reader, O : Writer] Tty::new(input : I, output : O) -> Tty raise {
   let input = input as &Reader
   let input_fd = Fd::fd(input)
@@ -79,8 +45,8 @@ pub fn[I : Reader, O : Writer] Tty::new(input : I, output : O) -> Tty raise {
     input_fd,
     output,
     output_fd,
-    reader: @input.EventReader::new(input as &@async/io.Reader),
-    pending_input: [],
+    reader: @input.EventReader::new(input_byte_source(input, input_fd)),
+    pending_events: [],
     write_lock: @lock.Lock::new(),
   }
 }
@@ -95,18 +61,6 @@ pub fn Tty::stdio() -> Tty raise {
 /// Close the underlying input and output handles.
 ///
 /// Closing stdio-backed handles is a no-op.
-#cfg(platform="windows")
-pub fn Tty::close(self : Self) -> Unit {
-  self.input_backend.close()
-  self.input.close()
-  self.output.close()
-}
-
-///|
-/// Close the underlying input and output handles.
-///
-/// Closing stdio-backed handles is a no-op.
-#cfg(not(platform="windows"))
 pub fn Tty::close(self : Self) -> Unit {
   self.input.close()
   self.output.close()
@@ -121,20 +75,23 @@ pub async fn Tty::read_event(
   self : Self,
   esc_timeout_ms~ : Int32 = 50,
 ) -> Event {
-  if self.pending_input.length() > 0 {
-    return Input(self.pending_input.remove(0))
+  if self.pending_events.length() > 0 {
+    return self.pending_events.remove(0)
   }
   self.read_event_from_sources(esc_timeout_ms)
 }
 
 ///|
-async fn read_decoded_input_event(
-  reader : @input.EventReader,
-  esc_timeout_ms : Int32,
-) -> Event {
+/// Read the next root event from the decoded byte stream, skipping terminal
+/// responses that only request/response queries consume.
+async fn Tty::read_decoded_event(self : Self, esc_timeout_ms : Int32) -> Event {
   for ;; {
-    match reader.read_event(esc_timeout_ms~) {
+    match self.reader.read_event(esc_timeout_ms~) {
       Input(event) => return Input(event)
+      TextAreaSize(..) =>
+        if self.text_area_size_event() is Some(event) {
+          return event
+        }
       CursorPosition(..) => ()
       KeyboardEnhancementFlags(_) => ()
       PrimaryDeviceAttributes(_) => ()
@@ -148,7 +105,23 @@ async fn Tty::read_internal_event(
   self : Self,
   esc_timeout_ms~ : Int32 = 50,
 ) -> @input.Event {
-  self.read_internal_event_from_sources(esc_timeout_ms)
+  self.reader.read_event(esc_timeout_ms~)
+}
+
+///|
+/// Keep a root event that arrived while a query waited for its reply.
+fn Tty::defer_event(self : Self, event : @input.Event) -> Unit {
+  match event {
+    Input(input) => self.pending_events.push(Input(input))
+    TextAreaSize(..) =>
+      if self.text_area_size_event() is Some(event) {
+        self.pending_events.push(event)
+      }
+    CursorPosition(..) => ()
+    KeyboardEnhancementFlags(_) => ()
+    PrimaryDeviceAttributes(_) => ()
+    DynamicColor(..) => ()
+  }
 }
 
 ///|
@@ -187,10 +160,7 @@ pub async fn Tty::query_cursor_position(
     for ;; {
       match self.read_internal_event() {
         CursorPosition(row~, col~) => return { row, col, }
-        Input(event) => self.pending_input.push(event)
-        KeyboardEnhancementFlags(_) => ()
-        PrimaryDeviceAttributes(_) => ()
-        DynamicColor(..) => ()
+        event => self.defer_event(event)
       }
     }
   })
@@ -213,9 +183,7 @@ pub async fn Tty::query_kitty_keyboard_support(
         match self.read_internal_event() {
           KeyboardEnhancementFlags(_) => return true
           PrimaryDeviceAttributes(_) => return false
-          CursorPosition(..) => ()
-          DynamicColor(..) => ()
-          Input(event) => self.pending_input.push(event)
+          event => self.defer_event(event)
         }
       }
     }) {
@@ -276,11 +244,7 @@ async fn Tty::query_dynamic_color(
       match self.read_internal_event() {
         DynamicColor(code~, red~, green~, blue~) if code == expected_code =>
           return { red, green, blue, }
-        DynamicColor(..) => ()
-        CursorPosition(..) => ()
-        KeyboardEnhancementFlags(_) => ()
-        PrimaryDeviceAttributes(_) => ()
-        Input(event) => self.pending_input.push(event)
+        event => self.defer_event(event)
       }
     }
   })

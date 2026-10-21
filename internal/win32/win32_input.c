@@ -64,3 +64,29 @@ moonbit_tty_read_console_input_record(
   return -1;
 #endif
 }
+
+MOONBIT_FFI_EXPORT
+int32_t
+moonbit_tty_console_input_vt_enabled(
+#ifdef _WIN32
+  HANDLE fd
+#else
+  intptr_t fd
+#endif
+) {
+#ifdef _WIN32
+  DWORD mode = 0;
+  if (!GetConsoleMode(fd, &mode)) {
+    return -1;
+  }
+#ifdef ENABLE_VIRTUAL_TERMINAL_INPUT
+  return (mode & ENABLE_VIRTUAL_TERMINAL_INPUT) != 0 ? 1 : 0;
+#else
+  return 0;
+#endif
+#else
+  (void)fd;
+  errno = ENOSYS;
+  return -1;
+#endif
+}

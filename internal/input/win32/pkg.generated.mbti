@@ -1,0 +1,17 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbit-community/tty/internal/input/win32"
+
+import {
+  "moonbit-community/tty/input",
+}
+
+// Values
+pub fn parse_key(Array[Int32?]) -> @input.KeyEvent?
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

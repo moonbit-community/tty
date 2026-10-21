@@ -93,11 +93,6 @@ pub struct MouseRecord {
 }
 
 ///|
-pub struct MouseButtonState {
-  mut buttons : Int32
-}
-
-///|
 pub fn KeyRecord::new(
   key_down~ : Int32 = 1,
   repeat_count~ : Int32 = 1,
@@ -131,11 +126,6 @@ pub fn MouseRecord::new(
     control_key_state: ControlKeyState(control_key_state),
     event_flags,
   }
-}
-
-///|
-pub fn MouseButtonState::new() -> MouseButtonState {
-  { buttons: 0, }
 }
 
 ///|
