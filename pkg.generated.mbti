@@ -38,20 +38,20 @@ pub(all) enum Command {
   ShowCursor
   SaveCursor
   RestoreCursor
-  CursorUp(Int)
-  CursorDown(Int)
-  CursorForward(Int)
-  CursorBack(Int)
-  CursorNextLine(Int)
-  CursorPrevLine(Int)
-  CursorHorizontalAbsolute(Int)
-  CursorPosition(Int, Int)
+  CursorUp(Int32)
+  CursorDown(Int32)
+  CursorForward(Int32)
+  CursorBack(Int32)
+  CursorNextLine(Int32)
+  CursorPrevLine(Int32)
+  CursorHorizontalAbsolute(Int32)
+  CursorPosition(Int32, Int32)
   EraseLineAll
   EraseLineLeft
   EraseLineRight
   EraseDisplay
   EraseScrollback
-  SetTopBottomMargins(Int, Int)
+  SetTopBottomMargins(Int32, Int32)
   ResetTopBottomMargins
   ReverseIndex
   SetForeground(@color.Color)
@@ -73,8 +73,8 @@ pub fn Command::not_equal(Self, Self) -> Bool
 pub fn Command::to_repr(Self) -> @debug.Repr
 
 pub struct CursorPosition {
-  row : Int
-  col : Int
+  row : Int32
+  col : Int32
 } derive(Eq, @debug.Debug)
 pub fn CursorPosition::equal(Self, Self) -> Bool
 pub fn CursorPosition::not_equal(Self, Self) -> Bool
@@ -89,7 +89,7 @@ pub fn Event::not_equal(Self, Self) -> Bool
 pub fn Event::to_repr(Self) -> @debug.Repr
 
 type KeyboardEnhancementFlags derive(Eq, @debug.Debug)
-pub fn KeyboardEnhancementFlags::bits(Self) -> Int
+pub fn KeyboardEnhancementFlags::bits(Self) -> Int32
 pub fn KeyboardEnhancementFlags::disambiguate() -> Self
 pub fn KeyboardEnhancementFlags::disambiguate_escape_codes(Self) -> Bool
 pub fn KeyboardEnhancementFlags::equal(Self, Self) -> Bool
@@ -117,9 +117,9 @@ pub fn State::make_raw(Self) -> Self
 type Tty
 pub async fn Tty::begin_synchronized_update(Self) -> Unit
 pub fn Tty::close(Self) -> Unit
-pub async fn Tty::cursor_back(Self, Int) -> Unit
-pub async fn Tty::cursor_forward(Self, Int) -> Unit
-pub async fn Tty::cursor_up(Self, Int) -> Unit
+pub async fn Tty::cursor_back(Self, Int32) -> Unit
+pub async fn Tty::cursor_forward(Self, Int32) -> Unit
+pub async fn Tty::cursor_up(Self, Int32) -> Unit
 pub async fn Tty::disable_auto_wrap(Self) -> Unit
 pub async fn Tty::disable_bracketed_paste(Self) -> Unit
 pub async fn Tty::disable_focus_tracking(Self) -> Unit
@@ -143,12 +143,12 @@ pub fn[I : Reader, O : Writer] Tty::new(I, O) -> Self raise
 pub async fn Tty::open() -> Self
 pub async fn Tty::pop_keyboard_enhancement_flags(Self) -> Unit
 pub async fn Tty::push_keyboard_enhancement_flags(Self, KeyboardEnhancementFlags) -> Unit
-pub async fn Tty::query_cursor_color(Self, timeout_ms? : Int) -> @color.Rgb16?
-pub async fn Tty::query_cursor_position(Self, timeout_ms? : Int) -> CursorPosition?
-pub async fn Tty::query_default_background_color(Self, timeout_ms? : Int) -> @color.Rgb16?
-pub async fn Tty::query_default_foreground_color(Self, timeout_ms? : Int) -> @color.Rgb16?
-pub async fn Tty::query_kitty_keyboard_support(Self, timeout_ms? : Int) -> Bool
-pub async fn Tty::read_event(Self, esc_timeout_ms? : Int) -> Event
+pub async fn Tty::query_cursor_color(Self, timeout_ms? : Int32) -> @color.Rgb16?
+pub async fn Tty::query_cursor_position(Self, timeout_ms? : Int32) -> CursorPosition?
+pub async fn Tty::query_default_background_color(Self, timeout_ms? : Int32) -> @color.Rgb16?
+pub async fn Tty::query_default_foreground_color(Self, timeout_ms? : Int32) -> @color.Rgb16?
+pub async fn Tty::query_kitty_keyboard_support(Self, timeout_ms? : Int32) -> Bool
+pub async fn Tty::read_event(Self, esc_timeout_ms? : Int32) -> Event
 pub async fn Tty::reset_background(Self) -> Unit
 pub async fn Tty::reset_bold(Self) -> Unit
 pub async fn Tty::reset_foreground(Self) -> Unit
@@ -164,14 +164,14 @@ pub async fn Tty::set_background(Self, @color.Color) -> Unit
 #alias(bold, deprecated)
 pub async fn Tty::set_bold(Self) -> Unit
 pub async fn Tty::set_clipboard(Self, StringView) -> Unit
-pub async fn Tty::set_cursor_position(Self, Int, Int) -> Unit
+pub async fn Tty::set_cursor_position(Self, Int32, Int32) -> Unit
 pub async fn Tty::set_foreground(Self, @color.Color) -> Unit
 #alias(italic, deprecated)
 pub async fn Tty::set_italic(Self) -> Unit
 #alias(reverse, deprecated)
 pub async fn Tty::set_reverse(Self) -> Unit
 pub fn Tty::set_state(Self, State) -> State raise @os_error.OSError
-pub async fn Tty::set_top_bottom_margins(Self, Int, Int) -> Unit
+pub async fn Tty::set_top_bottom_margins(Self, Int32, Int32) -> Unit
 #alias(underline, deprecated)
 pub async fn Tty::set_underline(Self) -> Unit
 pub async fn Tty::show_cursor(Self) -> Unit
@@ -185,13 +185,13 @@ pub async fn[T] Tty::with_kitty_keyboard(Self, async () -> T) -> T
 pub async fn[T] Tty::with_mouse(Self, MouseTrackingMode, async () -> T) -> T
 pub async fn[T] Tty::with_raw_mode(Self, async () -> T) -> T
 pub async fn[T] Tty::with_synchronized_update(Self, async () -> T) -> T
-pub async fn[T] Tty::with_top_bottom_margins(Self, Int, Int, async () -> T) -> T
+pub async fn[T] Tty::with_top_bottom_margins(Self, Int32, Int32, async () -> T) -> T
 pub async fn Tty::write(Self, &@io.Data) -> Unit
 pub async fn Tty::write_string(Self, String) -> Unit
 
 pub struct WindowSize {
-  rows : Int
-  cols : Int
+  rows : Int32
+  cols : Int32
 } derive(Eq, @debug.Debug)
 pub fn WindowSize::equal(Self, Self) -> Bool
 pub fn WindowSize::not_equal(Self, Self) -> Bool
@@ -201,7 +201,7 @@ pub fn WindowSize::to_repr(Self) -> @debug.Repr
 
 // Traits
 pub(open) trait Fd {
-  fn fd(Self) -> Int raise
+  fn fd(Self) -> Int32 raise
 }
 pub impl Fd for @fs.File
 pub impl Fd for @pipe.PipeRead
