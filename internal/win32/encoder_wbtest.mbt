@@ -1,4 +1,11 @@
 ///|
+/// `dwControlKeyState` flags the encoder passes through without reading.
+const NumLockOn : Int32 = 0x0020
+
+///|
+const EnhancedKey : Int32 = 0x0100
+
+///|
 fn key(
   char : Char,
   virtual_key_code~ : Int32 = 0,
@@ -231,12 +238,7 @@ test "encoder writes SGR mouse reports" {
 test "encoder writes focus reports and no resize bytes" {
   @debug.assert_eq(
     encode_records(
-      [
-        Focus(true),
-        WindowBufferSize({ x: 120, y: 30, }),
-        Focus(false),
-        Unsupported(0x0008),
-      ],
+      [Focus(true), WindowBufferSize, Focus(false), Unsupported],
       vt_input=true,
     ),
     b"\x1b[I\x1b[O",
@@ -247,7 +249,7 @@ test "encoder writes focus reports and no resize bytes" {
 async test "encoded records decode in record order" {
   let records = [Focus(true)]
   records.append(text_keys("\u{1B}[7;9R"))
-  records.push(WindowBufferSize({ x: 80, y: 24, }))
+  records.push(WindowBufferSize)
   records.push(mouse(x=19, y=3, button_state=MouseLeftButton))
   @debug.assert_eq(decode_records(records, vt_input=true, count=3), [
     Input(FocusIn),
@@ -396,9 +398,9 @@ fn test_console_reader() -> ConsoleReader raise {
 async test "console reader reports resize records out of band" {
   let reader = test_console_reader()
   let out = @buffer.Buffer()
-  reader.read_record(WindowBufferSize({ x: 80, y: 24, }), vt_input=true, out)
+  reader.read_record(WindowBufferSize, vt_input=true, out)
   reader.read_record(key('a'), vt_input=true, out)
-  reader.read_record(WindowBufferSize({ x: 100, y: 30, }), vt_input=true, out)
+  reader.read_record(WindowBufferSize, vt_input=true, out)
   @debug.assert_eq(out.to_bytes(), b"a")
   guard @async.with_timeout_opt(10, () => reader.wait_resize()) is Some(_) else {
     fail("expected a resize notification")

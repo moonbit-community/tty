@@ -74,7 +74,7 @@ fn ConsoleReader::read_record(
   vt_input~ : Bool,
   out : @buffer.Buffer,
 ) -> Unit raise {
-  if record is WindowBufferSize(_) {
+  if record is WindowBufferSize {
     ignore(self.resizes.try_put(()))
   }
   self.encoder.encode(record, vt_input~, out)

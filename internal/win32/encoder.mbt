@@ -70,7 +70,7 @@ fn RecordEncoder::encode(
       self.high_surrogate = None
       out.write_bytes(if focus_set { b"\x1b[I" } else { b"\x1b[O" })
     }
-    WindowBufferSize(_) | Unsupported(_) => self.high_surrogate = None
+    WindowBufferSize | Unsupported => self.high_surrogate = None
   }
 }
 

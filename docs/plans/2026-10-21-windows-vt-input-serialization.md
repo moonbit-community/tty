@@ -191,6 +191,25 @@ in-band because they are terminal input sequences.
 - `internal/input/win32` exports only `parse_key`, consumed by the decoder.
 - `internal/win32` exports `ConsoleReader` as an opaque type with
   `ConsoleReader::new`, `ConsoleReader::wait_resize`, and its
-  `@async/io.Reader` impl, consumed by root `Tty`. `RecordEncoder` is `priv`.
-  The record types and flag constants are still exported for black-box record
-  tests; a follow-up commit makes them private.
+  `@async/io.Reader` impl, consumed by root `Tty`. Nothing else is exported.
+
+## Follow-up: Private Record Types
+
+`InputRecord`, `KeyRecord`, `MouseRecord`, `ControlKeyState`, their
+constructors and `InputRecord::parse`, and the record flag constants had stayed
+`pub` from the two-lane backend, where root `Tty` mapped records itself. After
+this change their only outside user was the black-box `record_test.mbt`, and
+white-box tests do not justify visibility.
+
+- All of them are now package-private, and the three `record_test.mbt` cases
+  moved into `record_wbtest.mbt`.
+- Making them private exposed dead code, which is removed rather than
+  suppressed: the `NumLockOn`, `CapsLockOn`, and `EnhancedKey` flags (the
+  encoder passes `dwControlKeyState` through unread; `internal/input/win32`
+  has its own copies), the `Coord` payload of `WindowBufferSize` (resize is
+  out-of-band and reads the visible size instead), and the record type carried
+  by `Unsupported`. The encoder tests define the two flags they use.
+- `internal/win32/pkg.generated.mbti` now lists only `ConsoleReader`.
+- Validation: `moon fmt`, `moon check --deny-warn`, `moon test internal/win32`
+  (17 tests), `moon test --deny-warn` (203 tests), `tests/` `moon test`
+  (171 tests), `moon info`, `git diff --check`.
