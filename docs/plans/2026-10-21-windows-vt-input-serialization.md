@@ -2,11 +2,12 @@
 
 ## Goal
 
-Serialize every Windows console `INPUT_RECORD` into VT input bytes and feed
-one byte stream to the shared `internal/input.EventReader`, following
+Serialize Windows console input records into VT input bytes and feed one byte
+stream to the shared `internal/input.EventReader`, following
 charmbracelet/ultraviolet (`terminal_reader_windows.go`). This replaces the
 two-lane Windows backend (VT byte lane plus a direct `KeyEvent`/mouse/focus/
-resize lane) from TTY-21, TTY-22, and TTY-24.
+resize lane) from TTY-21, TTY-22, and TTY-24. Resize stays out-of-band, as on
+Unix.
 
 ## Problem
 
@@ -21,15 +22,15 @@ resize lane) from TTY-21, TTY-22, and TTY-24.
 
 ## Accepted Design
 
-Record encoding (`internal/win32`), mirroring ultraviolet:
+Record encoding (`internal/win32`), mirroring ultraviolet for input records:
 
 | Record | VT bytes |
 | --- | --- |
 | `KEY_EVENT`, VT input enabled | key-down `UnicodeChar` only, UTF-16 surrogates joined, written as UTF-8 |
 | `KEY_EVENT`, VT input disabled | `CSI Vk ; Sc ; Uc ; Kd ; Cs ; Rc _` (win32-input-mode); `Vk == 0` or surrogate `Uc` writes UTF-8 text |
 | `MOUSE_EVENT` | SGR mouse `CSI < Cb ; col ; row M/m` |
-| `WINDOW_BUFFER_SIZE_EVENT` | xterm text area size report `CSI 8 ; rows ; cols t` |
 | `FOCUS_EVENT` | `CSI I` / `CSI O` |
+| `WINDOW_BUFFER_SIZE_EVENT` | nothing; reported out-of-band (see below) |
 | other | nothing |
 
 - Key-up records are dropped, and lone modifier key-downs (Shift, Ctrl, Alt,
@@ -51,6 +52,20 @@ Reading (`internal/win32.ConsoleReader`):
   the decoder cannot drop records that were already read from the console.
 - No background producer task and no direct-event queue.
 
+Resize (out-of-band):
+
+- `ConsoleReader` holds a private `@aqueue.Queue[Unit]` with
+  `DiscardLatest(1)`. A window buffer size record read in `_direct_read` puts a
+  notification into it, coalescing repeats like a burst of `SIGWINCH`.
+- `ConsoleReader::wait_resize` waits for that notification. Records are read
+  only while the byte stream is read, so root `Tty::read_event` races the
+  decoder against `wait_resize`, exactly as it races `SIGWINCH` on Unix.
+- After a notification root `Tty` queries the visible window size. The record
+  payload is the screen buffer size, which in classic conhost includes
+  scrollback rows.
+- A resize record consumed while a request/response query reads leaves the
+  notification pending for the next `Tty::read_event`.
+
 Decoding (`internal/input`):
 
 - New `internal/input/win32` subpackage, parallel to `internal/input/kitty`,
@@ -58,59 +73,65 @@ Decoding (`internal/input`):
   key table moves there from `internal/win32/key.mbt`.
 - The main decoder dispatches `CSI ... _` to that subpackage and falls back to
   `Unknown` for unmappable reports.
-- New internal stream event `TextAreaSize(rows~, cols~)` for `CSI 8 ; r ; c t`.
-  It is a terminal report, not user input.
 
 Root package:
 
-- One `Tty` struct definition on every platform with one `@input.EventReader`.
-  On Windows console input handles, the reader's source is a
-  `@win32.ConsoleReader`; everywhere else it is the input handle itself.
+- One `Tty` struct definition on every platform with one `@input.EventReader`
+  and a `console : @win32.ConsoleReader?` field. On a Windows console input
+  handle, `console` is the decoder's byte source; everywhere else the decoder
+  reads the input handle and `console` is `None`.
+- Shared `Tty::read_event_from_sources` races decoded input against
+  `ConsoleReader::wait_resize` when `console` is present, and otherwise calls
+  the per-platform `Tty::read_byte_stream_event` (Unix: race against
+  `SIGWINCH`; Windows: redirected input, no resize source, as before).
 - Delete `WindowsInput`, `Tty::read_win32_console_event`,
-  `Tty::read_win32_event`, and both `read_internal_event_from_sources`
-  variants.
-- On Windows, `TextAreaSize` maps to `Resize(window_size())`. The record
-  payload is the screen buffer size, which in classic conhost includes
-  scrollback rows, so the visible size is queried again. On Unix the report is
-  ignored like other terminal responses.
-- `pending_input : Array[InputEvent]` becomes `pending_events : Array[Event]`
-  so a Windows resize that arrives while a request/response query is waiting is
-  preserved for the next `Tty::read_event` instead of being dropped. (Deviation
-  noted during implementation: a direct consequence of moving resize into the
-  byte stream.)
+  `Tty::read_win32_event`, both `read_internal_event_from_sources` variants,
+  and `non_windows_imports.mbt`.
+
+## Decision: Resize Stays Out-of-Band
+
+The first revision of this plan encoded window buffer size records in-band as
+xterm text area size reports (`CSI 8 ; rows ; cols t`), as ultraviolet does.
+Review rejected that: resize is out-of-band on Unix (`SIGWINCH`), in-band resize
+in VT terminals is the opt-in mode 2048, and the in-band encoding forced a new
+internal `TextAreaSize` stream event, platform-dependent interpretation of it,
+a `pending_input` to `pending_events` change so queries would not drop it, and a
+Unix behavior change for stray `CSI 8 ; r ; c t` reports. Focus and mouse stay
+in-band because they are terminal input sequences.
 
 ## Target Files
 
 - `internal/input/win32/` (new): `moon.pkg`, `key.mbt`, `key_test.mbt`
-- `internal/input/decoder.mbt`, `internal/input/event.mbt`,
-  `internal/input/moon.pkg`, decoder tests
+- `internal/input/decoder.mbt`, `internal/input/moon.pkg`, decoder tests
 - `internal/win32/`: `encoder.mbt` (new), `console_reader.mbt` (new, replaces
-  `event_reader.mbt`), `win32_input.c`, `record.mbt`; delete `key.mbt`,
-  `mouse.mbt`, `event_reader.mbt`; replace `event_reader_wbtest.mbt` with
-  encoder tests
-- root: `tty.mbt`, `win32_input.mbt`, `resize_win32.mbt`,
-  `non_windows_imports.mbt`
+  `event_reader.mbt`), `win32_input.c`, `record.mbt`, `moon.pkg`; delete
+  `key.mbt`, `mouse.mbt`, `event_reader.mbt`; replace
+  `event_reader_wbtest.mbt` with encoder tests
+- root: `tty.mbt`, `win32_input.mbt`, `resize_win32.mbt`, `resize_unix.mbt`;
+  delete `non_windows_imports.mbt`
 - docs: `docs/plan.md`, `docs/architecture.md`
 
 ## Public API / Interface Diff
 
 - Root `pkg.generated.mbti`: unchanged.
 - `input/pkg.generated.mbti`: unchanged.
-- `internal/input/pkg.generated.mbti`: adds `Event::TextAreaSize`.
+- `internal/input/pkg.generated.mbti`: unchanged.
 - `internal/input/win32/pkg.generated.mbti`: new internal package.
 - `internal/win32/pkg.generated.mbti`: drops `Event`, `EventReader`,
   `MouseButtonState`, and `KeyRecord` translation methods; adds
-  `ConsoleReader` with its `@async/io.Reader` impl.
+  `ConsoleReader` with `new`, `wait_resize`, and its `@async/io.Reader` impl.
 
 ## Behavior Changes
 
-- Keys, mouse, focus, and resize from a Windows console are delivered in record
-  order.
+- Keys, mouse, and focus from a Windows console are delivered in record order.
+  Resize is not ordered against decoded input, on either platform.
 - With VT input enabled (raw mode), key input is exactly the VT text the
   console produces, the same as on Unix terminals: for example Shift+printable
   carries no Shift modifier, and keypad digits carry no keypad state.
 - With VT input disabled, key semantics follow the previous direct mapping
   (now in `internal/input/win32`).
+- Repeated Windows resize records between two reads coalesce into one
+  `Resize`, like `SIGWINCH`.
 - Focus records are still reported unconditionally and mouse records are not
   filtered by a mouse mode, as before.
 
@@ -135,31 +156,28 @@ Root package:
   reads them through `ConsoleReader` (`@async/io.Reader`). The old `Event`,
   `EventReader`, key translation, and mouse translation are removed; the
   package no longer depends on `internal/input` or `tty/input`.
+- `ConsoleReader::read_record` dispatches one record: resize records notify
+  `wait_resize`, and every record goes through the encoder. It is split out of
+  `fill` so tests can feed records without a console.
 - `win32_input.c` gains `moonbit_tty_console_input_vt_enabled`, which reads
   `ENABLE_VIRTUAL_TERMINAL_INPUT` from the console input mode.
 - `internal/input/win32.parse_key` decodes win32-input-mode reports with the
   virtual key table moved from `internal/win32/key.mbt`; the decoder dispatches
-  `CSI ... _` to it and decodes `CSI 8 ; rows ; cols t` as `TextAreaSize`.
+  `CSI ... _` to it.
 - Root `Tty` has one struct definition and one decoder. A `#cfg`-selected
-  `ConsoleRecordInput` constant gates the Windows-only branches in
-  `input_byte_source` and `Tty::text_area_size_event`, so the shared code
-  references `@win32.ConsoleReader` on every platform and
-  `non_windows_imports.mbt` is no longer needed.
-- Request/response queries defer any root event they read through
-  `Tty::defer_event` into `pending_events`.
-- On Unix a stray `CSI 8 ; rows ; cols t` is now treated as a terminal response
-  and dropped; it previously surfaced as `Input(Unknown(...))`.
+  `ConsoleRecordInput` constant gates console reader creation in
+  `console_input_reader`, so shared code references `@win32.ConsoleReader` on
+  every platform without unused-field or unused-parameter warnings.
 
 ## Validation Results
 
 - Passed: `moon fmt`
 - Passed: `moon check --deny-warn`
 - Passed: `moon test internal/input/win32` (8 tests)
-- Passed: `moon test internal/input` (66 tests)
-- Passed: `moon test internal/win32` (16 tests)
+- Passed: `moon test internal/win32` (17 tests)
 - Passed: `moon test --deny-warn` (203 tests)
 - Passed: `moon test` in `tests/` (171 tests)
-- Passed: `moon info`; root and `input` `.mbti` unchanged
+- Passed: `moon info`; root, `input`, and `internal/input` `.mbti` unchanged
 - Passed: `moon check --deny-warn` on a throwaway copy with the Windows and
   non-Windows `#cfg` conditions swapped, to type-check the Windows-only root
   code on macOS
@@ -170,10 +188,9 @@ Root package:
 ## Public API Audit
 
 - Root `pkg.generated.mbti` and `input/pkg.generated.mbti` are unchanged.
-- `internal/input` adds `Event::TextAreaSize(rows~, cols~)`, needed for the
-  root package to see Windows resize reports from the byte stream.
 - `internal/input/win32` exports only `parse_key`, consumed by the decoder.
 - `internal/win32` exports `ConsoleReader` as an opaque type with
-  `ConsoleReader::new` and its `@async/io.Reader` impl, consumed by root `Tty`.
-  `RecordEncoder` is `priv`. The existing record types and flag constants stay
-  exported for the black-box record tests.
+  `ConsoleReader::new`, `ConsoleReader::wait_resize`, and its
+  `@async/io.Reader` impl, consumed by root `Tty`. `RecordEncoder` is `priv`.
+  The record types and flag constants are still exported for black-box record
+  tests; a follow-up commit makes them private.

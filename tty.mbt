@@ -24,10 +24,11 @@ struct Tty {
   input_fd : @async/types.Fd
   output : &Writer
   output_fd : @async/types.Fd
+  // Windows console input source, when the input handle is a console. It is
+  // the decoder's byte source and reports resize out-of-band.
+  console : @win32.ConsoleReader?
   reader : @input.EventReader
-  // Root events read while a request/response query waited for its reply,
-  // replayed by later `read_event` calls.
-  pending_events : Array[Event]
+  pending_input : Array[@public_input.InputEvent]
   // Serializes output writes so a single `write`/`write_string` call lands on
   // the terminal atomically with respect to other concurrent writers.
   write_lock : @lock.Lock
@@ -40,13 +41,19 @@ pub fn[I : Reader, O : Writer] Tty::new(input : I, output : O) -> Tty raise {
   let input_fd = Fd::fd(input)
   let output = output as &Writer
   let output_fd = Fd::fd(output)
+  let console = console_input_reader(input_fd)
+  let byte_source = match console {
+    Some(console) => console as &@async/io.Reader
+    None => input as &@async/io.Reader
+  }
   {
     input,
     input_fd,
     output,
     output_fd,
-    reader: @input.EventReader::new(input_byte_source(input, input_fd)),
-    pending_events: [],
+    console,
+    reader: @input.EventReader::new(byte_source),
+    pending_input: [],
     write_lock: @lock.Lock::new(),
   }
 }
@@ -75,23 +82,20 @@ pub async fn Tty::read_event(
   self : Self,
   esc_timeout_ms~ : Int32 = 50,
 ) -> Event {
-  if self.pending_events.length() > 0 {
-    return self.pending_events.remove(0)
+  if self.pending_input.length() > 0 {
+    return Input(self.pending_input.remove(0))
   }
   self.read_event_from_sources(esc_timeout_ms)
 }
 
 ///|
-/// Read the next root event from the decoded byte stream, skipping terminal
-/// responses that only request/response queries consume.
-async fn Tty::read_decoded_event(self : Self, esc_timeout_ms : Int32) -> Event {
+async fn read_decoded_input_event(
+  reader : @input.EventReader,
+  esc_timeout_ms : Int32,
+) -> Event {
   for ;; {
-    match self.reader.read_event(esc_timeout_ms~) {
+    match reader.read_event(esc_timeout_ms~) {
       Input(event) => return Input(event)
-      TextAreaSize(..) =>
-        if self.text_area_size_event() is Some(event) {
-          return event
-        }
       CursorPosition(..) => ()
       KeyboardEnhancementFlags(_) => ()
       PrimaryDeviceAttributes(_) => ()
@@ -106,22 +110,6 @@ async fn Tty::read_internal_event(
   esc_timeout_ms~ : Int32 = 50,
 ) -> @input.Event {
   self.reader.read_event(esc_timeout_ms~)
-}
-
-///|
-/// Keep a root event that arrived while a query waited for its reply.
-fn Tty::defer_event(self : Self, event : @input.Event) -> Unit {
-  match event {
-    Input(input) => self.pending_events.push(Input(input))
-    TextAreaSize(..) =>
-      if self.text_area_size_event() is Some(event) {
-        self.pending_events.push(event)
-      }
-    CursorPosition(..) => ()
-    KeyboardEnhancementFlags(_) => ()
-    PrimaryDeviceAttributes(_) => ()
-    DynamicColor(..) => ()
-  }
 }
 
 ///|
@@ -160,7 +148,10 @@ pub async fn Tty::query_cursor_position(
     for ;; {
       match self.read_internal_event() {
         CursorPosition(row~, col~) => return { row, col, }
-        event => self.defer_event(event)
+        Input(event) => self.pending_input.push(event)
+        KeyboardEnhancementFlags(_) => ()
+        PrimaryDeviceAttributes(_) => ()
+        DynamicColor(..) => ()
       }
     }
   })
@@ -183,7 +174,9 @@ pub async fn Tty::query_kitty_keyboard_support(
         match self.read_internal_event() {
           KeyboardEnhancementFlags(_) => return true
           PrimaryDeviceAttributes(_) => return false
-          event => self.defer_event(event)
+          CursorPosition(..) => ()
+          DynamicColor(..) => ()
+          Input(event) => self.pending_input.push(event)
         }
       }
     }) {
@@ -244,7 +237,11 @@ async fn Tty::query_dynamic_color(
       match self.read_internal_event() {
         DynamicColor(code~, red~, green~, blue~) if code == expected_code =>
           return { red, green, blue, }
-        event => self.defer_event(event)
+        DynamicColor(..) => ()
+        CursorPosition(..) => ()
+        KeyboardEnhancementFlags(_) => ()
+        PrimaryDeviceAttributes(_) => ()
+        Input(event) => self.pending_input.push(event)
       }
     }
   })

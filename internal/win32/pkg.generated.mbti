@@ -57,6 +57,7 @@ pub async fn ConsoleReader::read_all(Self) -> &@io.Data
 pub async fn ConsoleReader::read_exactly(Self, Int32) -> Bytes
 pub async fn ConsoleReader::read_some(Self, max_len? : Int32) -> Bytes?
 pub async fn ConsoleReader::read_until(Self, StringView) -> String?
+pub async fn ConsoleReader::wait_resize(Self) -> Unit
 pub impl @io.Reader for ConsoleReader
 
 pub struct ControlKeyState(Int32)

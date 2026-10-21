@@ -53,14 +53,18 @@ async fn Tty::read_resize_event(self : Self) -> Event {
 }
 
 ///|
+/// Read the next root event from a byte-stream input handle, racing decoded
+/// input against `SIGWINCH` resize notifications.
 #cfg(not(platform="windows"))
-async fn Tty::read_event_from_sources(
+async fn Tty::read_byte_stream_event(
   self : Self,
   esc_timeout_ms : Int32,
 ) -> Event {
   @async.with_task_group() <| group => {
     group.spawn_bg(no_wait=true) <| () => {
-      group.return_immediately(self.read_decoded_event(esc_timeout_ms))
+      group.return_immediately(
+        read_decoded_input_event(self.reader, esc_timeout_ms),
+      )
     }
     self.read_resize_event()
   }

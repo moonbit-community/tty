@@ -36,9 +36,10 @@ const SgrWheel : Int32 = 64
 ///   enabled, and win32-input-mode reports (`CSI Vk;Sc;Uc;Kd;Cs;Rc _`)
 ///   otherwise
 /// - mouse records become SGR mouse reports (`CSI < Cb;col;row M/m`)
-/// - window buffer size records become text area size reports
-///   (`CSI 8;rows;cols t`)
 /// - focus records become focus reports (`CSI I` / `CSI O`)
+///
+/// Window buffer size records produce no bytes: resize is out-of-band, as
+/// `SIGWINCH` is on Unix, and `ConsoleReader` reports it separately.
 ///
 /// The encoder keeps the state that spans records: a pending UTF-16 high
 /// surrogate, and the mouse buttons held at the previous mouse record.
@@ -65,15 +66,11 @@ fn RecordEncoder::encode(
       self.high_surrogate = None
       self.encode_mouse(mouse, out)
     }
-    WindowBufferSize(size) => {
-      self.high_surrogate = None
-      out.write_string_utf8("\u{1b}[8;\{size.y};\{size.x}t")
-    }
     Focus(focus_set) => {
       self.high_surrogate = None
       out.write_bytes(if focus_set { b"\x1b[I" } else { b"\x1b[O" })
     }
-    Unsupported(_) => self.high_surrogate = None
+    WindowBufferSize(_) | Unsupported(_) => self.high_surrogate = None
   }
 }
 

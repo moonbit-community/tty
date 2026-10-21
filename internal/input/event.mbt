@@ -9,8 +9,6 @@ pub(all) enum Event {
   KeyboardEnhancementFlags(Int32)
   PrimaryDeviceAttributes(Bytes)
   DynamicColor(code~ : Int32, red~ : Int32, green~ : Int32, blue~ : Int32)
-  /// xterm text area size report in cells, `CSI 8 ; rows ; cols t`.
-  TextAreaSize(rows~ : Int32, cols~ : Int32)
 } derive(Eq, Debug)
 
 ///|

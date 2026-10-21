@@ -231,26 +231,29 @@ Window size is exposed through `Tty` because callers usually need the visible
 screen buffer size while coordinating terminal input and output. The current
 query implementation uses the output-side handle. Unix resize notification is a
 process-global `SIGWINCH` source surfaced as coalesced root `Tty::read_event`
-resize events. Unix resize events are not ordered against decoded byte-stream
-input.
+resize events.
 
 Windows console input handles deliver typed `INPUT_RECORD` values instead of a
 byte stream. Following charmbracelet/ultraviolet, the internal
-`internal/win32.ConsoleReader` serializes every record into the VT input bytes a
-terminal would send, and the shared byte decoder reads that one stream:
+`internal/win32.ConsoleReader` serializes input records into the VT input bytes
+a terminal would send, and the shared byte decoder reads that one stream:
 
 - key records become their UTF-8 text when the console has VT input enabled
   (raw mode), and win32-input-mode reports (`CSI Vk;Sc;Uc;Kd;Cs;Rc _`)
   otherwise; `internal/input/win32` decodes those reports into key events
 - mouse records become SGR mouse reports
-- window buffer size records become text area size reports
-  (`CSI 8;rows;cols t`), which root `Tty` turns into resize events after
-  querying the visible window size
 - focus records become focus reports
 
-So Windows console keys, mouse, focus, and resize events keep record order.
-The win32-input-mode encoding is produced locally from console records; the
-package does not enable private mode 9001 on the terminal.
+So Windows console keys, mouse, and focus events keep record order. The
+win32-input-mode encoding is produced locally from console records; the package
+does not enable private mode 9001 on the terminal.
+
+Resize stays out-of-band on both platforms. Window buffer size records are
+console notifications, not terminal input, so `ConsoleReader` reports them
+through a coalesced notification that root `Tty::read_event` races against
+decoded input, the same way it races Unix `SIGWINCH`; root `Tty` then queries
+the visible window size. On either platform, resize events are not ordered
+against decoded input.
 
 ## Raw Mode
 

@@ -404,7 +404,6 @@ fn parse_csi(csi : BytesView) -> Event {
     [Esc, b'[', .. params, b'~'] => Input(parse_csi_tilde_key(csi, params))
     [Esc, b'[', .. params, b'_'] =>
       Input(parse_win32_input_mode_key(csi, params))
-    [Esc, b'[', .. params, b't'] => parse_text_area_size(csi, params)
     [Esc, b'[', .. params, final_byte] =>
       match final_byte {
         b'A' => Input(parse_csi_key(csi, params, Up))
@@ -448,16 +447,6 @@ fn parse_primary_device_attributes(
     PrimaryDeviceAttributes(csi.to_owned())
   } else {
     Input(Unknown(csi.to_owned()))
-  }
-}
-
-///|
-/// Parse an xterm window report. Only the text area size in cells
-/// (`CSI 8 ; rows ; cols t`, the reply to XTWINOPS 18) is modeled.
-fn parse_text_area_size(csi : BytesView, params : BytesView) -> Event {
-  match @csi.parse_params(params) {
-    Some([Some(8), Some(rows), Some(cols)]) => TextAreaSize(rows~, cols~)
-    _ => Input(Unknown(csi.to_owned()))
   }
 }
 

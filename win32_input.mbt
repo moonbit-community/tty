@@ -9,37 +9,53 @@ const ConsoleRecordInput : Bool = true
 const ConsoleRecordInput : Bool = false
 
 ///|
-/// Byte source for the terminal input decoder.
+/// Console input source for a Windows console input handle.
 ///
-/// Windows console input handles are read through `@win32.ConsoleReader`,
-/// which serializes their input records into VT input bytes. Every other
-/// handle is already a byte stream.
-fn input_byte_source(
-  input : &Reader,
-  input_fd : @async/types.Fd,
-) -> &@async/io.Reader {
+/// `@win32.ConsoleReader` serializes console input records into VT input bytes
+/// for the decoder and reports resize out-of-band. Every other handle is
+/// already a byte stream and has no console source.
+fn console_input_reader(input_fd : @async/types.Fd) -> @win32.ConsoleReader? {
   if ConsoleRecordInput && tty_isatty(input_fd) > 0 {
-    @win32.ConsoleReader::new(input_fd) as &@async/io.Reader
+    Some(@win32.ConsoleReader::new(input_fd))
   } else {
-    input as &@async/io.Reader
+    None
   }
 }
 
 ///|
-/// Root event for a decoded text area size report.
+async fn Tty::read_event_from_sources(
+  self : Self,
+  esc_timeout_ms : Int32,
+) -> Event {
+  guard self.console is Some(console) else {
+    return self.read_byte_stream_event(esc_timeout_ms)
+  }
+  @async.with_task_group() <| group => {
+    group.spawn_bg(no_wait=true) <| () => {
+      group.return_immediately(
+        read_decoded_input_event(self.reader, esc_timeout_ms),
+      )
+    }
+    self.read_console_resize_event(console)
+  }
+}
+
+///|
+/// Wait for a console resize notification and report the visible window size.
 ///
-/// `@win32.ConsoleReader` encodes console window buffer size records as text
-/// area size reports. The record carries the screen buffer size, which in
+/// The window buffer size record carries the screen buffer size, which in
 /// classic conhost includes scrollback rows, so the visible size is queried
-/// again instead of trusting the payload.
-///
-/// Unix terminals send the report only in reply to an XTWINOPS query, which
-/// the root package does not issue; resize comes from `SIGWINCH` instead.
-fn Tty::text_area_size_event(self : Self) -> Event? {
-  guard ConsoleRecordInput else { return None }
-  try self.window_size() catch {
-    _ => None
-  } noraise {
-    size => Some(Resize(size))
+/// instead.
+async fn Tty::read_console_resize_event(
+  self : Self,
+  console : @win32.ConsoleReader,
+) -> Event {
+  for ;; {
+    console.wait_resize()
+    try self.window_size() catch {
+      _ => ()
+    } noraise {
+      size => return Resize(size)
+    }
   }
 }

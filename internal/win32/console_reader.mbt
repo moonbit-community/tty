@@ -3,7 +3,12 @@
 ///
 /// `ReadConsoleInputW` returns typed input records rather than a byte stream.
 /// `ConsoleReader` serializes them into VT input bytes with `RecordEncoder` so
-/// the shared byte decoder sees keys, mouse, focus, and resize in record order.
+/// the shared byte decoder sees keys, mouse, and focus in record order.
+///
+/// Window buffer size records are not part of the byte stream. They are
+/// reported out-of-band through `ConsoleReader::wait_resize`, coalesced like
+/// Unix `SIGWINCH`, because they are console notifications rather than terminal
+/// input.
 ///
 /// Reads poll the console input buffer with non-blocking peek/read calls and
 /// sleep briefly when it is empty. Records are encoded synchronously as soon
@@ -16,6 +21,8 @@ struct ConsoleReader {
   read_buf : @async/io.ReaderBuffer
   mut pending : Bytes
   mut pending_offset : Int32
+  // Holds at most one pending resize notification; later ones are coalesced.
+  resizes : @aqueue.Queue[Unit]
 }
 
 ///|
@@ -29,7 +36,18 @@ pub fn ConsoleReader::new(input_fd : @async/types.Fd) -> ConsoleReader {
     read_buf: @async/io.ReaderBuffer::new(),
     pending: b"",
     pending_offset: 0,
+    resizes: Queue(kind=DiscardLatest(1)),
   }
+}
+
+///|
+/// Wait until a console window buffer size record has been read since the
+/// previous call.
+///
+/// Records are read only while the byte stream is being read, so callers race
+/// this against a decoder read, as `SIGWINCH` is raced on Unix.
+pub async fn ConsoleReader::wait_resize(self : ConsoleReader) -> Unit {
+  self.resizes.get()
 }
 
 ///|
@@ -41,10 +59,25 @@ fn ConsoleReader::fill(self : ConsoleReader) -> Unit raise {
     guard read_console_input_record(self.input_fd) is Some(record) else {
       break
     }
-    self.encoder.encode(record, vt_input~, out)
+    self.read_record(record, vt_input~, out)
   }
   self.pending = out.to_bytes()
   self.pending_offset = 0
+}
+
+///|
+/// Dispatch one console record: resize records notify `wait_resize`, and
+/// every record goes through the encoder, which writes its VT input bytes.
+fn ConsoleReader::read_record(
+  self : ConsoleReader,
+  record : InputRecord,
+  vt_input~ : Bool,
+  out : @buffer.Buffer,
+) -> Unit raise {
+  if record is WindowBufferSize(_) {
+    ignore(self.resizes.try_put(()))
+  }
+  self.encoder.encode(record, vt_input~, out)
 }
 
 ///|

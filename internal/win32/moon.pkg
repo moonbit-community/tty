@@ -1,5 +1,6 @@
 import {
   "moonbitlang/async",
+  "moonbitlang/async/aqueue",
   "moonbitlang/async/io" @async/io,
   "moonbitlang/async/os_error",
   "moonbitlang/async/types" @async/types,
@@ -9,6 +10,7 @@ import {
 import {
   "moonbitlang/async",
   "moonbitlang/async/io" @async/io,
+  "moonbitlang/async/pipe" @async/pipe,
   "moonbitlang/core/debug",
   "moonbitlang/core/encoding/utf8",
   "moonbit-community/tty/input" @public_input,
