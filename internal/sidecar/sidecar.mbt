@@ -9,7 +9,7 @@ pub extend Resized with @debug.Debug::{to_repr}
 
 ///|
 /// The sidecar reported an error of its own.
-pub suberror SidecarError {
+pub(all) suberror SidecarError {
   SidecarError(String)
 } derive(Debug)
 
@@ -28,6 +28,7 @@ struct Sidecar {
   read_buf : @async/io.ReaderBuffer
   mut rows : Int32
   mut cols : Int32
+  mut kind : InputKind
   mut raw : Bool
   // Input bytes received but not yet handed out by `_direct_read`.
   mut pending : BytesView
@@ -35,9 +36,13 @@ struct Sidecar {
 }
 
 ///|
-/// Start the sidecar executable at `path` and wait for its hello frame.
+/// Start the sidecar executable at `path` with `env` added to its
+/// environment, and wait for its hello frame.
 #warnings("-14")
-pub async fn spawn(path : String) -> Sidecar {
+pub async fn spawn(
+  path : String,
+  env~ : Map[String, String] = Map([]),
+) -> Sidecar {
   let (child_stdin, to_child) = @async/process.write_to_process()
   let (from_child, child_stdout) = @async/process.read_from_process()
   let pid = {
@@ -45,6 +50,7 @@ pub async fn spawn(path : String) -> Sidecar {
     @async/process.spawn_orphan(
       path,
       [],
+      extra_env=env,
       stdin=child_stdin,
       stdout=child_stdout,
     )
@@ -58,18 +64,20 @@ pub async fn spawn(path : String) -> Sidecar {
     read_buf: @async/io.ReaderBuffer::new(),
     rows: 0,
     cols: 0,
+    kind: Bytes,
     raw: false,
     pending: b""[:],
     closed: false,
   }
   errdefer sidecar.close()
   match conn.read_frame() {
-    Some(Hello(version~, rows~, cols~)) => {
+    Some(Hello(version~, rows~, cols~, kind~)) => {
       guard version == 1 else {
         raise ProtocolError("unsupported sidecar protocol version \{version}")
       }
       sidecar.rows = rows
       sidecar.cols = cols
+      sidecar.kind = kind
     }
     Some(Error(message)) => raise SidecarError(message)
     Some(_) => raise ProtocolError("sidecar did not start with a hello frame")
@@ -92,6 +100,26 @@ pub fn Sidecar::size(self : Sidecar) -> (Int32, Int32) {
 ///|
 pub fn Sidecar::is_raw(self : Sidecar) -> Bool {
   self.raw
+}
+
+///|
+/// Whether input arrives as VT bytes (read through `@io.Reader`) or as
+/// console records (read through `read_frame`).
+pub fn Sidecar::input_kind(self : Sidecar) -> InputKind {
+  self.kind
+}
+
+///|
+/// Next frame from the sidecar with the size bookkeeping applied, `None`
+/// once it has exited. Callers that read bytes through `@io.Reader` must
+/// not mix in calls to this.
+pub async fn Sidecar::read_frame(self : Sidecar) -> Frame? {
+  let frame = self.conn.read_frame()
+  if frame is Some(Resize(rows~, cols~)) {
+    self.rows = rows
+    self.cols = cols
+  }
+  frame
 }
 
 ///|
@@ -131,14 +159,12 @@ pub impl @async/io.Reader for Sidecar with fn _direct_read(
   max_len~,
 ) {
   while self.pending.length() == 0 {
-    guard self.conn.read_frame() is Some(frame) else { return 0 }
+    guard self.read_frame() is Some(frame) else { return 0 }
     match frame {
       Input(bytes) => self.pending = bytes[:]
-      Resize(rows~, cols~) => {
-        self.rows = rows
-        self.cols = cols
-        raise Resized
-      }
+      Resize(..) => raise Resized
+      Record(_) =>
+        raise ProtocolError("console record on a byte stream sidecar")
       Error(message) => raise SidecarError(message)
       Hello(..) => ()
     }

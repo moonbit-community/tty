@@ -1,12 +1,6 @@
-// tty sidecar: owns /dev/tty on behalf of a parent that cannot touch it
-// (for example a wasm program under moonrun). Single threaded.
-//
-// stdin  <- commands from parent:  0x01 SET_RAW {u8 on}   0x02 WRITE {bytes}
-// stdout -> events to parent:      0x80 HELLO {u32 version, u16 rows, u16 cols}
-//                                  0x81 INPUT {bytes}  0x82 RESIZE {u16 rows, u16 cols}
-//                                  0x83 ERROR {utf8 message}
-// Every frame is `tag:u8 len:u32le payload`. EOF on stdin, SIGTERM, SIGHUP or
-// SIGINT restore the terminal and exit.
+// tty sidecar for Unix: owns /dev/tty on behalf of the program that spawned
+// it and relays everything over its stdio pipes. Single threaded. The frame
+// protocol is described in README.md next to this file.
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -23,6 +17,8 @@ enum {
   TAG_HELLO = 0x80, TAG_INPUT = 0x81, TAG_RESIZE = 0x82, TAG_ERROR = 0x83,
 };
 #define PROTOCOL_VERSION 1u
+// HELLO `kind`: the input side is a byte stream (VT sequences).
+#define INPUT_KIND_BYTES 0
 
 static volatile sig_atomic_t got_winch = 0;
 static volatile sig_atomic_t got_quit = 0;
@@ -60,9 +56,10 @@ static int send_error(const char *msg) { return send_frame(TAG_ERROR, msg, (uint
 static int send_hello(void) {
   struct winsize ws = {0};
   ioctl(tty_fd, TIOCGWINSZ, &ws);
-  uint8_t p[8] = { PROTOCOL_VERSION, 0, 0, 0 };
+  uint8_t p[9] = { PROTOCOL_VERSION, 0, 0, 0 };
   put_u16(p + 4, ws.ws_row);
   put_u16(p + 6, ws.ws_col);
+  p[8] = INPUT_KIND_BYTES;
   return send_frame(TAG_HELLO, p, sizeof p);
 }
 

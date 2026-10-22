@@ -19,42 +19,14 @@ pub(all) enum Event {
 ///
 /// `Tty` is for terminal protocols that need to write a request and read the
 /// response from the same terminal input stream. It does not model a screen.
-#cfg(platform="windows")
-struct Tty {
-  input : &Reader
-  input_fd : @async/types.Fd
-  output : &Writer
-  output_fd : @async/types.Fd
-  input_backend : WindowsInput
-  pending_input : Array[@public_input.InputEvent]
-  // Serializes output writes so a single `write`/`write_string` call lands on
-  // the terminal atomically with respect to other concurrent writers.
-  write_lock : @lock.Lock
-}
-
-///|
-#cfg(all(target="native", not(platform="windows")))
-struct Tty {
-  input : &Reader
-  input_fd : @async/types.Fd
-  output : &Writer
-  output_fd : @async/types.Fd
-  reader : @input.EventReader
-  pending_input : Array[@public_input.InputEvent]
-  // Serializes output writes so a single `write`/`write_string` call lands on
-  // the terminal atomically with respect to other concurrent writers.
-  write_lock : @lock.Lock
-}
-
-///|
-/// On wasm the terminal is reached through a sidecar process; see
-/// `sidecar/README.md`. `sidecar` is `Some` only for handles made by
-/// `Tty::open`.
-#cfg(target="wasm")
+///
+/// A handle from `Tty::open` owns a sidecar process that holds the terminal
+/// (see `sidecar/README.md`); handles from `Tty::new` and `Tty::stdio` are
+/// plain streams and have no terminal state of their own.
 struct Tty {
   input : &Reader
   output : &Writer
-  reader : @input.EventReader
+  decoder : InputDecoder
   pending_input : Array[@public_input.InputEvent]
   // Serializes output writes so a single `write`/`write_string` call lands on
   // the terminal atomically with respect to other concurrent writers.
@@ -66,110 +38,86 @@ struct Tty {
 }
 
 ///|
-/// Create a coordinated terminal handle from input and output handles.
-///
-/// Keeps the native signature; nothing can fail here on wasm because the
-/// descriptors are not queried.
-#cfg(target="wasm")
-#warnings("-24")
-pub fn[I : Reader, O : Writer] Tty::new(input : I, output : O) -> Tty raise {
-  Tty::from_streams(input as &Reader, output as &Writer, sidecar=None)
+/// How terminal input reaches the event decoder: as VT bytes, or as Windows
+/// console records forwarded by the sidecar.
+priv enum InputDecoder {
+  Bytes(@input.EventReader)
+  Console(@win32.EventReader)
 }
 
 ///|
-#cfg(target="wasm")
-fn Tty::from_streams(
-  input : &Reader,
-  output : &Writer,
-  sidecar~ : @sidecar.Sidecar?,
-) -> Tty {
+/// Create a coordinated terminal handle from input and output handles.
+pub fn[I : Reader, O : Writer] Tty::new(input : I, output : O) -> Tty {
+  let input = input as &Reader
   {
     input,
-    output,
-    reader: @input.EventReader::new(input as &@async/io.Reader),
+    output: output as &Writer,
+    decoder: Bytes(@input.EventReader::new(input as &@async/io.Reader)),
     pending_input: [],
     write_lock: @lock.Lock::new(),
-    sidecar,
+    sidecar: None,
     resize_pending: false,
   }
 }
 
 ///|
-/// Create a coordinated terminal handle from input and output handles.
-#cfg(platform="windows")
-pub fn[I : Reader, O : Writer] Tty::new(input : I, output : O) -> Tty raise {
-  let input = input as &Reader
-  let input_fd = Fd::fd(input)
-  let output = output as &Writer
-  let output_fd = Fd::fd(output)
-  let input_backend = WindowsInput::new(input_fd, input as &@async/io.Reader)
-  {
-    input,
-    input_fd,
-    output,
-    output_fd,
-    input_backend,
-    pending_input: [],
-    write_lock: @lock.Lock::new(),
-  }
-}
-
-///|
-/// Create a coordinated terminal handle from input and output handles.
-#cfg(all(target="native", not(platform="windows")))
-pub fn[I : Reader, O : Writer] Tty::new(input : I, output : O) -> Tty raise {
-  let input = input as &Reader
-  let input_fd = Fd::fd(input)
-  let output = output as &Writer
-  let output_fd = Fd::fd(output)
-  {
-    input,
-    input_fd,
-    output,
-    output_fd,
-    reader: @input.EventReader::new(input as &@async/io.Reader),
-    pending_input: [],
-    write_lock: @lock.Lock::new(),
-  }
-}
-
-///|
 /// Wrap process stdio as one coordinated terminal handle.
-pub fn Tty::stdio() -> Tty raise {
+pub fn Tty::stdio() -> Tty {
   Tty::new(@async/stdio.stdin, @async/stdio.stdout)
+}
+
+///|
+/// Open the controlling terminal as one coordinated terminal handle.
+///
+/// The terminal is held by a sidecar process: on native the running
+/// executable spawned in sidecar mode, on wasm the executable named by
+/// `TTY_SIDECAR` or an embedded one. Input, resize events and output all go
+/// through it.
+pub async fn Tty::open() -> Tty {
+  let sidecar = @sidecar.open()
+  let decoder = match sidecar.input_kind() {
+    Bytes => Bytes(@input.EventReader::new(sidecar as &@async/io.Reader))
+    Records =>
+      Console(@win32.EventReader::new(() => read_console_source(sidecar)))
+  }
+  {
+    input: sidecar,
+    output: sidecar,
+    decoder,
+    pending_input: [],
+    write_lock: @lock.Lock::new(),
+    sidecar: Some(sidecar),
+    resize_pending: false,
+  }
+}
+
+///|
+/// Console records and resizes from a Windows sidecar.
+async fn read_console_source(sidecar : @sidecar.Sidecar) -> @win32.SourceEvent? {
+  for ;; {
+    guard sidecar.read_frame() is Some(frame) else { return None }
+    match frame {
+      Record(bytes) => return Some(Record(@win32.InputRecord::parse(bytes)))
+      Resize(..) => return Some(Resize)
+      Input(_) =>
+        raise @sidecar.ProtocolError("byte input from a console sidecar")
+      Error(message) => raise @sidecar.SidecarError(message)
+      Hello(..) => ()
+    }
+  }
 }
 
 ///|
 /// Close the underlying input and output handles.
 ///
 /// Closing stdio-backed handles is a no-op. For a handle from `Tty::open`
-/// this closes the sidecar's pipes, which makes it restore the terminal and
-/// exit.
-#cfg(target="wasm")
-pub fn Tty::close(self : Self) -> Unit {
+/// this ends the sidecar, which restores the terminal, and reaps it.
+pub async fn Tty::close(self : Self) -> Unit {
   self.input.close()
   self.output.close()
-}
-
-///|
-/// Close the underlying input and output handles.
-///
-/// Closing stdio-backed handles is a no-op.
-#cfg(platform="windows")
-pub fn Tty::close(self : Self) -> Unit {
-  self.input_backend.close()
-  self.input.close()
-  self.output.close()
-}
-
-///|
-/// Close the underlying input and output handles.
-///
-/// Closing stdio-backed handles is a no-op.
-#cfg(all(target="native", not(platform="windows")))
-pub fn Tty::close(self : Self) -> Unit {
-  self.input.close()
-  self.output.close()
+  if self.sidecar is Some(sidecar) {
+    ignore(sidecar.wait())
+  }
 }
 
 ///|
@@ -184,7 +132,27 @@ pub async fn Tty::read_event(
   if self.pending_input.length() > 0 {
     return Input(self.pending_input.remove(0))
   }
-  self.read_event_from_sources(esc_timeout_ms)
+  for ;; {
+    if self.resize_pending {
+      self.resize_pending = false
+      return Resize(self.window_size())
+    }
+    match self.decoder {
+      Bytes(reader) =>
+        try read_decoded_input_event(reader, esc_timeout_ms) catch {
+          @sidecar.Resized => self.resize_pending = true
+          error => raise error
+        } noraise {
+          event => return event
+        }
+      Console(reader) =>
+        match reader.read_event(esc_timeout_ms~) {
+          Some(Input(event)) => return Input(event)
+          Some(Resize) => return Resize(self.window_size())
+          None => fail("console input closed")
+        }
+    }
+  }
 }
 
 ///|
@@ -204,11 +172,24 @@ async fn read_decoded_input_event(
 }
 
 ///|
+/// Next low-level stream event for request/response queries. A resize seen
+/// meanwhile is kept for the next `read_event`.
 async fn Tty::read_internal_event(
   self : Self,
   esc_timeout_ms~ : Int32 = 50,
 ) -> @input.Event {
-  self.read_internal_event_from_sources(esc_timeout_ms)
+  match self.decoder {
+    Bytes(reader) =>
+      for ;; {
+        try reader.read_event(esc_timeout_ms~) catch {
+          @sidecar.Resized => self.resize_pending = true
+          error => raise error
+        } noraise {
+          event => return event
+        }
+      }
+    Console(reader) => reader.read_internal_event(esc_timeout_ms~)
+  }
 }
 
 ///|

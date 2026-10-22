@@ -2,11 +2,27 @@
 /// Frame protocol spoken with `sidecar/sidecar.c`, see `sidecar/README.md`.
 /// Every frame is `tag:u8 len:u32le payload`.
 pub(all) enum Frame {
-  Hello(version~ : Int32, rows~ : Int32, cols~ : Int32)
+  Hello(version~ : Int32, rows~ : Int32, cols~ : Int32, kind~ : InputKind)
+  /// Terminal input as VT bytes (Unix sidecar).
   Input(Bytes)
+  /// One raw `INPUT_RECORD` (Windows sidecar), decoded by `internal/win32`.
+  Record(Bytes)
   Resize(rows~ : Int32, cols~ : Int32)
   Error(String)
 } derive(Eq, Debug)
+
+///|
+/// What the sidecar's input frames carry, announced in `Hello`.
+pub(all) enum InputKind {
+  Bytes
+  Records
+} derive(Eq, Debug)
+
+///|
+pub extend InputKind with Eq::{equal, not_equal}
+
+///|
+pub extend InputKind with @debug.Debug::{to_repr}
 
 ///|
 pub extend Frame with Eq::{equal, not_equal}
@@ -16,7 +32,7 @@ pub extend Frame with @debug.Debug::{to_repr}
 
 ///|
 /// The sidecar sent something we cannot make sense of.
-pub suberror ProtocolError {
+pub(all) suberror ProtocolError {
   ProtocolError(String)
 } derive(Debug)
 
@@ -40,6 +56,9 @@ const TAG_RESIZE : UInt32 = 0x82
 
 ///|
 const TAG_ERROR : UInt32 = 0x83
+
+///|
+const TAG_RECORD : UInt32 = 0x84
 
 ///|
 /// Largest payload we accept from the sidecar; it never sends more than its
@@ -100,16 +119,18 @@ pub async fn Connection::read_frame(self : Connection) -> Frame? {
   }
   let payload = Bytes::from_array(payload[:])
   match (tag, payload[:]) {
-    (TAG_HELLO, [u32le(version), u16le(rows), u16le(cols), ..]) =>
+    (TAG_HELLO, [u32le(version), u16le(rows), u16le(cols), u8be(kind), ..]) =>
       Some(
         Hello(
           version=version.reinterpret_as_int(),
           rows=rows.reinterpret_as_int(),
           cols=cols.reinterpret_as_int(),
+          kind=if kind == 1 { Records } else { Bytes },
         ),
       )
     (TAG_HELLO, _) => raise ProtocolError("short hello frame")
     (TAG_INPUT, _) => Some(Input(payload))
+    (TAG_RECORD, _) => Some(Record(payload))
     (TAG_RESIZE, [u16le(rows), u16le(cols), ..]) =>
       Some(
         Resize(rows=rows.reinterpret_as_int(), cols=cols.reinterpret_as_int()),

@@ -18,11 +18,18 @@ async fn with_fake_sidecar(
 ///|
 async test "frames round trip" {
   with_fake_sidecar((conn, events, commands) => {
-    events.write(b"\x80\x08\x00\x00\x00\x01\x00\x00\x00\x18\x00\x50\x00")
+    events.write(b"\x80\x09\x00\x00\x00\x01\x00\x00\x00\x18\x00\x50\x00\x00")
     debug_inspect(
       conn.read_frame(),
-      content="Some(Hello(version=1, rows=24, cols=80))",
+      content="Some(Hello(version=1, rows=24, cols=80, kind=Bytes))",
     )
+    events.write(b"\x80\x09\x00\x00\x00\x01\x00\x00\x00\x18\x00\x50\x00\x01")
+    debug_inspect(
+      conn.read_frame(),
+      content="Some(Hello(version=1, rows=24, cols=80, kind=Records))",
+    )
+    events.write(b"\x84\x02\x00\x00\x00ab")
+    assert_true(conn.read_frame() is Some(Record(b"ab")))
     events.write(b"\x81\x03\x00\x00\x00abc")
     assert_true(conn.read_frame() is Some(Input(b"abc")))
     events.write(b"\x82\x04\x00\x00\x00\x1f\x00\x65\x00")

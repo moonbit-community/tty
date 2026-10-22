@@ -51,3 +51,18 @@ pub impl Reader for @async/stdio.Input with fn close(_) {
 pub impl Writer for @async/stdio.Output with fn close(_) {
   ()
 }
+
+///|
+impl Fd for @sidecar.Sidecar with fn fd(_) {
+  raise @os_error.OSError(@os_error.errno_ENOTSUP, context="Tty::fd")
+}
+
+///|
+impl Reader for @sidecar.Sidecar with fn close(self) {
+  self.close()
+}
+
+///|
+impl Writer for @sidecar.Sidecar with fn close(self) {
+  self.close()
+}

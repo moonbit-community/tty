@@ -1,0 +1,55 @@
+name: sidecars
+
+# Builds the tty sidecar executables that get embedded into the package
+# before a release, see AGENTS.md (Release Workflow) and sidecar/README.md.
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unix:
+    name: ${{ matrix.key }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - key: linux-x86_64
+            os: ubuntu-latest
+            cflags: -static
+          - key: linux-arm64
+            os: ubuntu-24.04-arm
+            cflags: -static
+          - key: macos-arm64
+            os: macos-latest
+            cflags: -arch arm64
+          - key: macos-x86_64
+            os: macos-latest
+            cflags: -arch x86_64
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: cc -O2 -Wall ${{ matrix.cflags }} -o sidecar-${{ matrix.key }} sidecar/sidecar.c
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sidecar-${{ matrix.key }}
+          path: sidecar-${{ matrix.key }}
+
+  windows:
+    name: windows-x86_64
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ilammy/msvc-dev-cmd@v1
+      - name: Build
+        run: cl /nologo /O2 /Fe:sidecar-windows-x86_64.exe sidecar\sidecar_win32.c
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sidecar-windows-x86_64
+          path: sidecar-windows-x86_64.exe

@@ -12,8 +12,10 @@ fn target_dir(name : String) -> String {
 }
 
 ///|
+/// Arguments for a runner, which reaches the terminal through the sidecar
+/// built by `build_sidecar`, named to it through `TTY_SIDECAR`.
 fn runner_args(name : String, target~ : String = "native") -> Array[String] {
-  [
+  let moon = [
     "moon",
     "-C",
     tests_path(name),
@@ -24,33 +26,45 @@ fn runner_args(name : String, target~ : String = "native") -> Array[String] {
     "--target-dir",
     target_dir(name),
   ]
+  if is_windows() {
+    ["cmd", "/c", "set TTY_SIDECAR=\{sidecar_path()}&& \{moon.join(" ")}"]
+  } else {
+    ["env", "TTY_SIDECAR=\{sidecar_path()}", ..moon]
+  }
 }
 
 ///|
-/// A wasm runner reaches the terminal through the sidecar process compiled
-/// by `build_sidecar`.
-#cfg(not(platform="windows"))
-fn wasm_runner_args(name : String) -> Array[String] {
-  ["env", "TTY_SIDECAR=\{sidecar_path()}", ..runner_args(name, target="wasm")]
+fn is_windows() -> Bool {
+  @async.platform is Windows
 }
 
 ///|
-#cfg(not(platform="windows"))
 fn sidecar_path() -> String {
   let cwd = @env.current_dir().unwrap_or(".")
-  "\{cwd}/\{tests_path("_build/sidecar")}"
+  let name = if is_windows() { "sidecar.exe" } else { "sidecar" }
+  "\{cwd}/\{tests_path("_build/\{name}")}"
 }
 
 ///|
-/// Compile `sidecar/sidecar.c` for the wasm runners.
-#cfg(not(platform="windows"))
+/// Compile the sidecar for this host with the system C compiler.
 async fn build_sidecar() -> Unit {
-  let (exit, _, stderr) = @process.collect_output("cc", [
-    "-O2",
-    "-o",
-    sidecar_path(),
-    tests_path("../sidecar/sidecar.c"),
-  ])
+  @fs.mkdir(tests_path("_build"), allow_exist=true)
+  let (exit, _, stderr) = if is_windows() {
+    @process.collect_output("cl", [
+      "/nologo",
+      "/O2",
+      "/Fe:" + sidecar_path(),
+      "/Fo:" + tests_path("_build/"),
+      tests_path("../sidecar/sidecar_win32.c"),
+    ])
+  } else {
+    @process.collect_output("cc", [
+      "-O2",
+      "-o",
+      sidecar_path(),
+      tests_path("../sidecar/sidecar.c"),
+    ])
+  }
   guard exit is 0 else { fail("build sidecar failed: \{stderr.text()}") }
 }
 
@@ -78,8 +92,6 @@ async fn read_until_text(
 
 ///|
 async fn build_runner(name : String, target~ : String = "native") -> Unit {
-  // Also where `build_sidecar` puts its executable; CI starts without it.
-  @fs.mkdir(tests_path("_build"), allow_exist=true)
   let (exit, _, stderr) = @process.collect_output("moon", [
     "-C",
     tests_path(name),
@@ -111,6 +123,7 @@ async test "isatty" {
 ///|
 async test "Tty::open" {
   @async.with_task_group() <| group => {
+    build_sidecar()
     build_runner("open")
     let pty = @pty.spawn(
       group,
@@ -132,6 +145,7 @@ async test "Tty::open" {
 ///|
 async test "resize event" {
   @async.with_task_group() <| group => {
+    build_sidecar()
     build_runner("resize")
     let pty = @pty.spawn(
       group,
@@ -159,7 +173,7 @@ async test "Tty::open on wasm through the sidecar" {
     build_sidecar()
     let pty = @pty.spawn(
       group,
-      wasm_runner_args("open"),
+      runner_args("open", target="wasm"),
       cols=100,
       rows=30,
       no_wait=true,
@@ -182,7 +196,7 @@ async test "resize event on wasm through the sidecar" {
     build_sidecar()
     let pty = @pty.spawn(
       group,
-      wasm_runner_args("resize"),
+      runner_args("resize", target="wasm"),
       cols=100,
       rows=30,
       no_wait=true,

@@ -103,6 +103,10 @@
   `codex/bump-version-0.2.3`.
 - Commit the version bump as `chore: bump version to X.Y.Z` and open a PR titled
   `[codex] chore: bump version to X.Y.Z`.
+- Before publishing, regenerate the embedded sidecar executables: download
+  the artifacts of the latest `sidecars` workflow run on `main`, then run
+  `python3 scripts/embed_sidecar.py <os>-<arch>=<path> ...` for every
+  platform into `internal/sidecar/embedded.mbt` and commit the result.
 - Before publishing, run:
   - `moon fmt`
   - `moon info`

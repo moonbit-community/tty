@@ -1,91 +1,83 @@
-# WebAssembly support through a tty sidecar
+# One terminal backend: the tty sidecar
 
 Status: implemented.
 
 ## Goal
 
-Let `moonbit-community/tty` programs run as wasm under `moonrun` with a
-working `Tty::open()`: raw mode, window size, resize events and input through
-the controlling terminal. Native behaviour does not change.
+Make `moonbit-community/tty` work on the wasm target (programs run with
+`moonrun`) without adding host imports to `moonrun`, and keep a single
+implementation of the terminal layer instead of one per target.
 
 ## Problem
 
-On the wasm target there is no C. The root package's termios, `ioctl`,
-`/dev/tty` and `SIGWINCH` stubs have no equivalent, and `moonrun` exposes no
-terminal host imports. `moonrun` must keep every host import forever, so
-adding terminal imports there is a heavy commitment for a feature that only
-some programs need.
+On wasm there is no C and `moonrun` exposes no terminal host imports;
+`moonrun` must keep every host import forever, so adding terminal imports is
+a heavy commitment. The native implementation (termios and `ioctl` stubs, a
+`SIGWINCH` handler and self-pipe, a Windows console reader polling
+`PeekConsoleInputW` every 10 ms, three `#cfg` variants of `Tty`) would have
+had to be kept next to whatever wasm used.
 
 ## Shape
 
-A 50 KB C program, `sidecar/sidecar.c`, owns the terminal and is driven over
-its stdio pipes with a length-prefixed frame protocol (`sidecar/README.md`).
-Everything the wasm program needs is reachable with `@process` and `@io`,
-which `moonrun` already provides. Validated end to end in a standalone proof
-of concept on native and on wasm under `moonrun 0.1.20261020`, including
-terminal restoration after `kill -9` of the parent.
+The terminal is owned by a small C sidecar process on every target. The
+program talks to it over the sidecar's stdio pipes with a frame protocol
+(`sidecar/README.md`); everything it needs is reachable through `@process`
+and `@io`.
 
-New package `internal/sidecar`:
-
-- `Connection`: frame encoder/decoder over `&@io.Reader` / `&@io.Writer`,
-  unit-tested with pipes on every target.
-- `Sidecar`: spawns the executable (`@process.spawn_orphan`, the child stays
-  in our session so `/dev/tty` is reachable), reads the hello frame, caches
-  the size, exposes `set_raw`, `write`, `size`, `close`. It implements
-  `@io.Reader`; a `RESIZE` frame read while a byte read is in progress is
-  raised as `Resized` so the input decoder is interrupted, the same effect the
-  native backend gets by cancelling the decoder from its resize watcher.
-- `locate.mbt`: `TTY_SIDECAR` environment variable first, then an embedded
-  executable for the running `<os>-<arch>` written to `@fs.tmpdir` and
-  deleted once the process is running. `embedded.mbt` holds the (initially
-  empty) table that `scripts/embed_sidecar.py` fills; shipping binaries is a
-  release decision outside this plan.
-
-Root package:
-
-- `supported_targets` gains `wasm`. Native code is gated with
-  `#cfg(target="native")` so files stay shared and imports stay anchored.
-- On wasm `Tty` carries `sidecar : @sidecar.Sidecar?`. `Tty::open()` spawns
-  the sidecar and wraps it as both `Reader` and `Writer`. `Tty::new` /
-  `Tty::stdio` give stream handles without a sidecar: VT output, decoding and
-  queries work, `window_size` and the state operations raise
-  `OSError(ENOTSUP)`, as they already do for pipes on native.
-- `State` on wasm is one byte (raw or not); `get_state` / `set_state` /
-  `make_raw` map onto `set_raw`. The `.mbti` is unchanged.
-- `isatty` raises `OSError(ENOTSUP)` on wasm; there is no descriptor kind
-  query in `moonbitlang/async`'s public API.
-- `internal/win32` gains `wasm` in `supported_targets`; its console reader
-  file is native-only, the record parsers are shared.
-
-Tests:
-
-- `internal/sidecar` protocol tests with `@pipe` on native and wasm.
-- `tests/`: the `Tty::open` and `resize event` pty tests also build the
-  runners for wasm, compile the sidecar with `cc`, and run them under
-  `moonrun` with `TTY_SIDECAR` set. Unix only. `tests/resize` switches from
-  `Tty::stdio()` to `Tty::open()` so one runner serves both targets.
-- CI adds `moon check --target wasm --deny-warn` and
-  `moon test --target wasm --deny-warn` on Linux and macOS.
+- `sidecar/sidecar.c` (Unix): single-threaded, `/dev/tty`, `cfmakeraw`,
+  `TIOCGWINSZ`, `SIGWINCH` via handler plus `pselect`, which is correct in a
+  single-threaded process. Input is forwarded as VT bytes.
+- `sidecar/sidecar_win32.c` (Windows): `CONIN$`/`CONOUT$`, the former
+  `state.c` console mode flags, a thread blocking in `ReadConsoleInputW`.
+  Input is forwarded as raw `INPUT_RECORD`s, window size events as resizes.
+- Both restore the terminal when the command pipe closes, so a parent killed
+  with `kill -9` leaves the terminal usable.
+- `internal/sidecar`: frame codec (`Connection`), process wrapper
+  (`Sidecar`, implements `@io.Reader`/`@io.Writer`; a resize during a byte
+  read is raised as `Resized`), and the locator.
+- The executable comes from the same place on every target: the one named
+  by the `TTY_SIDECAR` environment variable (an override, used by the tests
+  and for development), else the one embedded for the running `<os>-<arch>`,
+  written to a temporary directory, started and deleted again. The embedded
+  table in `internal/sidecar/embedded.mbt` is filled by
+  `scripts/embed_sidecar.py` from the binaries that the `sidecars` workflow
+  builds; it is empty in the repository and must be regenerated before a
+  release (see `AGENTS.md`, Release Workflow). A self-spawning native variant
+  (a constructor in a native stub) was tried and dropped: no magic in other
+  people's programs.
+- Root package: one `Tty` for all targets, with `sidecar :
+  @sidecar.Sidecar?` and an input decoder that is either the VT byte decoder
+  (`internal/input`) or the console record decoder (`internal/win32`, now
+  free of FFI and fed by the sidecar). Only `Tty::open()` has terminal
+  capabilities; `Tty::new` and `Tty::stdio` are stream handles whose
+  `window_size`, `enter_raw_mode` and `leave_raw_mode` raise
+  `OSError(ENOTSUP)`.
+- Removed: `state.c`, `size.c`, `resize.c`, `tty_open.c`,
+  `internal/win32/win32_input.c`, the `RawFdStream` impls, the
+  `State` API and the per-platform `Tty` variants.
 
 ## Public API diff
 
-The root package used `@async/raw_fd.RawFdStream` to wrap `/dev/tty` and the
-Windows console devices, and implemented `Fd`, `Reader` and `Writer` for it.
-`raw_fd` is native only, and the orphan rule keeps those impls in the root,
-so the root could not support wasm while importing it. `Tty::open()` now
-opens the terminal with `@async/fs.open` on both platforms (current
-`moonbitlang/async` classifies non-regular handles with `GetFileType` and
-skips the stat probing that made this fail in 0.19.4) and the three
-`RawFdStream` impls are removed from the public API. This is a breaking
-change for callers passing a `RawFdStream` to `Tty::new`; the next release
-is `0.6.0`. `tty_open.c` is gone with it. Nothing else in the `.mbti`
-changes besides the new `internal/sidecar` interface.
+Breaking, next release `0.6.0`:
+
+- `State`, `State::make_raw`, `Tty::get_state`, `Tty::set_state` are gone.
+  Raw mode is idempotent: `enter_raw_mode()` and `leave_raw_mode()` take no
+  state and are `async`, because they talk to the sidecar. `with_raw_mode`
+  is unchanged.
+- `Tty::close` is `async` (it reaps the sidecar).
+- `Tty::new` no longer raises (nothing is queried at construction).
+- `pub impl Fd/Reader/Writer for @raw_fd.RawFdStream` are gone; the root no
+  longer imports `raw_fd`, which was native only.
+- `Tty::stdio()` has no raw mode, size or resize events; use `Tty::open()`.
+- `isatty` raises `OSError(ENOTSUP)` on wasm.
 
 ## Invariants
 
-- Native code paths, C stubs and behaviour are untouched.
-- Only `Tty::open()` has terminal capabilities on wasm.
+- One code path for the terminal on every target; platform differences live
+  in the two sidecar C files.
 - The sidecar restores the terminal whenever its command pipe closes.
+- `internal/sidecar` and `internal/win32` are internal and not downstream
+  API.
 
 ## Validation
 
@@ -93,28 +85,19 @@ Run on macOS with moon 0.1.20261020 against the pinned `moonbitlang/async`:
 
 - `moon fmt --check`, `git diff --check`: clean.
 - `moon check --deny-warn` and `moon check --target wasm --deny-warn`: clean.
-- `moon test --deny-warn`: all tty tests pass (the only failures are
-  `moonbitlang/async`'s own DNS tests, which depend on the network).
-- `moon test --target wasm --deny-warn` on the root and `internal/sidecar`
-  packages: 33 passed.
-- `moon test` in `tests/`: 5 passed, including the two new wasm runner tests
-  that build the sidecar with `cc` and drive `moonrun` through a pty.
-- `moon info`: `internal/sidecar/pkg.generated.mbti` is new; the root
-  `.mbti` loses exactly the three `RawFdStream` impls.
-
-## Public API audit
-
-- Native `.mbti`: the three `pub impl ... for @raw_fd.RawFdStream` lines are
-  removed, nothing else changes.
-- wasm only, not visible in the generated interface: `Tty::set_state`,
-  `Tty::enter_raw_mode`, `Tty::leave_raw_mode` are `async` and raise `Error`
-  rather than `OSError`, because they write to the sidecar's pipe.
-  `Tty::new` cannot fail on wasm but keeps the `raise` signature so
-  `Tty::stdio` stays shared.
-- `internal/sidecar` is internal and not downstream API.
+- `moon test --deny-warn`: root 30 passed; `moon test --target wasm
+  --deny-warn` on root, `internal/sidecar`, `internal/win32`: 53 passed.
+- `moon test` in `tests/`: 5 passed. Every runner, native or wasm, uses a
+  sidecar compiled on the spot with `cc` (or `cl` on Windows) and named
+  through `TTY_SIDECAR`; the wasm runners run under `moonrun`.
+- The Windows sidecar and the console record path are validated by the
+  windows-latest CI job through the same pty runners.
 
 ## Open questions
 
-- Distribution of per-platform sidecar binaries (CI build matrix, size,
-  EDR and `noexec` temp directories). A Windows sidecar needs
-  `ReadConsoleInput` and is not part of this plan.
+- The embedded binaries have to be regenerated and committed before each
+  release; until then a published package only works with `TTY_SIDECAR`.
+  Writing an executable to a temporary directory is what EDR software flags
+  and fails on `noexec` mounts; `TTY_SIDECAR` is the way out there.
+- A sidecar-backed handle writes through the sidecar, so bytes written to
+  the process's own stdout are not ordered against `Tty::write`.

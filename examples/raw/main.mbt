@@ -51,10 +51,11 @@ async fn run_raw_loop(tty : @tty.Tty) -> Unit {
 
 ///|
 async fn main {
-  let tty = @tty.Tty::stdio()
+  let tty = @tty.Tty::open()
+  defer tty.close()
   write_line(tty, "raw-mode demo")
   write_line(
-    tty, "The program will switch stdin to raw mode and print one byte per key press.",
+    tty, "The program will switch the terminal to raw mode and print one byte per key press.",
   )
   write_line(
     tty, "Checks: normal keys should print immediately; Enter should not be required.",
@@ -68,9 +69,9 @@ async fn main {
   write_line(tty, "If the terminal is left raw after a crash, run: stty sane")
   write_line(tty, "")
   write_line(tty, "entering raw mode...")
-  let state = tty.enter_raw_mode()
+  tty.enter_raw_mode()
   {
-    defer tty.leave_raw_mode(state)
+    defer tty.leave_raw_mode()
     write_line(tty, "raw mode active")
     run_raw_loop(tty)
   }

@@ -1,6 +1,7 @@
 ///|
 async fn main {
-  let tty = @tty.Tty::stdio()
+  let tty = @tty.Tty::open()
+  defer tty.close()
   with_screen(tty, () => tty.with_raw_mode(() => run_cursor_demo(tty)))
 }
 

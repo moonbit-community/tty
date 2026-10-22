@@ -1,5 +1,5 @@
 ///|
-/// Environment variable naming the sidecar executable to use.
+/// Environment variable naming an external sidecar executable to use.
 pub const SIDECAR_ENV : String = "TTY_SIDECAR"
 
 ///|
@@ -30,7 +30,8 @@ async fn platform_key() -> String {
 }
 
 ///|
-/// Start a sidecar, found through `TTY_SIDECAR` or the embedded table.
+/// Start a sidecar: the executable named by `TTY_SIDECAR`, else the embedded
+/// one for this host written to a temporary directory.
 pub async fn open() -> Sidecar {
   if @env.get_env_var(SIDECAR_ENV) is Some(path) && path != "" {
     return spawn(path)

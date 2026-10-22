@@ -5,8 +5,16 @@ pub(all) enum Event {
 } derive(Eq)
 
 ///|
+/// What the console record source hands out: the sidecar forwards raw
+/// `INPUT_RECORD`s and turns window size events into `Resize`.
+pub(all) enum SourceEvent {
+  Record(InputRecord)
+  Resize
+}
+
+///|
 struct EventReader {
-  input_fd : @async/types.Fd
+  source : async () -> SourceEvent?
   byte_queue : @internal_io.ByteQueue
   decoder : @input.EventReader
   events : @async.Queue[Event]
@@ -15,10 +23,10 @@ struct EventReader {
 }
 
 ///|
-pub fn EventReader::new(input_fd : @async/types.Fd) -> EventReader {
+pub fn EventReader::new(source : async () -> SourceEvent?) -> EventReader {
   let byte_queue = @internal_io.ByteQueue::new()
   {
-    input_fd,
+    source,
     byte_queue,
     decoder: @input.EventReader::new(byte_queue as &@async/io.Reader),
     events: Queue(kind=Unbounded),
@@ -91,24 +99,16 @@ async fn EventReader::read_decoded_input_event(
 
 ///|
 async fn EventReader::read_records(self : EventReader) -> Unit {
-  for ;; {
-    if !self.drain_records() {
-      @async.sleep(10)
+  while (self.source)() is Some(event) {
+    match event {
+      Record(record) => self.read_record(record)
+      Resize => {
+        self.pending_surrogate.val = 0
+        queue_event(self.events, Resize)
+      }
     }
   }
-}
-
-///|
-fn EventReader::drain_records(self : EventReader) -> Bool raise {
-  let mut read_any = false
-  for ;; {
-    if read_console_input_record(self.input_fd) is Some(record) {
-      read_any = true
-      self.read_record(record)
-    } else {
-      return read_any
-    }
-  }
+  self.events.close()
 }
 
 ///|
@@ -174,46 +174,6 @@ fn EventReader::read_mouse_record(
   match self.mouse_button_state.input_event(record) {
     Some(input) => queue_event(self.events, Input(input))
     None => ()
-  }
-}
-
-///|
-#cfg(target="native")
-extern "c" fn sizeof_input_record() -> Int32 = "moonbit_tty_get_sizeof_input_record"
-
-///|
-#cfg(target="native")
-let sizeof_win32_input_record : Int32 = sizeof_input_record()
-
-///|
-#cfg(target="native")
-#borrow(record)
-extern "c" fn read_console_input_record_ffi(
-  fd : @async/types.Fd,
-  record : Bytes,
-) -> Int32 = "moonbit_tty_read_console_input_record"
-
-///|
-/// Console input records only exist on Windows; on wasm the root package
-/// never builds an `EventReader`, this just keeps the package compiling.
-#cfg(target="wasm")
-fn read_console_input_record(fd : @async/types.Fd) -> InputRecord? raise {
-  ignore(fd)
-  raise @os_error.OSError(@os_error.errno_ENOTSUP, context="ReadConsoleInputW")
-}
-
-///|
-#cfg(target="native")
-fn read_console_input_record(fd : @async/types.Fd) -> InputRecord? raise {
-  let record = Bytes::make(sizeof_win32_input_record, 0)
-  let rc = read_console_input_record_ffi(fd, record)
-  if rc < 0 {
-    @os_error.check_errno("ReadConsoleInputW")
-  }
-  if rc == 0 {
-    None
-  } else {
-    Some(InputRecord::parse(record))
   }
 }
 
