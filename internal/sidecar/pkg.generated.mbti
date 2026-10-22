@@ -62,7 +62,7 @@ pub async fn Sidecar::read_some(Self, max_len? : Int32) -> Bytes?
 pub async fn Sidecar::read_until(Self, StringView) -> String?
 pub async fn Sidecar::set_raw(Self, Bool) -> Unit
 pub fn Sidecar::size(Self) -> (Int32, Int32)
-pub async fn Sidecar::wait(Self) -> Int32
+pub async fn Sidecar::wait(Self) -> Unit
 pub async fn Sidecar::write(Self, &@io.Data) -> Unit
 pub async fn Sidecar::write_once(Self, Bytes, offset~ : Int32, len~ : Int32) -> Int32
 pub async fn Sidecar::write_reader(Self, &@io.Reader) -> Unit

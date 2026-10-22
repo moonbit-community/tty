@@ -87,7 +87,7 @@ pub async fn Tty::close(self : Self) -> Unit {
   self.input.close()
   self.output.close()
   if self.sidecar is Some(sidecar) {
-    ignore(sidecar.wait())
+    sidecar.wait()
   }
 }
 

@@ -38,7 +38,7 @@ struct Sidecar {
   // Input bytes received but not yet handed out by `_direct_read`.
   mut pending : BytesView
   mut closed : Bool
-  mut exit : Int32?
+  mut reaped : Bool
 }
 
 ///|
@@ -82,12 +82,12 @@ pub async fn spawn(
     raw: false,
     pending: b""[:],
     closed: false,
-    exit: None,
+    reaped: false,
   }
   // From here on the child exists and must be reaped on every exit path.
   errdefer {
     sidecar.close()
-    ignore(sidecar.wait())
+    sidecar.wait()
   }
   match conn.read_frame() {
     Some(Hello(version~, rows~, cols~)) => {
@@ -154,25 +154,57 @@ pub fn Sidecar::close(self : Sidecar) -> Unit {
 
 ///|
 /// Reap the sidecar process after `close` and remove its temporary
-/// directory. The exit status is remembered, so this can be called again.
-/// Reaping is not cancellable: a cancelled first call would leave a zombie.
-pub async fn Sidecar::wait(self : Sidecar) -> Int32 {
-  if self.exit is Some(exit) {
-    return exit
+/// directory. Safe to call more than once. Reaping is not cancellable: a
+/// cancelled first call would leave a zombie.
+pub async fn Sidecar::wait(self : Sidecar) -> Unit {
+  if self.reaped {
+    return
   }
   @async.protect_from_cancel(() => {
     self.close()
     self.drain_events()
     self.from_child.close()
-    let exit = @async/process.wait_pid(self.pid)
-    self.exit = Some(exit)
-    if self.temp_dir is Some(dir) {
-      @async/fs.rmdir(dir, recursive=true) catch {
-        _ => ()
-      }
+    // Windows has no zombies: once the sidecar has exited and closed its
+    // pipe, its process object can already be gone, and opening it by pid
+    // fails (on wasm the host traps) or names a reused pid. There is
+    // nothing to reap, so only the executable's directory is removed.
+    if !(@async.platform is Windows) {
+      ignore(@async/process.wait_pid(self.pid))
     }
-    exit
+    self.reaped = true
+    if self.temp_dir is Some(dir) {
+      remove_temp_dir(dir)
+    }
   })
+}
+
+///|
+/// How often `remove_temp_dir` tries on Windows, and how long it sleeps
+/// between tries.
+const WINDOWS_RMDIR_ATTEMPTS : Int32 = 10
+
+///|
+const WINDOWS_RMDIR_RETRY_MS : Int32 = 50
+
+///|
+/// Remove the directory that held the sidecar executable. On Windows the
+/// image stays locked until the process has fully terminated, which can be
+/// shortly after its pipe closed, so the removal is retried there. A
+/// directory that still cannot be removed is left behind.
+async fn remove_temp_dir(dir : String) -> Unit {
+  let attempts = if @async.platform is Windows {
+    WINDOWS_RMDIR_ATTEMPTS
+  } else {
+    1
+  }
+  for attempt in 1..<=attempts {
+    try @async/fs.rmdir(dir, recursive=true) catch {
+      _ if attempt < attempts => @async.sleep(WINDOWS_RMDIR_RETRY_MS)
+      _ => ()
+    } noraise {
+      _ => return
+    }
+  }
 }
 
 ///|
