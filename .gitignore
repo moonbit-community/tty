@@ -10,3 +10,4 @@ compile_flags.txt
 
 # Git worktree
 worktrees/
+tests/*/pkg.generated.mbti
