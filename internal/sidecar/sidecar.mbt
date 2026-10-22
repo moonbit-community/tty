@@ -152,8 +152,10 @@ pub fn Sidecar::close(self : Sidecar) -> Unit {
     return
   }
   self.closed = true
+  // Only the command pipe: its EOF tells the sidecar to finish. The event
+  // pipe stays open until `wait` has drained it, or the sidecar would hit
+  // EPIPE on its queued events and exit before running the last commands.
   self.to_child.close()
-  self.from_child.close()
 }
 
 ///|
@@ -165,6 +167,9 @@ pub async fn Sidecar::wait(self : Sidecar) -> Int32 {
     return exit
   }
   @async.protect_from_cancel(() => {
+    self.close()
+    self.drain_events()
+    self.from_child.close()
     let exit = @async/process.wait_pid(self.pid)
     self.exit = Some(exit)
     if self.temp_dir is Some(dir) {
@@ -174,6 +179,19 @@ pub async fn Sidecar::wait(self : Sidecar) -> Int32 {
     }
     exit
   })
+}
+
+///|
+/// Read and discard events until the sidecar closes its end, which it does
+/// once it has run every command sent before `close`.
+async fn Sidecar::drain_events(self : Sidecar) -> Unit {
+  let scratch = FixedArray::make(4096, b'\x00')
+  for ;; {
+    let n = self.from_child.read(scratch) catch { _ => break }
+    if n == 0 {
+      break
+    }
+  }
 }
 
 ///|

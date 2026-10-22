@@ -283,6 +283,9 @@ static void out_unlock(void) {}
 static uint8_t *out_buf = NULL;
 static size_t out_len = 0, out_cap = 0;
 #define OUT_HIGH_WATER (1u << 20)
+// Set once the parent stopped reading events; commands are still run until
+// the command pipe closes, so no write that the parent already issued is lost.
+static int events_dead = 0;
 
 static int write_all(int fd, const void *p, size_t n) {
   const uint8_t *c = p;
@@ -299,6 +302,7 @@ static int write_all(int fd, const void *p, size_t n) {
 }
 
 static int write_out(const void *p, size_t n) {
+  if (events_dead) return 0;
   if (out_len + n > out_cap) {
     size_t cap = out_cap ? out_cap : 65536;
     while (cap < out_len + n) cap *= 2;
@@ -372,6 +376,9 @@ int main(void) {
   tty_fd = open("/dev/tty", O_RDWR | O_NOCTTY | O_CLOEXEC);
   if (tty_fd < 0) { report_failure("open /dev/tty"); return 1; }
   signal(SIGPIPE, SIG_IGN);
+  // Restoring the terminal from a background process group (the shell took
+  // the foreground back after the parent died) must not stop us.
+  signal(SIGTTOU, SIG_IGN);
 
   struct sigaction sa;
   memset(&sa, 0, sizeof sa);
@@ -411,14 +418,17 @@ int main(void) {
     FD_ZERO(&r);
     FD_ZERO(&w);
     FD_SET(0, &r);
-    if (out_len < OUT_HIGH_WATER) FD_SET(tty_fd, &r);
+    if (!events_dead && out_len < OUT_HIGH_WATER) FD_SET(tty_fd, &r);
     if (out_len > 0) FD_SET(1, &w);
     int n = pselect(maxfd + 1, &r, &w, NULL, NULL, &in_select);
     if (n < 0) {
       if (errno == EINTR) continue;
       break;
     }
-    if (FD_ISSET(1, &w) && flush_out() < 0) break;  // parent gone
+    if (FD_ISSET(1, &w) && flush_out() < 0) {
+      events_dead = 1;  // parent stopped reading; keep running its commands
+      out_len = 0;
+    }
     if (FD_ISSET(tty_fd, &r)) {
       ssize_t k = read(tty_fd, tty_buf, sizeof tty_buf);
       if (k < 0) {
