@@ -17,9 +17,10 @@ pub suberror SidecarError {
 pub extend SidecarError with @debug.Debug::{to_repr}
 
 ///|
-/// A running sidecar process. Reading from it yields the terminal input,
-/// VT bytes or raw console records depending on `input_kind`; writing to it
-/// writes to the terminal.
+/// A running sidecar process. Reading from it yields the terminal input as VT
+/// bytes on every platform: the Windows sidecar's raw console records are
+/// encoded into VT input bytes as they arrive. Writing to it writes to the
+/// terminal.
 #warnings("-14")
 struct Sidecar {
   pid : Int32
@@ -31,7 +32,8 @@ struct Sidecar {
   temp_dir : String?
   mut rows : Int32
   mut cols : Int32
-  mut kind : InputKind
+  // Encodes the Windows sidecar's `RECORD` frames into VT input bytes.
+  records : @win32.RecordEncoder
   mut raw : Bool
   // Input bytes received but not yet handed out by `_direct_read`.
   mut pending : BytesView
@@ -76,7 +78,7 @@ pub async fn spawn(
     temp_dir,
     rows: 0,
     cols: 0,
-    kind: Bytes,
+    records: @win32.RecordEncoder::new(),
     raw: false,
     pending: b""[:],
     closed: false,
@@ -88,13 +90,12 @@ pub async fn spawn(
     ignore(sidecar.wait())
   }
   match conn.read_frame() {
-    Some(Hello(version~, rows~, cols~, kind~)) => {
+    Some(Hello(version~, rows~, cols~)) => {
       guard version == 1 else {
         raise ProtocolError("unsupported sidecar protocol version \{version}")
       }
       sidecar.rows = rows
       sidecar.cols = cols
-      sidecar.kind = kind
     }
     Some(Error(message)) => raise SidecarError(message)
     Some(_) => raise ProtocolError("sidecar did not start with a hello frame")
@@ -117,13 +118,6 @@ pub fn Sidecar::size(self : Sidecar) -> (Int32, Int32) {
 ///|
 pub fn Sidecar::is_raw(self : Sidecar) -> Bool {
   self.raw
-}
-
-///|
-/// Whether the bytes read through `@io.Reader` are VT input or raw console
-/// records of a fixed size.
-pub fn Sidecar::input_kind(self : Sidecar) -> InputKind {
-  self.kind
 }
 
 ///|
@@ -209,7 +203,10 @@ pub impl @async/io.Reader for Sidecar with fn _direct_read(
   while self.pending.length() == 0 {
     guard self.read_frame() is Some(frame) else { return 0 }
     match frame {
-      Input(bytes) | Record(bytes) => self.pending = bytes[:]
+      Input(bytes) => self.pending = bytes[:]
+      // A record that encodes to nothing, such as a key release, leaves
+      // `pending` empty and the loop reads the next frame.
+      Record(record) => self.pending = self.records.encode(record)[:]
       Resize(..) => raise Resized
       Error(message) => raise SidecarError(message)
       Hello(..) => ()

@@ -26,7 +26,8 @@ pub(all) enum Event {
 struct Tty {
   input : &Reader
   output : &Writer
-  decoder : InputDecoder
+  // Decodes terminal input. The sidecar hands out VT bytes on every platform.
+  reader : @input.EventReader
   pending_input : Array[@public_input.InputEvent]
   // Serializes output writes so a single `write`/`write_string` call lands on
   // the terminal atomically with respect to other concurrent writers.
@@ -38,21 +39,13 @@ struct Tty {
 }
 
 ///|
-/// How terminal input reaches the event decoder: as VT bytes, or as Windows
-/// console records forwarded by the sidecar.
-priv enum InputDecoder {
-  Bytes(@input.EventReader)
-  Console(@win32.EventReader)
-}
-
-///|
 /// Create a coordinated terminal handle from input and output handles.
 pub fn[I : Reader, O : Writer] Tty::new(input : I, output : O) -> Tty {
   let input = input as &Reader
   {
     input,
     output: output as &Writer,
-    decoder: Bytes(@input.EventReader::new(input as &@async/io.Reader)),
+    reader: @input.EventReader::new(input as &@async/io.Reader),
     pending_input: [],
     write_lock: @lock.Lock::new(),
     sidecar: None,
@@ -74,14 +67,10 @@ pub fn Tty::stdio() -> Tty {
 /// `sidecar/README.md`). Input, resize events and output all go through it.
 pub async fn Tty::open() -> Tty {
   let sidecar = @sidecar.open()
-  let decoder = match sidecar.input_kind() {
-    Bytes => Bytes(@input.EventReader::new(sidecar as &@async/io.Reader))
-    Records => Console(@win32.EventReader::new(sidecar as &@async/io.Reader))
-  }
   {
     input: sidecar,
     output: sidecar,
-    decoder,
+    reader: @input.EventReader::new(sidecar as &@async/io.Reader),
     pending_input: [],
     write_lock: @lock.Lock::new(),
     sidecar: Some(sidecar),
@@ -119,26 +108,12 @@ pub async fn Tty::read_event(
       self.resize_pending = false
       return Resize(self.window_size())
     }
-    try self.decode_event(esc_timeout_ms) catch {
+    try read_decoded_input_event(self.reader, esc_timeout_ms) catch {
       @sidecar.Resized => self.resize_pending = true
       error => raise error
     } noraise {
       event => return event
     }
-  }
-}
-
-///|
-/// One user input event from whichever decoder this handle has.
-async fn Tty::decode_event(self : Self, esc_timeout_ms : Int32) -> Event {
-  match self.decoder {
-    Bytes(reader) => read_decoded_input_event(reader, esc_timeout_ms)
-    Console(reader) =>
-      match reader.read_event(esc_timeout_ms~) {
-        Some(Input(event)) => Input(event)
-        Some(Resize) => Resize(self.window_size())
-        None => fail("console input closed")
-      }
   }
 }
 
@@ -166,23 +141,12 @@ async fn Tty::read_internal_event(
   esc_timeout_ms~ : Int32 = 50,
 ) -> @input.Event {
   for ;; {
-    try self.decode_internal_event(esc_timeout_ms) catch {
+    try self.reader.read_event(esc_timeout_ms~) catch {
       @sidecar.Resized => self.resize_pending = true
       error => raise error
     } noraise {
       event => return event
     }
-  }
-}
-
-///|
-async fn Tty::decode_internal_event(
-  self : Self,
-  esc_timeout_ms : Int32,
-) -> @input.Event {
-  match self.decoder {
-    Bytes(reader) => reader.read_event(esc_timeout_ms~)
-    Console(reader) => reader.read_internal_event(esc_timeout_ms~)
   }
 }
 

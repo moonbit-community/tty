@@ -13,7 +13,6 @@ import {
   "moonbit-community/tty/internal/lock",
   "moonbit-community/tty/internal/sidecar",
   "moonbit-community/tty/internal/input",
-  "moonbit-community/tty/internal/win32",
   "moonbit-community/tty/internal/vt",
 }
 

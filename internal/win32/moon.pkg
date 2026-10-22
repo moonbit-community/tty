@@ -1,21 +1,12 @@
 import {
-  "moonbitlang/async",
-  "moonbitlang/async/aqueue",
-  "moonbitlang/async/io" @async/io,
-  "moonbit-community/tty/internal/input",
-  "moonbit-community/tty/internal/io" @internal_io,
-  "moonbit-community/tty/input" @public_input,
+  "moonbitlang/core/buffer",
 }
 
 import {
-  "moonbit-community/tty/input" @public_input,
-  "moonbitlang/core/debug",
-} for "test"
-
-import {
   "moonbitlang/async",
+  "moonbitlang/async/io" @async/io,
   "moonbitlang/core/debug",
+  "moonbitlang/core/encoding/utf8",
   "moonbit-community/tty/input" @public_input,
+  "moonbit-community/tty/internal/input",
 } for "wbtest"
-
-supported_targets = "-all+native+wasm"

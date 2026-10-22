@@ -41,11 +41,13 @@ Frames are `tag:u8 len:u32le payload`, spoken on the sidecar's stdin
 |---|---|---|
 | parent → sidecar | `0x01 SET_RAW` | `u8`, 1 enters raw mode, 0 leaves it |
 | parent → sidecar | `0x02 WRITE` | bytes written to the terminal |
-| sidecar → parent | `0x80 HELLO` | `u32` protocol version (1), `u16` rows, `u16` cols, `u8` input kind |
-| sidecar → parent | `0x81 INPUT` | bytes read from the terminal (input kind 0) |
+| sidecar → parent | `0x80 HELLO` | `u32` protocol version (1), `u16` rows, `u16` cols |
+| sidecar → parent | `0x81 INPUT` | bytes read from the terminal (Unix) |
 | sidecar → parent | `0x82 RESIZE` | `u16` rows, `u16` cols |
 | sidecar → parent | `0x83 ERROR` | UTF-8 message |
-| sidecar → parent | `0x84 RECORD` | one raw `INPUT_RECORD` (input kind 1) |
+| sidecar → parent | `0x84 RECORD` | one raw `INPUT_RECORD` (Windows) |
 
-The input kind in `HELLO` is 0 for a VT byte stream (Unix) and 1 for console
-records (Windows). EOF on the command pipe ends the sidecar.
+The Unix sidecar sends terminal input as `INPUT` frames and the Windows
+sidecar as `RECORD` frames; `internal/sidecar` encodes each record into VT
+input bytes, so readers see one VT byte stream on every platform. EOF on the
+command pipe ends the sidecar.

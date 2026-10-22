@@ -6,4 +6,5 @@ import {
   "moonbit-community/tty/input" @public_input,
   "moonbit-community/tty/internal/input/csi",
   "moonbit-community/tty/internal/input/kitty",
+  "moonbit-community/tty/internal/input/win32",
 }

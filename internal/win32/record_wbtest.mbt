@@ -69,3 +69,37 @@ test "win32 raw input record parses mouse records" {
   @debug.assert_eq(record.control_key_state.has_state(ShiftPressed), true)
   @debug.assert_eq(record.event_flags, MouseMoved)
 }
+
+///|
+test "win32 raw input record parses focus records" {
+  let buf = test_raw_record(RecordFocus)
+  test_set_u32_le(buf, 4, 1)
+  match test_input_record(buf) {
+    Focus(true) => ()
+    _ => fail("expected focus record")
+  }
+}
+
+///|
+test "win32 raw input record parses window buffer size records" {
+  let buf = test_raw_record(RecordWindowBufferSize)
+  test_set_u16_le(buf, 4, 80)
+  test_set_u16_le(buf, 6, 24)
+  match test_input_record(buf) {
+    WindowBufferSize => ()
+    _ => fail("expected window buffer size record")
+  }
+}
+
+///|
+test "win32 raw input record parses unsupported records" {
+  match InputRecord::parse(b"\x01") {
+    Unsupported => ()
+    _ => fail("expected unsupported short record")
+  }
+  let buf = test_raw_record(0x1234)
+  match test_input_record(buf) {
+    Unsupported => ()
+    _ => fail("expected unsupported record type")
+  }
+}

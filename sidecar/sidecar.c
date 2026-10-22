@@ -34,9 +34,6 @@ enum {
   TAG_RECORD = 0x84,
 };
 #define PROTOCOL_VERSION 1u
-// HELLO `kind`: what the input frames carry.
-#define INPUT_KIND_BYTES 0    // VT byte stream, INPUT frames
-#define INPUT_KIND_RECORDS 1  // raw INPUT_RECORDs, RECORD frames
 
 // ===== protocol, on top of the platform primitives declared here =====
 
@@ -65,13 +62,12 @@ static int send_frame(uint8_t tag, const void *payload, uint32_t len) {
 
 static int send_error(const char *msg) { return send_frame(TAG_ERROR, msg, (uint32_t)strlen(msg)); }
 
-static int send_hello(uint8_t kind) {
+static int send_hello(void) {
   unsigned rows = 0, cols = 0;
   window_size(&rows, &cols);
-  uint8_t p[9] = { PROTOCOL_VERSION, 0, 0, 0 };
+  uint8_t p[8] = { PROTOCOL_VERSION, 0, 0, 0 };
   put_u16(p + 4, rows);
   put_u16(p + 6, cols);
-  p[8] = kind;
   return send_frame(TAG_HELLO, p, sizeof p);
 }
 
@@ -243,7 +239,7 @@ int main(void) {
                        NULL, OPEN_EXISTING, 0, NULL);
   if (conout == INVALID_HANDLE_VALUE) { report_failure("CreateFileW(CONOUT$)"); return 1; }
   SetConsoleCtrlHandler(ctrl_handler, TRUE);
-  if (send_hello(INPUT_KIND_RECORDS) < 0) return 1;
+  if (send_hello() < 0) return 1;
   if (CreateThread(NULL, 0, command_thread, NULL, 0, NULL) == NULL) {
     report_failure("CreateThread");
     return 1;
@@ -404,7 +400,7 @@ int main(void) {
   sigdelset(&in_select, SIGINT);
 
   fcntl(1, F_SETFL, fcntl(1, F_GETFL) | O_NONBLOCK);
-  if (send_hello(INPUT_KIND_BYTES) < 0) return 1;
+  if (send_hello() < 0) return 1;
 
   uint8_t tty_buf[4096];
   int maxfd = tty_fd > 1 ? tty_fd : 1;

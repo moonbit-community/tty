@@ -168,8 +168,9 @@ Current shape:
   parsing. It does not know about terminal stream events or public input
   semantics.
 - `moonbit-community/tty/internal/input/kitty` owns kitty keyboard protocol
-  key-report parsing. The main internal input decoder owns CSI framing,
-  dispatch, and fallback to `Unknown`.
+  key-report parsing, and `moonbit-community/tty/internal/input/win32` owns
+  win32-input-mode key-report parsing. The main internal input decoder owns
+  CSI framing, dispatch, and fallback to `Unknown`.
 
 The decoder should stay focused on terminal input events. Higher-level line
 editing, Unicode grapheme management, completion queues, history, and prompt
@@ -232,19 +233,38 @@ OS and architecture, or named by `TTY_SIDECAR`; this is what makes wasm
 possible without `moonrun` host imports, and native uses the same path so
 there is one implementation.
 The Unix sidecar forwards VT bytes, the Windows sidecar forwards raw console
-`INPUT_RECORD`s that `internal/win32` decodes. Only `Tty::open()` creates a
+`INPUT_RECORD`s that `internal/sidecar` encodes into VT bytes, so the root sees
+one VT byte stream on every platform. Only `Tty::open()` creates a
 sidecar-backed handle; stream handles from `Tty::new` and `Tty::stdio` have
 no terminal capabilities. The decision is recorded in
 `docs/plans/2026-10-22-wasm-sidecar-backend.md`.
 
 Window size is exposed through `Tty` because callers usually need the visible
 screen buffer size while coordinating terminal input and output. The size is
-the one last reported by the sidecar, at start and on every resize. Resize notification comes from the
-sidecar: `SIGWINCH` on Unix, window size console records on Windows, both
-surfaced as root `Tty::read_event` resize events. Resize/focus native events and decoded byte-stream input each preserve
-their own source order, but `Tty::read_event` does not guarantee a strict total
-order between native resize/focus notifications and terminal byte sequences;
-this matches the Unix signal-backed resize model.
+the one last reported by the sidecar, at start and on every resize. Resize
+notification comes from the sidecar, out of band from input: `SIGWINCH` on
+Unix, window size console records on Windows, both surfaced as root
+`Tty::read_event` resize events. Resize events are not ordered against decoded
+input, on either platform.
+
+The Windows sidecar forwards typed `INPUT_RECORD` values instead of a byte
+stream. Following charmbracelet/ultraviolet, `internal/sidecar` runs each
+record through `internal/win32.RecordEncoder`, which serializes it into the VT
+input bytes a terminal would send, and the shared byte decoder reads that one
+stream:
+
+- key records without a virtual key code become their UTF-8 text; this covers
+  conhost's VT input translation in raw mode, which is assumed to synthesize
+  records with `Vk == 0`, as well as IME output
+- other key records become win32-input-mode reports
+  (`CSI Vk;Sc;Uc;Kd;Cs;Rc _`), which `internal/input/win32` decodes into key
+  events
+- mouse records become SGR mouse reports
+- focus records become focus reports
+
+So Windows console keys, mouse, and focus events keep record order. The
+win32-input-mode encoding is produced locally from console records; the package
+does not enable private mode 9001 on the terminal.
 
 ## Raw Mode
 
