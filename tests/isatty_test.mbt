@@ -49,23 +49,24 @@ fn sidecar_path() -> String {
 /// Compile the sidecar for this host with the system C compiler.
 async fn build_sidecar() -> Unit {
   @fs.mkdir(tests_path("_build"), allow_exist=true)
-  let (exit, _, stderr) = if is_windows() {
-    @process.collect_output("cl", [
+  // `cl` reports errors on stdout, so keep both streams for the message.
+  let (exit, output) = if is_windows() {
+    @process.collect_output_merged("cl", [
       "/nologo",
       "/O2",
       "/Fe:" + sidecar_path(),
-      "/Fo:" + tests_path("_build/"),
+      "/Fo:" + tests_path("_build") + "\\",
       tests_path("../sidecar/sidecar_win32.c"),
     ])
   } else {
-    @process.collect_output("cc", [
+    @process.collect_output_merged("cc", [
       "-O2",
       "-o",
       sidecar_path(),
       tests_path("../sidecar/sidecar.c"),
     ])
   }
-  guard exit is 0 else { fail("build sidecar failed: \{stderr.text()}") }
+  guard exit is 0 else { fail("build sidecar failed: \{output.text()}") }
 }
 
 ///|

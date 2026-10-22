@@ -7,6 +7,7 @@
 // commands from stdin.
 #include <windows.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 
 enum {
@@ -108,7 +109,7 @@ static int set_raw(int on) {
 static void fail_last_error(const char *what) {
   char msg[256];
   DWORD code = GetLastError();
-  wsprintfA(msg, "%s failed with error %lu", what, (unsigned long)code);
+  snprintf(msg, sizeof msg, "%s failed with error %lu", what, (unsigned long)code);
   send_error(msg);
 }
 
