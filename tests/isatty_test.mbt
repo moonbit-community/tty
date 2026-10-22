@@ -12,9 +12,22 @@ fn target_dir(name : String) -> String {
 }
 
 ///|
+/// Whether the runners use the sidecar embedded in `internal/sidecar` for
+/// this host instead of one built by `build_sidecar`. Set by
+/// `TTY_TEST_SIDECAR=embedded`, which the `embedded-sidecars` workflow uses
+/// to run the pty tests against the committed executables.
+fn embedded_sidecar() -> Bool {
+  @env.get_env_var("TTY_TEST_SIDECAR") is Some("embedded")
+}
+
+///|
 /// Arguments for a runner, which reaches the terminal through the sidecar
-/// built by `build_sidecar`, named to it through `TTY_SIDECAR`.
-fn runner_args(name : String, target~ : String = "native") -> Array[String] {
+/// built by `build_sidecar`, named to it through `TTY_SIDECAR`, or through
+/// the embedded one if `embedded_sidecar()`.
+fn runner_args(
+  name : String,
+  target~ : String = "native",
+) -> Array[String] raise {
   let moon = [
     "moon",
     "-C",
@@ -26,7 +39,13 @@ fn runner_args(name : String, target~ : String = "native") -> Array[String] {
     "--target-dir",
     target_dir(name),
   ]
-  if is_windows() {
+  if embedded_sidecar() {
+    // An inherited `TTY_SIDECAR` would silently replace the embedded one.
+    if @env.get_env_var("TTY_SIDECAR") is Some(path) && path != "" {
+      fail("TTY_TEST_SIDECAR=embedded, but TTY_SIDECAR is set to \{path}")
+    }
+    moon
+  } else if is_windows() {
     ["cmd", "/c", "set TTY_SIDECAR=\{sidecar_path()}&& \{moon.join(" ")}"]
   } else {
     ["env", "TTY_SIDECAR=\{sidecar_path()}", ..moon]
@@ -49,8 +68,11 @@ fn sidecar_path() -> String {
 /// Compile the sidecar for this host with the system C compiler. Every pty
 /// test does this into the same directory, which is why `moon.pkg` sets
 /// `max_concurrent_tests = 1`: concurrent compilers trample each other's
-/// object files.
+/// object files. Nothing to build if `embedded_sidecar()`.
 async fn build_sidecar() -> Unit {
+  if embedded_sidecar() {
+    return
+  }
   @fs.mkdir(tests_path("_build"), allow_exist=true)
   // `cl` reports errors on stdout, so keep both streams for the message.
   let (exit, output) = if is_windows() {
