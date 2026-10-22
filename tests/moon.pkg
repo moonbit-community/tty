@@ -9,6 +9,4 @@ import {
 
 supported_targets = "native"
 
-# Every pty test compiles the sidecar into tests/_build; running them in
-# parallel makes the compilers trample each other's object files.
 max_concurrent_tests = 1

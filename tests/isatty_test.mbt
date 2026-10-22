@@ -46,7 +46,10 @@ fn sidecar_path() -> String {
 }
 
 ///|
-/// Compile the sidecar for this host with the system C compiler.
+/// Compile the sidecar for this host with the system C compiler. Every pty
+/// test does this into the same directory, which is why `moon.pkg` sets
+/// `max_concurrent_tests = 1`: concurrent compilers trample each other's
+/// object files.
 async fn build_sidecar() -> Unit {
   @fs.mkdir(tests_path("_build"), allow_exist=true)
   // `cl` reports errors on stdout, so keep both streams for the message.
