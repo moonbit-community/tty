@@ -30,16 +30,16 @@ const TAG_SET_RAW : Byte = 0x01
 const TAG_WRITE : Byte = 0x02
 
 ///|
-const TAG_HELLO : Byte = 0x80
+const TAG_HELLO : UInt32 = 0x80
 
 ///|
-const TAG_INPUT : Byte = 0x81
+const TAG_INPUT : UInt32 = 0x81
 
 ///|
-const TAG_RESIZE : Byte = 0x82
+const TAG_RESIZE : UInt32 = 0x82
 
 ///|
-const TAG_ERROR : Byte = 0x83
+const TAG_ERROR : UInt32 = 0x83
 
 ///|
 /// Largest payload we accept from the sidecar; it never sends more than its
@@ -83,45 +83,40 @@ async fn Connection::read_full(
 }
 
 ///|
-fn u16_le(bytes : BytesView) -> Int32 {
-  bytes[0].to_int() | (bytes[1].to_int() << 8)
-}
-
-///|
 /// Next frame from the sidecar, `None` once it has closed its output.
 pub async fn Connection::read_frame(self : Connection) -> Frame? {
   let header = FixedArray::make(5, b'\x00')
   guard self.read_full(header) else { return None }
-  let len = header[1].to_int() |
-    (header[2].to_int() << 8) |
-    (header[3].to_int() << 16) |
-    (header[4].to_int() << 24)
-  if len < 0 || len > MAX_PAYLOAD {
+  guard header is [u8be(tag), u32le(len)] else {
+    raise ProtocolError("malformed sidecar frame header")
+  }
+  if len > MAX_PAYLOAD.reinterpret_as_uint() {
     raise ProtocolError("sidecar frame length \{len} out of range")
   }
+  let len = len.reinterpret_as_int()
   let payload = FixedArray::make(len, b'\x00')
   if len > 0 && !self.read_full(payload) {
     raise ProtocolError("sidecar closed in the middle of a frame")
   }
   let payload = Bytes::from_array(payload[:])
-  match header[0] {
-    TAG_HELLO => {
-      guard len >= 8 else { raise ProtocolError("short hello frame") }
-      let version = payload[0].to_int() |
-        (payload[1].to_int() << 8) |
-        (payload[2].to_int() << 16) |
-        (payload[3].to_int() << 24)
+  match (tag, payload[:]) {
+    (TAG_HELLO, [u32le(version), u16le(rows), u16le(cols), ..]) =>
       Some(
-        Hello(version~, rows=u16_le(payload[4:6]), cols=u16_le(payload[6:8])),
+        Hello(
+          version=version.reinterpret_as_int(),
+          rows=rows.reinterpret_as_int(),
+          cols=cols.reinterpret_as_int(),
+        ),
       )
-    }
-    TAG_INPUT => Some(Input(payload))
-    TAG_RESIZE => {
-      guard len >= 4 else { raise ProtocolError("short resize frame") }
-      Some(Resize(rows=u16_le(payload[0:2]), cols=u16_le(payload[2:4])))
-    }
-    TAG_ERROR => Some(Error(@utf8.decode_lossy(payload)))
-    tag => raise ProtocolError("unknown sidecar frame tag \{tag}")
+    (TAG_HELLO, _) => raise ProtocolError("short hello frame")
+    (TAG_INPUT, _) => Some(Input(payload))
+    (TAG_RESIZE, [u16le(rows), u16le(cols), ..]) =>
+      Some(
+        Resize(rows=rows.reinterpret_as_int(), cols=cols.reinterpret_as_int()),
+      )
+    (TAG_RESIZE, _) => raise ProtocolError("short resize frame")
+    (TAG_ERROR, _) => Some(Error(@utf8.decode_lossy(payload)))
+    (tag, _) => raise ProtocolError("unknown sidecar frame tag \{tag}")
   }
 }
 
