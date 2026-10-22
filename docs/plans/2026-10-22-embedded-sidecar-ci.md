@@ -32,14 +32,21 @@ through that way.
   so the library's contract (`TTY_SIDECAR` set and non-empty overrides,
   otherwise embedded) stays unchanged.
 - `.github/workflows/embedded-sidecars.yml`: one job per embedded
-  `<os>-<arch>` (`ubuntu-latest`, `ubuntu-24.04-arm`, `macos-latest`,
-  `macos-15-intel`, `windows-latest`). It checks the runner's platform is
-  the one the job is named for, then runs `moon test tests --deny-warn`
+  `<os>-<arch>` (`ubuntu-latest`, `ubuntu-24.04-arm`, `macos-latest`
+  twice, `windows-latest`). It checks the runner's platform is the one the
+  job is named for, then runs `moon test tests --deny-warn`
   with `TTY_TEST_SIDECAR=embedded`, which drives both the native and the
   wasm runners. Triggers: `workflow_dispatch`, pushes to `main` and pull
   requests touching `internal/sidecar/**`, `tests/**` or the workflow. The
   `sidecars` workflow pushes the regenerated table with a deploy key, so
   its bot commit triggers this workflow.
+
+- `macos-x86_64` runs on arm64 macOS: the MoonBit installer rejects
+  `Darwin x86_64` (first attempt on `macos-15-intel` failed with
+  `Unsupported platform`), so no Intel runner can build the tests. The job
+  puts a `uname` in front of `PATH` that answers `-m` with `x86_64`, so
+  `platform_key` selects the embedded `macos-x86_64` executable, and Rosetta
+  runs it. This covers the x86_64 binary, not an Intel host.
 
 ## Public API diff
 
@@ -59,4 +66,6 @@ None. `tests/pkg.generated.mbti` and every other `.mbti` stay unchanged.
 - macOS arm64: `moon test tests` 5/5; `TTY_TEST_SIDECAR=embedded moon test
   tests` with `tests/_build/sidecar` removed 5/5, nothing rebuilt; with
   `TTY_SIDECAR=/nope` added, the guard fails the test.
+- macOS arm64 with the `uname` shim: 5/5, and the sidecars spawned during
+  the run were `Mach-O 64-bit executable x86_64`.
 - CI: see the pull request's `embedded sidecars` run.

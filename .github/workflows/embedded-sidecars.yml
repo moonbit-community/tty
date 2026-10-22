@@ -38,8 +38,11 @@ jobs:
             os: ubuntu-24.04-arm
           - key: macos-arm64
             os: macos-latest
+          # MoonBit has no Intel macOS toolchain, so this job runs on arm64
+          # and the x86_64 sidecar under Rosetta; see "Emulate x86_64".
           - key: macos-x86_64
-            os: macos-15-intel
+            os: macos-latest
+            rosetta: true
           - key: windows-x86_64
             os: windows-latest
     env:
@@ -79,12 +82,28 @@ jobs:
       - name: Show MoonBit version
         run: moon version --all
 
+      # `platform_key` reads the architecture from `uname -m`, so answering
+      # x86_64 makes `Tty::open()` write out the embedded macos-x86_64
+      # sidecar, which Rosetta then runs.
+      - name: Emulate x86_64
+        if: matrix.rosetta
+        run: |
+          arch -x86_64 /usr/bin/true || softwareupdate --install-rosetta --agree-to-license
+          shim="$RUNNER_TEMP/rosetta-bin"
+          mkdir -p "$shim"
+          printf '%s\n' '#!/bin/sh' \
+            'if [ "$1" = -m ]; then echo x86_64; else exec /usr/bin/uname "$@"; fi' \
+            > "$shim/uname"
+          chmod +x "$shim/uname"
+          echo "$shim" >> "$GITHUB_PATH"
+
       - name: Update package registry
         run: moon update
 
       # `platform_key` in internal/sidecar/locate.mbt picks the embedded
       # executable from `uname -m` (Unix) or PROCESSOR_ARCHITECTURE
-      # (Windows); make sure the runner is the platform the job is named for.
+      # (Windows); make sure the runner is, or emulates, the platform the job
+      # is named for.
       - name: Check the runner platform
         shell: bash
         run: |
