@@ -13,7 +13,7 @@ fn target_dir(name : String) -> String {
 
 ///|
 fn runner_args(name : String, target~ : String = "native") -> Array[String] {
-  let args = [
+  [
     "moon",
     "-C",
     tests_path(name),
@@ -24,18 +24,18 @@ fn runner_args(name : String, target~ : String = "native") -> Array[String] {
     "--target-dir",
     target_dir(name),
   ]
-  if target == "wasm" {
-    // A wasm runner reaches the terminal through the sidecar process.
-    ["env", "\{SIDECAR_ENV}=\{sidecar_path()}", ..args]
-  } else {
-    args
-  }
 }
 
 ///|
-const SIDECAR_ENV : String = "TTY_SIDECAR"
+/// A wasm runner reaches the terminal through the sidecar process compiled
+/// by `build_sidecar`.
+#cfg(not(platform="windows"))
+fn wasm_runner_args(name : String) -> Array[String] {
+  ["env", "TTY_SIDECAR=\{sidecar_path()}", ..runner_args(name, target="wasm")]
+}
 
 ///|
+#cfg(not(platform="windows"))
 fn sidecar_path() -> String {
   let cwd = @env.current_dir().unwrap_or(".")
   "\{cwd}/\{tests_path("_build/sidecar")}"
@@ -43,7 +43,9 @@ fn sidecar_path() -> String {
 
 ///|
 /// Compile `sidecar/sidecar.c` for the wasm runners.
+#cfg(not(platform="windows"))
 async fn build_sidecar() -> Unit {
+  @fs.mkdir(tests_path("_build"), allow_exist=true)
   let (exit, _, stderr) = @process.collect_output("cc", [
     "-O2",
     "-o",
@@ -152,11 +154,11 @@ async test "resize event" {
 #cfg(not(platform="windows"))
 async test "Tty::open on wasm through the sidecar" {
   @async.with_task_group() <| group => {
-    build_sidecar()
     build_runner("open", target="wasm")
+    build_sidecar()
     let pty = @pty.spawn(
       group,
-      runner_args("open", target="wasm"),
+      wasm_runner_args("open"),
       cols=100,
       rows=30,
       no_wait=true,
@@ -175,11 +177,11 @@ async test "Tty::open on wasm through the sidecar" {
 #cfg(not(platform="windows"))
 async test "resize event on wasm through the sidecar" {
   @async.with_task_group() <| group => {
-    build_sidecar()
     build_runner("resize", target="wasm")
+    build_sidecar()
     let pty = @pty.spawn(
       group,
-      runner_args("resize", target="wasm"),
+      wasm_runner_args("resize"),
       cols=100,
       rows=30,
       no_wait=true,
