@@ -170,7 +170,6 @@ async test "resize event" {
 }
 
 ///|
-#cfg(not(platform="windows"))
 async test "Tty::open on wasm through the sidecar" {
   @async.with_task_group() <| group => {
     build_runner("open", target="wasm")
@@ -193,7 +192,6 @@ async test "Tty::open on wasm through the sidecar" {
 }
 
 ///|
-#cfg(not(platform="windows"))
 async test "resize event on wasm through the sidecar" {
   @async.with_task_group() <| group => {
     build_runner("resize", target="wasm")
