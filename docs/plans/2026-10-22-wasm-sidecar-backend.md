@@ -95,6 +95,42 @@ Run on macOS with moon 0.1.20261020 against the pinned `moonbitlang/async`:
 - The Windows sidecar and the console record path are validated by the
   windows-latest CI job through the same pty runners.
 
+## Follow-up: wasm examples
+
+Goal: make every example selectable with `--target wasm`, alongside native.
+The user approved opening the example backends after manual verification found
+that their package manifests still restricted them to native.
+
+Target files: `examples/*/moon.pkg`, `examples/isatty/`, and `README.md`.
+Reuse the existing sidecar backend and example implementations; add no types,
+helpers, imports, dependencies, or public API. Generated interfaces should remain
+unchanged except for removing the deleted example's interface. Remove the
+`examples/isatty` demo at the user's request; keep the library's `isatty` API and
+its tests. Keep native as the default target.
+
+Acceptance: all six remaining examples check and build for both targets; existing example
+tests pass on both. Document `TTY_SIDECAR` setup and wasm commands. Interactive
+rendering and physical input still require manual terminal validation.
+
+Validation: `moon fmt`, workspace `moon check --deny-warn` on both native and
+wasm, `moon build examples/<name>` and `moon test examples/<name>` for each
+remaining example on both targets, `moon info`, `git diff --check`.
+
+Validation results (Windows):
+
+- Formatting and workspace checks passed on native and wasm with `--deny-warn`.
+- All six examples built for both targets. Existing tests passed on each target:
+  input 7, cursor 1, pager 6, agent 17 (31 total); raw and color have no tests.
+- Ran `examples/raw --target wasm` in a pseudoterminal with the compiled sidecar
+  override: `a` and Ctrl-C produced key events; `q` printed `terminal restored`
+  and the process exited with status 0. This also exercised the preceding
+  single-line raw-demo logging fix.
+- `moon info` succeeded. Its known Windows-only root `Fd` interface variation
+  was inspected and reverted; the library API is unchanged. Only the removed
+  `examples/isatty` package loses its generated interface.
+- `git diff --check` passed. Physical keyboard/IME, mouse and visual layout
+  checks in the remaining examples are still manual.
+
 ## Open questions
 
 - A release must be cut after the `sidecars` workflow has committed the

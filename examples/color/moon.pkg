@@ -4,6 +4,6 @@ import {
   "moonbit-community/tty/color" @tty_color,
 }
 
-supported_targets = "native"
+supported_targets = "-all+native+wasm"
 
 pkgtype(kind: "executable")

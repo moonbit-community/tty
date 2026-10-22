@@ -145,6 +145,12 @@ async fn main {
 
 Examples live in a separate workspace member under `examples/`.
 
+All examples support `--target native` (the default) and `--target wasm`.
+The wasm programs run locally through `moonrun`, using the host's sidecar.
+For a source checkout with an empty embedded sidecar table, build the sidecar
+as described in `sidecar/README.md` and set `TTY_SIDECAR` to its absolute path
+before running an interactive example.
+
 ```sh
 moon run examples/raw
 moon run examples/input
@@ -152,6 +158,14 @@ moon run examples/color
 moon run examples/cursor
 moon run examples/pager -- README.md
 moon run examples/agent
+```
+
+To exercise the wasm backend, for example:
+
+```sh
+moon run examples/raw --target wasm
+moon run examples/input --target wasm
+moon run examples/pager --target wasm -- README.md
 ```
 
 The examples are manual validation tools, not framework APIs:

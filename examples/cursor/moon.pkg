@@ -3,6 +3,6 @@ import {
   "moonbit-community/tty",
 }
 
-supported_targets = "native"
+supported_targets = "-all+native+wasm"
 
 pkgtype(kind: "executable")
