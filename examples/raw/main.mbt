@@ -12,7 +12,16 @@ async fn run_raw_loop(tty : @tty.Tty) -> Unit {
         write_line(tty, "q pressed; leaving raw mode")
         break
       }
-      event => write_line(tty, "event: \{Repr(event)}")
+      event => {
+        // Debug rendering can contain bare LF, which does not return to
+        // column one in raw mode. Keep each event on one logical line.
+        let text = Repr(event)
+          .to_string()
+          .split("\n")
+          .map(line => line.trim())
+          .join(" ")
+        write_line(tty, "event: \{text}")
+      }
     }
   }
 }
