@@ -56,8 +56,10 @@
 
 ## Architecture Facts
 
-- The root `moonbit-community/tty` package owns tty handles, stdio construction,
-  raw-mode state, and platform FFI.
+- The root `moonbit-community/tty` package owns tty handles and stdio
+  construction. The terminal device itself, raw mode, size and resize live in
+  the sidecar process (`sidecar/`, driven by `internal/sidecar`); the root has
+  no platform FFI for them.
 - `moonbit-community/tty/internal/vt` emits VT/ANSI byte sequences for root `Tty`
   methods. It does not own an output stream and does not maintain screen state.
 - `moonbit-community/tty/input` decodes host input bytes from an `@io.Reader` into

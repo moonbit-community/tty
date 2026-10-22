@@ -7,11 +7,13 @@ import {
 }
 
 // Values
+pub const MAX_WRITE : Int32 = 32768
+
 pub const SIDECAR_ENV : String = "TTY_SIDECAR"
 
 pub async fn open() -> Sidecar
 
-pub async fn spawn(String, env? : Map[String, String]) -> Sidecar
+pub async fn spawn(String, env? : Map[String, String], temp_dir? : String?) -> Sidecar
 
 // Errors
 pub suberror ProtocolError {

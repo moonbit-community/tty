@@ -117,7 +117,8 @@ Run a scoped raw-mode input loop:
 
 ```moonbit
 async fn main {
-  let tty = @tty.Tty::stdio()
+  let tty = @tty.Tty::open()
+  defer tty.close()
   tty.with_raw_mode(() => {
     tty.write("press q to quit\r\n")
     while true {

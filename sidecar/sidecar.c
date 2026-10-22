@@ -6,8 +6,11 @@
 // The first part is the protocol, shared by both platforms. Then comes the
 // Windows half (console handles, a thread blocking in ReadConsoleInputW that
 // forwards raw INPUT_RECORDs, a second thread reading commands) and the Unix
-// half (/dev/tty, termios, single-threaded pselect over the command pipe and
-// the terminal, SIGWINCH through a handler, input forwarded as VT bytes).
+// half (/dev/tty, termios, single-threaded pselect over the command pipe, the
+// terminal and the event pipe, SIGWINCH through a handler, input forwarded as
+// VT bytes). Event frames are queued and written as the pipe accepts them, so
+// a parent that is slow to read events never stops command processing; the
+// terminal is simply not read while the queue is large.
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -97,7 +100,8 @@ static int handle_commands(void) {
     const uint8_t *payload = cmd_buf + off + 5;
     switch (tag) {
       case TAG_SET_RAW:
-        if (set_raw(len > 0 && payload[0]) < 0 && report_failure("set raw mode") < 0) return -1;
+        if (len != 1) { send_error("malformed SET_RAW command"); return -1; }
+        if (set_raw(payload[0] != 0) < 0 && report_failure("set raw mode") < 0) return -1;
         break;
       case TAG_WRITE:
         if (write_terminal(payload, len) < 0 && report_failure("write to terminal") < 0) return -1;
@@ -118,8 +122,10 @@ static int handle_commands(void) {
 
 static HANDLE in_pipe, out_pipe, conin, conout;
 static CRITICAL_SECTION out_cs;
+// Console mode state is touched by the command thread, the record thread
+// and the console control handler, hence its own lock.
+static CRITICAL_SECTION mode_cs;
 static DWORD saved_in_mode, saved_out_mode;
-static int have_out_mode = 0;
 static int is_raw = 0;
 
 static void out_lock(void) { EnterCriticalSection(&out_cs); }
@@ -153,34 +159,53 @@ static int window_size(unsigned *rows, unsigned *cols) {
   return 0;
 }
 
-static void restore(void) {
-  if (!is_raw) return;
-  SetConsoleMode(conin, saved_in_mode);
-  if (have_out_mode) SetConsoleMode(conout, saved_out_mode);
-  is_raw = 0;
+// Put both console modes back; `is_raw` is cleared only once both are.
+static int restore_locked(void) {
+  if (!is_raw) return 0;
+  int ok = SetConsoleMode(conin, saved_in_mode);
+  ok = SetConsoleMode(conout, saved_out_mode) && ok;
+  if (ok) is_raw = 0;
+  return ok ? 0 : -1;
+}
+
+static int restore(void) {
+  EnterCriticalSection(&mode_cs);
+  int rc = restore_locked();
+  LeaveCriticalSection(&mode_cs);
+  return rc;
 }
 
 // No echo, no line buffering, no Ctrl-C processing, VT input and output,
-// window size events.
+// window size events. Either both modes change or neither does.
 static int set_raw(int on) {
-  if (!on) { restore(); return 0; }
-  if (is_raw) return 0;
-  if (!GetConsoleMode(conin, &saved_in_mode)) return -1;
-  DWORD mode = saved_in_mode;
-  mode &= ~(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT);
-  mode |= ENABLE_EXTENDED_FLAGS;
-  mode &= ~ENABLE_QUICK_EDIT_MODE;
-  mode |= ENABLE_VIRTUAL_TERMINAL_INPUT;
-  mode |= ENABLE_WINDOW_INPUT;
-  if (!SetConsoleMode(conin, mode)) return -1;
-  have_out_mode = GetConsoleMode(conout, &saved_out_mode);
-  if (have_out_mode) {
-    DWORD out = saved_out_mode;
-    out |= ENABLE_PROCESSED_OUTPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING | DISABLE_NEWLINE_AUTO_RETURN;
-    SetConsoleMode(conout, out);
+  if (!on) return restore();
+  EnterCriticalSection(&mode_cs);
+  int rc = 0;
+  if (!is_raw) {
+    rc = -1;
+    if (GetConsoleMode(conin, &saved_in_mode) && GetConsoleMode(conout, &saved_out_mode)) {
+      DWORD in = saved_in_mode;
+      in &= ~(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT);
+      in |= ENABLE_EXTENDED_FLAGS;
+      in &= ~ENABLE_QUICK_EDIT_MODE;
+      in |= ENABLE_VIRTUAL_TERMINAL_INPUT;
+      in |= ENABLE_WINDOW_INPUT;
+      DWORD out = saved_out_mode;
+      out |= ENABLE_PROCESSED_OUTPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING | DISABLE_NEWLINE_AUTO_RETURN;
+      if (SetConsoleMode(conin, in)) {
+        if (SetConsoleMode(conout, out)) {
+          is_raw = 1;
+          rc = 0;
+        } else {
+          DWORD error = GetLastError();
+          SetConsoleMode(conin, saved_in_mode);
+          SetLastError(error);
+        }
+      }
+    }
   }
-  is_raw = 1;
-  return 0;
+  LeaveCriticalSection(&mode_cs);
+  return rc;
 }
 
 // Commands arrive on the stdin pipe; EOF there means the parent is gone.
@@ -210,6 +235,7 @@ int main(void) {
   in_pipe = GetStdHandle(STD_INPUT_HANDLE);
   out_pipe = GetStdHandle(STD_OUTPUT_HANDLE);
   InitializeCriticalSection(&out_cs);
+  InitializeCriticalSection(&mode_cs);
   conin = CreateFileW(L"CONIN$", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
                       NULL, OPEN_EXISTING, 0, NULL);
   if (conin == INVALID_HANDLE_VALUE) { report_failure("CreateFileW(CONIN$)"); return 1; }
@@ -252,6 +278,12 @@ static int is_raw = 0;
 static void out_lock(void) {}
 static void out_unlock(void) {}
 
+// Event frames waiting for the parent to read them. Above the high-water
+// mark the terminal is left unread, which is the backpressure.
+static uint8_t *out_buf = NULL;
+static size_t out_len = 0, out_cap = 0;
+#define OUT_HIGH_WATER (1u << 20)
+
 static int write_all(int fd, const void *p, size_t n) {
   const uint8_t *c = p;
   while (n > 0) {
@@ -266,7 +298,36 @@ static int write_all(int fd, const void *p, size_t n) {
   return 0;
 }
 
-static int write_out(const void *p, size_t n) { return write_all(1, p, n); }
+static int write_out(const void *p, size_t n) {
+  if (out_len + n > out_cap) {
+    size_t cap = out_cap ? out_cap : 65536;
+    while (cap < out_len + n) cap *= 2;
+    uint8_t *grown = realloc(out_buf, cap);
+    if (grown == NULL) return -1;
+    out_buf = grown;
+    out_cap = cap;
+  }
+  memcpy(out_buf + out_len, p, n);
+  out_len += n;
+  return 0;
+}
+
+// Write as much of the queue as the pipe takes right now; -1 once the
+// parent is gone.
+static int flush_out(void) {
+  while (out_len > 0) {
+    ssize_t w = write(1, out_buf, out_len);
+    if (w < 0) {
+      if (errno == EINTR) continue;
+      if (errno == EAGAIN || errno == EWOULDBLOCK) return 0;
+      return -1;
+    }
+    memmove(out_buf, out_buf + w, out_len - (size_t)w);
+    out_len -= (size_t)w;
+  }
+  return 0;
+}
+
 static int write_terminal(const void *p, size_t n) { return write_all(tty_fd, p, n); }
 
 static int report_failure(const char *what) {
@@ -283,15 +344,18 @@ static int window_size(unsigned *rows, unsigned *cols) {
   return 0;
 }
 
-static void restore(void) {
-  if (is_raw) {
-    tcsetattr(tty_fd, TCSANOW, &saved);
-    is_raw = 0;
-  }
+static int restore(void) {
+  if (!is_raw) return 0;
+  int rc;
+  do {
+    rc = tcsetattr(tty_fd, TCSANOW, &saved);
+  } while (rc < 0 && errno == EINTR);
+  if (rc == 0) is_raw = 0;
+  return rc;
 }
 
 static int set_raw(int on) {
-  if (!on) { restore(); return 0; }
+  if (!on) return restore();
   if (is_raw) return 0;
   struct termios t;
   if (tcgetattr(tty_fd, &t) < 0) return -1;
@@ -332,25 +396,29 @@ int main(void) {
   sigdelset(&in_select, SIGHUP);
   sigdelset(&in_select, SIGINT);
 
+  fcntl(1, F_SETFL, fcntl(1, F_GETFL) | O_NONBLOCK);
   if (send_hello(INPUT_KIND_BYTES) < 0) return 1;
 
   uint8_t tty_buf[4096];
-  int maxfd = tty_fd > 0 ? tty_fd : 0;
+  int maxfd = tty_fd > 1 ? tty_fd : 1;
   for (;;) {
     if (got_quit) break;
     if (got_winch) {
       got_winch = 0;
       if (send_resize() < 0) break;
     }
-    fd_set r;
+    fd_set r, w;
     FD_ZERO(&r);
+    FD_ZERO(&w);
     FD_SET(0, &r);
-    FD_SET(tty_fd, &r);
-    int n = pselect(maxfd + 1, &r, NULL, NULL, NULL, &in_select);
+    if (out_len < OUT_HIGH_WATER) FD_SET(tty_fd, &r);
+    if (out_len > 0) FD_SET(1, &w);
+    int n = pselect(maxfd + 1, &r, &w, NULL, NULL, &in_select);
     if (n < 0) {
       if (errno == EINTR) continue;
       break;
     }
+    if (FD_ISSET(1, &w) && flush_out() < 0) break;  // parent gone
     if (FD_ISSET(tty_fd, &r)) {
       ssize_t k = read(tty_fd, tty_buf, sizeof tty_buf);
       if (k < 0) {
@@ -358,7 +426,7 @@ int main(void) {
       } else if (k == 0) {
         break;  // terminal hung up
       } else if (send_frame(TAG_INPUT, tty_buf, (uint32_t)k) < 0) {
-        break;  // parent gone
+        break;  // out of memory
       }
     }
     if (FD_ISSET(0, &r)) {

@@ -14,7 +14,7 @@ license = "Apache-2.0"
 
 keywords = [ "tty", "terminal", "ansi", "vt", "async", "native" ]
 
-description = "Low-level terminal primitives for MoonBit native targets, including tty state, platform stdio handles, VT command output, and host input decoding."
+description = "Low-level terminal primitives for MoonBit native and wasm targets: a sidecar-held controlling terminal with raw mode, size and resize events, VT command output, and host input decoding."
 
 preferred_target = "native"
 

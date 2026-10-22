@@ -16,6 +16,10 @@ const INPUT_RECORD_SIZE : Int32 = 20
 /// read, see `internal/sidecar`.
 struct EventReader {
   reader : &@async/io.Reader
+  // A record received so far; kept on the reader because the task reading
+  // records is cancelled whenever a `read_event` call returns.
+  record : FixedArray[Byte]
+  mut record_len : Int32
   byte_queue : @internal_io.ByteQueue
   decoder : @input.EventReader
   events : @async.Queue[Event]
@@ -28,6 +32,8 @@ pub fn EventReader::new(reader : &@async/io.Reader) -> EventReader {
   let byte_queue = @internal_io.ByteQueue::new()
   {
     reader,
+    record: FixedArray::make(INPUT_RECORD_SIZE, b'\x00'),
+    record_len: 0,
     byte_queue,
     decoder: @input.EventReader::new(byte_queue as &@async/io.Reader),
     events: Queue(kind=Unbounded),
@@ -109,23 +115,22 @@ async fn EventReader::read_records(self : EventReader) -> Unit {
 ///|
 /// One whole raw record, or `None` at a clean end of the stream.
 async fn EventReader::read_raw_record(self : EventReader) -> Bytes? {
-  let buf = FixedArray::make(INPUT_RECORD_SIZE, b'\x00')
-  let mut filled = 0
-  while filled < INPUT_RECORD_SIZE {
+  while self.record_len < INPUT_RECORD_SIZE {
     let n = self.reader.read(
-      buf,
-      offset=filled,
-      max_len=INPUT_RECORD_SIZE - filled,
+      self.record,
+      offset=self.record_len,
+      max_len=INPUT_RECORD_SIZE - self.record_len,
     )
     if n == 0 {
-      if filled == 0 {
+      if self.record_len == 0 {
         return None
       }
       fail("console input closed in the middle of a record")
     }
-    filled += n
+    self.record_len += n
   }
-  Some(Bytes::from_array(buf[:]))
+  self.record_len = 0
+  Some(Bytes::from_array(self.record[:]))
 }
 
 ///|

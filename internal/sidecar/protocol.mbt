@@ -66,10 +66,32 @@ const TAG_RECORD : UInt32 = 0x84
 const MAX_PAYLOAD : Int32 = 1 << 20
 
 ///|
+/// Largest payload we send in one frame. The sidecar parses commands out of
+/// a 64 KiB buffer, so a frame must stay well below that; `write` splits.
+pub const MAX_WRITE : Int32 = 32 * 1024
+
+///|
+const HEADER_SIZE : Int32 = 5
+
+///|
+/// Size of one raw Windows `INPUT_RECORD`, the payload of every RECORD frame.
+const RECORD_SIZE : Int32 = 20
+
+///|
 /// Frame encoder and decoder over a byte stream pair.
+///
+/// Incoming bytes are accumulated in `buf` and frames are cut from there,
+/// so a read that is cancelled (a query timeout, the decoder's escape
+/// disambiguation) can only ever lose a read that had not returned yet; a
+/// header or partial payload already received stays in the buffer.
 struct Connection {
   reader : &@async/io.Reader
   writer : &@async/io.Writer
+  mut buf : FixedArray[Byte]
+  mut len : Int32
+  // A frame is one transaction on the command pipe: concurrent senders are
+  // serialized and a frame once started is not cut short by cancellation.
+  send_lock : @lock.Lock
 }
 
 ///|
@@ -77,65 +99,91 @@ pub fn Connection::new(
   reader : &@async/io.Reader,
   writer : &@async/io.Writer,
 ) -> Connection {
-  { reader, writer, }
+  {
+    reader,
+    writer,
+    buf: FixedArray::make(4096, b'\x00'),
+    len: 0,
+    send_lock: @lock.Lock::new(),
+  }
 }
 
 ///|
-/// Fill `buf` completely. Returns `false` on a clean EOF before the first
-/// byte, raises on EOF in the middle of a frame.
-async fn Connection::read_full(
-  self : Connection,
-  buf : FixedArray[Byte],
-) -> Bool {
-  let mut filled = 0
-  while filled < buf.length() {
-    let n = self.reader.read(buf, offset=filled, max_len=buf.length() - filled)
+/// Make sure at least `needed` bytes are buffered. Returns `false` on a
+/// clean EOF before the first byte of a frame, raises on EOF inside one.
+async fn Connection::fill(self : Connection, needed : Int32) -> Bool {
+  if self.buf.length() < needed {
+    let grown = FixedArray::make(needed, b'\x00')
+    for i in 0..<self.len {
+      grown[i] = self.buf[i]
+    }
+    self.buf = grown
+  }
+  while self.len < needed {
+    let n = self.reader.read(
+      self.buf,
+      offset=self.len,
+      max_len=self.buf.length() - self.len,
+    )
     if n == 0 {
-      if filled == 0 {
+      if self.len == 0 {
         return false
       }
       raise ProtocolError("sidecar closed in the middle of a frame")
     }
-    filled += n
+    self.len += n
   }
   true
 }
 
 ///|
+/// Drop the first `count` buffered bytes.
+fn Connection::consume(self : Connection, count : Int32) -> Unit {
+  for i in count..<self.len {
+    self.buf[i - count] = self.buf[i]
+  }
+  self.len -= count
+}
+
+///|
 /// Next frame from the sidecar, `None` once it has closed its output.
 pub async fn Connection::read_frame(self : Connection) -> Frame? {
-  let header = FixedArray::make(5, b'\x00')
-  guard self.read_full(header) else { return None }
-  guard header is [u8be(tag), u32le(len)] else {
+  guard self.fill(HEADER_SIZE) else { return None }
+  guard self.buf[:HEADER_SIZE] is [u8be(tag), u32le(len)] else {
     raise ProtocolError("malformed sidecar frame header")
   }
   if len > MAX_PAYLOAD.reinterpret_as_uint() {
     raise ProtocolError("sidecar frame length \{len} out of range")
   }
   let len = len.reinterpret_as_int()
-  let payload = FixedArray::make(len, b'\x00')
-  if len > 0 && !self.read_full(payload) {
+  guard self.fill(HEADER_SIZE + len) else {
     raise ProtocolError("sidecar closed in the middle of a frame")
   }
-  let payload = Bytes::from_array(payload[:])
+  let payload = Bytes::from_array(self.buf[HEADER_SIZE:HEADER_SIZE + len])
+  self.consume(HEADER_SIZE + len)
   match (tag, payload[:]) {
-    (TAG_HELLO, [u32le(version), u16le(rows), u16le(cols), u8be(kind), ..]) =>
+    (TAG_HELLO, [u32le(version), u16le(rows), u16le(cols), u8be(kind)]) =>
       Some(
         Hello(
           version=version.reinterpret_as_int(),
           rows=rows.reinterpret_as_int(),
           cols=cols.reinterpret_as_int(),
-          kind=if kind == 1 { Records } else { Bytes },
+          kind=match kind {
+            0 => Bytes
+            1 => Records
+            kind => raise ProtocolError("unknown sidecar input kind \{kind}")
+          },
         ),
       )
-    (TAG_HELLO, _) => raise ProtocolError("short hello frame")
+    (TAG_HELLO, _) => raise ProtocolError("malformed hello frame")
     (TAG_INPUT, _) => Some(Input(payload))
-    (TAG_RECORD, _) => Some(Record(payload))
-    (TAG_RESIZE, [u16le(rows), u16le(cols), ..]) =>
+    (TAG_RECORD, _) if len == RECORD_SIZE => Some(Record(payload))
+    (TAG_RECORD, _) => raise ProtocolError("record frame of \{len} bytes")
+    (TAG_RESIZE, [u16le(rows), u16le(cols)]) =>
       Some(
         Resize(rows=rows.reinterpret_as_int(), cols=cols.reinterpret_as_int()),
       )
-    (TAG_RESIZE, _) => raise ProtocolError("short resize frame")
+    (TAG_RESIZE, _) => raise ProtocolError("malformed resize frame")
     (TAG_ERROR, _) => Some(Error(@utf8.decode_lossy(payload)))
     (tag, _) => raise ProtocolError("unknown sidecar frame tag \{tag}")
   }
@@ -151,7 +199,10 @@ async fn Connection::send(
   buf.write_byte(tag)
   buf.write_uint_le(payload.length().reinterpret_as_uint())
   buf.write_bytes(payload)
-  self.writer.write(buf.contents())
+  let frame = buf.contents()
+  self.send_lock.with_lock(() => {
+    @async.protect_from_cancel(() => self.writer.write(frame))
+  })
 }
 
 ///|
@@ -160,6 +211,12 @@ pub async fn Connection::set_raw(self : Connection, on : Bool) -> Unit {
 }
 
 ///|
+/// Write `data` to the terminal, in frames of at most `MAX_WRITE` bytes.
 pub async fn Connection::write(self : Connection, data : BytesView) -> Unit {
-  self.send(TAG_WRITE, data)
+  let mut rest = data
+  while rest.length() > MAX_WRITE {
+    self.send(TAG_WRITE, rest[:MAX_WRITE])
+    rest = rest[MAX_WRITE:]
+  }
+  self.send(TAG_WRITE, rest)
 }

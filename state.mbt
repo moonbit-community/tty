@@ -28,9 +28,21 @@ pub async fn Tty::leave_raw_mode(self : Self) -> Unit {
 ///|
 /// Run an async callback with raw mode enabled.
 ///
-/// The terminal is restored on success, error, or cancellation.
+/// The terminal is restored on success, error, or cancellation, by the
+/// outermost of nested scopes.
 pub async fn[T] Tty::with_raw_mode(self : Self, f : async () -> T) -> T {
   self.enter_raw_mode()
-  defer self.leave_raw_mode()
+  self.raw_depth += 1
+  defer self.leave_raw_scope()
   f()
+}
+
+///|
+/// Leave raw mode when the last `with_raw_mode` scope ends. Restoring the
+/// terminal must happen even while the task is being cancelled.
+async fn Tty::leave_raw_scope(self : Self) -> Unit {
+  self.raw_depth -= 1
+  if self.raw_depth == 0 {
+    @async.protect_from_cancel(() => self.leave_raw_mode())
+  }
 }

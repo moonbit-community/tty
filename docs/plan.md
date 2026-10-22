@@ -74,5 +74,5 @@ This board tracks implementation direction for `moonbit-community/tty`. Use
 - Keep `examples/input` as a demo. Its grapheme-aware buffer validates higher-level
   editing behavior but does not create a public line-editing API.
 - When a task touches `.mbti`, include public API audit notes in its plan.
-- Resize events use the TTY-10 plan: Unix `SIGWINCH` is process-global and
-  coalesced; Windows console resize events need a later backend plan.
+- Resize events come from the tty sidecar on every platform (WASM-1) and are
+  coalesced.

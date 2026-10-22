@@ -27,6 +27,8 @@ struct Sidecar {
   from_child : @async/process.ReadFromProcess
   conn : Connection
   read_buf : @async/io.ReaderBuffer
+  // A directory holding the executable, deleted once the process is reaped.
+  temp_dir : String?
   mut rows : Int32
   mut cols : Int32
   mut kind : InputKind
@@ -34,19 +36,27 @@ struct Sidecar {
   // Input bytes received but not yet handed out by `_direct_read`.
   mut pending : BytesView
   mut closed : Bool
+  mut exit : Int32?
 }
 
 ///|
 /// Start the sidecar executable at `path` with `env` added to its
-/// environment, and wait for its hello frame.
+/// environment, and wait for its hello frame. A `temp_dir` holding the
+/// executable is removed by `wait`.
 #warnings("-14")
 pub async fn spawn(
   path : String,
   env~ : Map[String, String] = Map([]),
+  temp_dir~ : String? = None,
 ) -> Sidecar {
   let (child_stdin, to_child) = @async/process.write_to_process()
-  let (from_child, child_stdout) = @async/process.read_from_process()
+  let (from_child, child_stdout) = {
+    errdefer to_child.close()
+    @async/process.read_from_process()
+  }
   let pid = {
+    errdefer to_child.close()
+    errdefer from_child.close()
     defer child_stdout.close()
     @async/process.spawn_orphan(
       path,
@@ -63,14 +73,20 @@ pub async fn spawn(
     from_child,
     conn,
     read_buf: @async/io.ReaderBuffer::new(),
+    temp_dir,
     rows: 0,
     cols: 0,
     kind: Bytes,
     raw: false,
     pending: b""[:],
     closed: false,
+    exit: None,
   }
-  errdefer sidecar.close()
+  // From here on the child exists and must be reaped on every exit path.
+  errdefer {
+    sidecar.close()
+    ignore(sidecar.wait())
+  }
   match conn.read_frame() {
     Some(Hello(version~, rows~, cols~, kind~)) => {
       guard version == 1 else {
@@ -141,9 +157,23 @@ pub fn Sidecar::close(self : Sidecar) -> Unit {
 }
 
 ///|
-/// Reap the sidecar process after `close`.
+/// Reap the sidecar process after `close` and remove its temporary
+/// directory. The exit status is remembered, so this can be called again.
+/// Reaping is not cancellable: a cancelled first call would leave a zombie.
 pub async fn Sidecar::wait(self : Sidecar) -> Int32 {
-  @async/process.wait_pid(self.pid)
+  if self.exit is Some(exit) {
+    return exit
+  }
+  @async.protect_from_cancel(() => {
+    let exit = @async/process.wait_pid(self.pid)
+    self.exit = Some(exit)
+    if self.temp_dir is Some(dir) {
+      @async/fs.rmdir(dir, recursive=true) catch {
+        _ => ()
+      }
+    }
+    exit
+  })
 }
 
 ///|
@@ -196,6 +226,8 @@ pub impl @async/io.Writer for Sidecar with fn write_once(
   offset~,
   len~,
 ) {
+  // One frame per call; the default `write` loops over the rest.
+  let len = if len > MAX_WRITE { MAX_WRITE } else { len }
   self.conn.write(buf[offset:offset + len])
   len
 }

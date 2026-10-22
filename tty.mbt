@@ -35,6 +35,8 @@ struct Tty {
   // A resize noticed while a request/response query owned the reader; it is
   // reported by the next `read_event`.
   mut resize_pending : Bool
+  // Nesting depth of `with_raw_mode`; only the outermost scope leaves.
+  mut raw_depth : Int32
 }
 
 ///|
@@ -57,6 +59,7 @@ pub fn[I : Reader, O : Writer] Tty::new(input : I, output : O) -> Tty {
     write_lock: @lock.Lock::new(),
     sidecar: None,
     resize_pending: false,
+    raw_depth: 0,
   }
 }
 
@@ -69,10 +72,9 @@ pub fn Tty::stdio() -> Tty {
 ///|
 /// Open the controlling terminal as one coordinated terminal handle.
 ///
-/// The terminal is held by a sidecar process: on native the running
-/// executable spawned in sidecar mode, on wasm the executable named by
-/// `TTY_SIDECAR` or an embedded one. Input, resize events and output all go
-/// through it.
+/// The terminal is held by a sidecar process, the executable named by
+/// `TTY_SIDECAR` or the one embedded for this platform (see
+/// `sidecar/README.md`). Input, resize events and output all go through it.
 pub async fn Tty::open() -> Tty {
   let sidecar = @sidecar.open()
   let decoder = match sidecar.input_kind() {
@@ -87,6 +89,7 @@ pub async fn Tty::open() -> Tty {
     write_lock: @lock.Lock::new(),
     sidecar: Some(sidecar),
     resize_pending: false,
+    raw_depth: 0,
   }
 }
 

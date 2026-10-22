@@ -238,8 +238,8 @@ no terminal capabilities. The decision is recorded in
 `docs/plans/2026-10-22-wasm-sidecar-backend.md`.
 
 Window size is exposed through `Tty` because callers usually need the visible
-screen buffer size while coordinating terminal input and output. The current
-query implementation uses the output-side handle. Resize notification comes from the
+screen buffer size while coordinating terminal input and output. The size is
+the one last reported by the sidecar, at start and on every resize. Resize notification comes from the
 sidecar: `SIGWINCH` on Unix, window size console records on Windows, both
 surfaced as root `Tty::read_event` resize events. Resize/focus native events and decoded byte-stream input each preserve
 their own source order, but `Tty::read_event` does not guarantee a strict total

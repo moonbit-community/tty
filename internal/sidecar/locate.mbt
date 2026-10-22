@@ -50,9 +50,18 @@ pub async fn open() -> Sidecar {
     )
   }
   let dir = @async/fs.tmpdir(prefix="tty-sidecar")
-  defer @async/fs.rmdir(dir, recursive=true)
-  let path = "\{dir}/sidecar"
+  errdefer @async/fs.rmdir(dir, recursive=true)
+  // Windows runs executables by suffix, forbids `chmod`, and keeps a
+  // running image locked, which is why the directory outlives `spawn` and
+  // is removed by `Sidecar::wait`.
+  let path = if @async.platform is Windows {
+    "\{dir}/sidecar.exe"
+  } else {
+    "\{dir}/sidecar"
+  }
   @async/fs.write_file(path, executable, permission=0o755)
-  @async/fs.chmod(path, 0o755)
-  spawn(path)
+  if !(@async.platform is Windows) {
+    @async/fs.chmod(path, 0o755)
+  }
+  spawn(path, temp_dir=Some(dir))
 }

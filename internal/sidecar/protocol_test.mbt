@@ -28,8 +28,10 @@ async test "frames round trip" {
       conn.read_frame(),
       content="Some(Hello(version=1, rows=24, cols=80, kind=Records))",
     )
-    events.write(b"\x84\x02\x00\x00\x00ab")
-    assert_true(conn.read_frame() is Some(Record(b"ab")))
+    // A record is exactly one 20-byte INPUT_RECORD.
+    let record = Bytes::make(20, b'r')
+    events.write(b"\x84\x14\x00\x00\x00" + record)
+    assert_true(conn.read_frame() is Some(Record(r)) && r == record)
     events.write(b"\x81\x03\x00\x00\x00abc")
     assert_true(conn.read_frame() is Some(Input(b"abc")))
     events.write(b"\x82\x04\x00\x00\x00\x1f\x00\x65\x00")
@@ -42,6 +44,40 @@ async test "frames round trip" {
       commands.read_exactly(13),
       b"\x01\x01\x00\x00\x00\x01\x02\x02\x00\x00\x00hi",
     )
+  })
+}
+
+///|
+/// A read cancelled between the header and the payload must not lose the
+/// header: the decoder's escape timeout and the query timeouts do exactly
+/// this.
+async test "frame split by a cancelled read survives" {
+  with_fake_sidecar((conn, events, _) => {
+    events.write(b"\x81\x03\x00\x00\x00a")
+    assert_true(@async.with_timeout_opt(50, () => conn.read_frame()) is None)
+    events.write(b"bc")
+    assert_true(conn.read_frame() is Some(Input(b"abc")))
+    events.write(b"\x82\x04\x00\x00\x00\x18\x00")
+    assert_true(@async.with_timeout_opt(50, () => conn.read_frame()) is None)
+    events.write(b"\x50\x00")
+    debug_inspect(conn.read_frame(), content="Some(Resize(rows=24, cols=80))")
+  })
+}
+
+///|
+async test "large writes are split into frames the sidecar accepts" {
+  with_fake_sidecar((conn, _, commands) => {
+    let data = Bytes::make(@sidecar.MAX_WRITE * 2 + 1, b'x')
+    // The data is larger than a pipe buffer, so write and read concurrently.
+    @async.with_task_group(group => {
+      group.spawn_bg(() => conn.write(data))
+      for expected in [@sidecar.MAX_WRITE, @sidecar.MAX_WRITE, 1] {
+        let header = commands.read_exactly(5)
+        guard header is [b'\x02', u32le(len)] else { fail("bad frame header") }
+        assert_eq(len.reinterpret_as_int(), expected)
+        assert_eq(commands.read_exactly(expected).length(), expected)
+      }
+    })
   })
 }
 
@@ -62,6 +98,22 @@ async test "eof and truncated frames" {
 async test "unknown tag is rejected" {
   with_fake_sidecar((conn, events, _) => {
     events.write(b"\x7f\x00\x00\x00\x00")
+    expect_protocol_error(conn)
+  })
+}
+
+///|
+async test "fixed-size frames must have their exact size" {
+  with_fake_sidecar((conn, events, _) => {
+    events.write(b"\x84\x02\x00\x00\x00ab")
+    expect_protocol_error(conn)
+  })
+  with_fake_sidecar((conn, events, _) => {
+    events.write(b"\x82\x05\x00\x00\x00\x18\x00\x50\x00\x00")
+    expect_protocol_error(conn)
+  })
+  with_fake_sidecar((conn, events, _) => {
+    events.write(b"\x80\x09\x00\x00\x00\x01\x00\x00\x00\x18\x00\x50\x00\x07")
     expect_protocol_error(conn)
   })
 }

@@ -75,7 +75,7 @@ Breaking, next release `0.6.0`:
 ## Invariants
 
 - One code path for the terminal on every target; platform differences live
-  in the two sidecar C files.
+  in the two halves of `sidecar/sidecar.c`.
 - The sidecar restores the terminal whenever its command pipe closes.
 - `internal/sidecar` and `internal/win32` are internal and not downstream
   API.
@@ -103,3 +103,10 @@ Run on macOS with moon 0.1.20261020 against the pinned `moonbitlang/async`:
   and fails on `noexec` mounts; `TTY_SIDECAR` is the way out there.
 - A sidecar-backed handle writes through the sidecar, so bytes written to
   the process's own stdout are not ordered against `Tty::write`.
+- Commands are fire-and-forget: `Tty::write` and `enter_raw_mode` return
+  once the frame is in the command pipe, and a failure inside the sidecar
+  arrives later as an `ERROR` frame on the next read. Correlated replies
+  would need a request id in the protocol.
+- On Windows, when the sidecar exits right after a printable key, the
+  decoded key can be lost because the record stream's EOF closes the event
+  queue before the byte decoder has produced it.
