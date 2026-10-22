@@ -1,17 +1,16 @@
 # tty sidecar
 
-The sidecar is a small C program that owns the terminal on behalf of a
+`sidecar.c` is a small C program that owns the terminal on behalf of a
 `moonbit-community/tty` program and relays everything over its stdio pipes.
-Two flavours exist:
+The protocol part is shared; the rest is one half per platform:
 
-- `sidecar.c` (Unix): opens `/dev/tty`, handles raw mode, size and
-  `SIGWINCH`, forwards input as VT bytes.
-- `sidecar_win32.c` (Windows): opens `CONIN$`/`CONOUT$`, handles console
-  modes and size, forwards input as raw `INPUT_RECORD`s and window size
-  events as resizes.
+- Unix: opens `/dev/tty`, handles raw mode, size and `SIGWINCH`, forwards
+  input as VT bytes.
+- Windows: opens `CONIN$`/`CONOUT$`, handles console modes and size,
+  forwards input as raw `INPUT_RECORD`s and window size events as resizes.
 
-Both restore the terminal when their command pipe closes or they are
-signalled, so the terminal is usable again even after the parent was killed.
+It restores the terminal when its command pipe closes or it is signalled, so
+the terminal is usable again even after the parent was killed.
 
 ## How programs get one
 
@@ -20,17 +19,17 @@ signalled, so the terminal is usable again even after the parent was killed.
 1. The executable named by the `TTY_SIDECAR` environment variable. This is
    an override for tests, development and hosts where the next step is not
    possible.
-2. The executable embedded in `internal/sidecar/embedded.mbt` for the
-   running `<os>-<arch>` (`macos-arm64`, `linux-x86_64`, ...), written to a
-   temporary directory, started, and deleted again. The `sidecars` GitHub
-   workflow builds the binaries; `scripts/embed_sidecar.py` regenerates the
-   table from them before a release.
+2. The executable embedded in `internal/sidecar/sidecars.generated.mbt`
+   for the running `<os>-<arch>` (`macos-arm64`, `linux-x86_64`, ...),
+   written to a temporary directory, started, and deleted again. The
+   `sidecars` GitHub workflow rebuilds the binaries whenever this directory
+   changes on `main` and commits the regenerated file back.
 
 Build a standalone sidecar with any C compiler:
 
 ```sh
-cc -O2 -Wall -o sidecar/sidecar sidecar/sidecar.c          # Unix
-cl /O2 /Fe:sidecar.exe sidecar/sidecar_win32.c             # Windows
+cc -O2 -Wall -o sidecar/sidecar sidecar/sidecar.c      # Unix
+cl /O2 /Fe:sidecar.exe sidecar\sidecar.c               # Windows
 ```
 
 ## Protocol

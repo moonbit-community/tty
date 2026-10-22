@@ -59,7 +59,7 @@ async fn build_sidecar() -> Unit {
       "/O2",
       "/Fe:" + sidecar_path(),
       "/Fo:" + tests_path("_build") + "\\",
-      tests_path("../sidecar/sidecar_win32.c"),
+      tests_path("../sidecar/sidecar.c"),
     ])
   } else {
     @process.collect_output_merged("cc", [

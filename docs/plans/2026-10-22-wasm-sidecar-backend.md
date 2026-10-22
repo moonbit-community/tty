@@ -24,13 +24,14 @@ program talks to it over the sidecar's stdio pipes with a frame protocol
 (`sidecar/README.md`); everything it needs is reachable through `@process`
 and `@io`.
 
-- `sidecar/sidecar.c` (Unix): single-threaded, `/dev/tty`, `cfmakeraw`,
-  `TIOCGWINSZ`, `SIGWINCH` via handler plus `pselect`, which is correct in a
-  single-threaded process. Input is forwarded as VT bytes.
-- `sidecar/sidecar_win32.c` (Windows): `CONIN$`/`CONOUT$`, the former
-  `state.c` console mode flags, a thread blocking in `ReadConsoleInputW`.
-  Input is forwarded as raw `INPUT_RECORD`s, window size events as resizes.
-- Both restore the terminal when the command pipe closes, so a parent killed
+- `sidecar/sidecar.c`: the protocol part is shared, then one half per
+  platform. Unix: single-threaded, `/dev/tty`, `cfmakeraw`, `TIOCGWINSZ`,
+  `SIGWINCH` via handler plus `pselect`, which is correct in a
+  single-threaded process; input is forwarded as VT bytes. Windows:
+  `CONIN$`/`CONOUT$`, the former `state.c` console mode flags, a thread
+  blocking in `ReadConsoleInputW`; input is forwarded as raw
+  `INPUT_RECORD`s, window size events as resizes.
+- It restores the terminal when the command pipe closes, so a parent killed
   with `kill -9` leaves the terminal usable.
 - `internal/sidecar`: frame codec (`Connection`), process wrapper
   (`Sidecar`, implements `@io.Reader`/`@io.Writer`; a resize during a byte
@@ -39,11 +40,11 @@ and `@io`.
   by the `TTY_SIDECAR` environment variable (an override, used by the tests
   and for development), else the one embedded for the running `<os>-<arch>`,
   written to a temporary directory, started and deleted again. The embedded
-  table in `internal/sidecar/embedded.mbt` is filled by
-  `scripts/embed_sidecar.py` from the binaries that the `sidecars` workflow
-  builds; it is empty in the repository and must be regenerated before a
-  release (see `AGENTS.md`, Release Workflow). A self-spawning native variant
-  (a constructor in a native stub) was tried and dropped: no magic in other
+  table lives in `internal/sidecar/sidecars.generated.mbt`; the `sidecars`
+  workflow rebuilds the five binaries whenever `sidecar/` changes on `main`,
+  regenerates the file with `scripts/embed_sidecar.py`, checks it compiles
+  and commits it back to `main`. A self-spawning native variant (a
+  constructor in a native stub) was tried and dropped: no magic in other
   people's programs.
 - Root package: one `Tty` for all targets, with `sidecar :
   @sidecar.Sidecar?` and an input decoder that is either the VT byte decoder
@@ -95,8 +96,9 @@ Run on macOS with moon 0.1.20261020 against the pinned `moonbitlang/async`:
 
 ## Open questions
 
-- The embedded binaries have to be regenerated and committed before each
-  release; until then a published package only works with `TTY_SIDECAR`.
+- A release must be cut after the `sidecars` workflow has committed the
+  binaries for the current `sidecar/` sources; a package published from a
+  commit whose table is stale or empty only works with `TTY_SIDECAR`.
   Writing an executable to a temporary directory is what EDR software flags
   and fails on `noexec` mounts; `TTY_SIDECAR` is the way out there.
 - A sidecar-backed handle writes through the sidecar, so bytes written to

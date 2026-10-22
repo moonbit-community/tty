@@ -1,16 +1,21 @@
 name: sidecars
 
-# Builds the tty sidecar executables that get embedded into the package
-# before a release, see AGENTS.md (Release Workflow) and sidecar/README.md.
+# Rebuilds the tty sidecar executables and commits them, embedded in
+# internal/sidecar/sidecars.generated.mbt, back to main. See
+# sidecar/README.md and AGENTS.md (Release Workflow).
 
 on:
   push:
     branches:
       - main
+    paths:
+      - sidecar/**
+      - scripts/embed_sidecar.py
+      - .github/workflows/sidecars.yml
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   unix:
@@ -48,8 +53,49 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ilammy/msvc-dev-cmd@v1
       - name: Build
-        run: cl /nologo /O2 /Fe:sidecar-windows-x86_64.exe sidecar\sidecar_win32.c
+        run: cl /nologo /O2 /Fe:sidecar-windows-x86_64.exe sidecar\sidecar.c
       - uses: actions/upload-artifact@v4
         with:
           name: sidecar-windows-x86_64
           path: sidecar-windows-x86_64.exe
+
+  embed:
+    name: embed and commit
+    needs: [unix, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+      - name: Regenerate the embedded table
+        run: |
+          args=()
+          for dir in dist/sidecar-*; do
+            key=${dir#dist/sidecar-}
+            file=$(ls "$dir" | head -n 1)
+            args+=("$key=$dir/$file")
+          done
+          python3 scripts/embed_sidecar.py "${args[@]}" > internal/sidecar/sidecars.generated.mbt
+      - name: Install MoonBit
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+          echo "MOON_HOME=$HOME/.moon" >> "$GITHUB_ENV"
+      - name: Check the generated file compiles
+        run: |
+          moon update
+          moon check --target native --deny-warn
+          moon check --target wasm --deny-warn
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add internal/sidecar/sidecars.generated.mbt
+          git diff --cached --quiet && { echo "sidecars unchanged"; exit 0; }
+          git commit -m "chore: regenerate the embedded sidecars
+
+          Built by the sidecars workflow from ${{ github.sha }}."
+          git push origin HEAD:main

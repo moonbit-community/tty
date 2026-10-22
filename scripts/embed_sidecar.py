@@ -1,6 +1,7 @@
-"""Regenerate internal/sidecar/embedded.mbt from built sidecar executables.
+"""Regenerate internal/sidecar/sidecars.generated.mbt from built sidecar
+executables. The `sidecars` GitHub workflow runs this on `main`.
 
-Usage: python3 scripts/embed_sidecar.py KEY=PATH [KEY=PATH ...]
+Usage: python3 scripts/embed_sidecar.py KEY=PATH [KEY=PATH ...] > internal/sidecar/sidecars.generated.mbt
 
 KEY is "<os>-<arch>" as produced by `internal/sidecar` (for example
 `macos-arm64`, `linux-x86_64`). Run with no arguments to reset the table."""
