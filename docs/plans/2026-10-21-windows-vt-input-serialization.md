@@ -3,7 +3,8 @@
 > The sections up to "Follow-up: Private Record Types" describe the design as
 > first built on the native polling backend. WASM-1 (#59) replaced that backend
 > with the tty sidecar; "Follow-up: Rebuilt On The Sidecar Backend" below
-> supersedes the `ConsoleReader`, console-mode FFI, and resize-queue parts.
+> supersedes the `ConsoleReader`, console-mode FFI, and resize-queue parts,
+> and "Follow-up: Drop The Sidecar Input Kind" supersedes its `RecordReader`.
 
 ## Goal
 
@@ -301,3 +302,41 @@ protocol on both platforms; it is not worth it unless the gap shows up.
 - Passed: `moon info`; root, `input`, and `internal/input` `.mbti` match
   `main`; `internal/win32` exports only `RecordReader`
 - Pending: `windows-latest` CI and the manual Windows validation above
+
+## Follow-up: Drop The Sidecar Input Kind
+
+After the merge, `InputKind` (`Bytes` / `Records`, announced by a kind byte
+in `HELLO`) had one use: `Tty::open` picked the sidecar itself or
+`RecordReader(sidecar)` as the decoder's byte source. The frame tag already
+carries that information, so the sidecar reader encodes per frame instead.
+
+- `Sidecar::_direct_read` hands out `INPUT` payloads as before and runs each
+  `RECORD` payload through one `@win32.RecordEncoder`, so `Sidecar` is a VT
+  byte reader on every platform. A record that encodes to nothing leaves
+  `pending` empty and the loop reads the next frame.
+- Removed: `InputKind`, `Sidecar::input_kind`, the `kind` field of
+  `Frame::Hello`, `RecordReader`, and root `Tty::open`'s byte-source branch.
+  `RECORD` frames are length-checked by the protocol, so the partial-record
+  handling `RecordReader` needed is gone with it.
+- Wire protocol: `HELLO` drops its trailing `u8` kind byte (payload 9 to 8
+  bytes); `send_hello` in `sidecar/sidecar.c` takes no argument. The protocol
+  version stays 1: nothing validates it beyond equality, 0.6.0 is unreleased,
+  and the embedded sidecar table is regenerated before every release, so no
+  deployed sidecar speaks the old `HELLO`.
+- `internal/win32` exports only `RecordEncoder` (`new`, `encode(Bytes)`) and
+  drops its `supported_targets` restriction: it is pure MoonBit over
+  `core/buffer`, and `internal/sidecar`, which now depends on it, declares
+  none.
+
+Validation:
+
+- Passed: `moon fmt`, `moon check --deny-warn` (native and wasm)
+- Passed: `moon test --deny-warn` (native 208, wasm 203)
+- Passed: `moon test internal/win32` (17 tests), `moon test internal/sidecar`
+  (7 tests, `HELLO` without the kind byte)
+- Passed: `moon test` in `tests/` (177 tests; the pty runners build
+  `sidecar.c` and exercise the new `HELLO` on Unix)
+- Passed: `moon info`; root, `input`, and `internal/input` `.mbti` match
+  `main`
+- Pending: `windows-latest` CI for the Windows half of `sidecar.c`, and the
+  manual Windows validation above

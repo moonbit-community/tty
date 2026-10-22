@@ -67,7 +67,7 @@ fn encode_records(records : Array[InputRecord]) -> Bytes {
   let encoder = RecordEncoder::new()
   let out = @buffer.Buffer()
   for record in records {
-    encoder.encode(record, out)
+    encoder.encode_record(record, out)
   }
   out.to_bytes()
 }
@@ -342,4 +342,35 @@ async test "encoded VT translation records decode like terminal bytes" {
       key_event(@public_input.KeyEvent::new(Left, modifiers=ctrl())),
     ],
   )
+}
+
+///|
+/// Raw little-endian `KEY_EVENT` record for a key-down without a virtual key
+/// code, as conhost synthesizes for its VT input translation.
+fn raw_text_key(char : Char) -> Bytes {
+  let buf = test_raw_record(RecordKey)
+  test_set_u32_le(buf, 4, 1)
+  test_set_u16_le(buf, 8, 1)
+  test_set_u16_le(buf, 14, char.to_int())
+  buf.unsafe_reinterpret_as_bytes()
+}
+
+///|
+fn raw_focus(focus_set : Bool) -> Bytes {
+  let buf = test_raw_record(RecordFocus)
+  test_set_u32_le(buf, 4, if focus_set { 1 } else { 0 })
+  buf.unsafe_reinterpret_as_bytes()
+}
+
+///|
+test "encoder encodes raw records one at a time" {
+  let encoder = RecordEncoder::new()
+  let out = @buffer.Buffer()
+  out.write_bytes(encoder.encode(raw_focus(true)))
+  for char in "\u{1B}[1;5D" {
+    out.write_bytes(encoder.encode(raw_text_key(char)))
+  }
+  out.write_bytes(encoder.encode(raw_focus(false)))
+  @debug.assert_eq(out.to_bytes(), b"\x1b[I\x1b[1;5D\x1b[O")
+  @debug.assert_eq(encoder.encode(b"\x01"), b"")
 }

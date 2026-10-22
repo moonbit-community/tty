@@ -9,6 +9,7 @@ import {
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/env",
   "moonbit-community/tty/internal/lock",
+  "moonbit-community/tty/internal/win32",
 }
 
 import {

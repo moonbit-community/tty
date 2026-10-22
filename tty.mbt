@@ -26,8 +26,7 @@ pub(all) enum Event {
 struct Tty {
   input : &Reader
   output : &Writer
-  // Decodes terminal input. Windows console records forwarded by the sidecar
-  // reach it as VT bytes through `@win32.RecordReader`.
+  // Decodes terminal input. The sidecar hands out VT bytes on every platform.
   reader : @input.EventReader
   pending_input : Array[@public_input.InputEvent]
   // Serializes output writes so a single `write`/`write_string` call lands on
@@ -68,16 +67,10 @@ pub fn Tty::stdio() -> Tty {
 /// `sidecar/README.md`). Input, resize events and output all go through it.
 pub async fn Tty::open() -> Tty {
   let sidecar = @sidecar.open()
-  let byte_source = match sidecar.input_kind() {
-    Bytes => sidecar as &@async/io.Reader
-    Records =>
-      @win32.RecordReader::new(sidecar as &@async/io.Reader)
-      as &@async/io.Reader
-  }
   {
     input: sidecar,
     output: sidecar,
-    reader: @input.EventReader::new(byte_source),
+    reader: @input.EventReader::new(sidecar as &@async/io.Reader),
     pending_input: [],
     write_lock: @lock.Lock::new(),
     sidecar: Some(sidecar),

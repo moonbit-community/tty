@@ -1,5 +1,4 @@
 import {
-  "moonbitlang/async/io" @async/io,
   "moonbitlang/core/buffer",
 }
 
@@ -11,5 +10,3 @@ import {
   "moonbit-community/tty/input" @public_input,
   "moonbit-community/tty/internal/input",
 } for "wbtest"
-
-supported_targets = "-all+native+wasm"

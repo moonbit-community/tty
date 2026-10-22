@@ -48,20 +48,32 @@ const SgrWheel : Int32 = 64
 /// Window buffer size records produce no bytes: the sidecar reports resize
 /// out of band and does not forward them.
 ///
+/// `internal/sidecar` runs every `RECORD` frame from the Windows sidecar
+/// through one encoder.
+///
 /// The encoder keeps the state that spans records: a pending UTF-16 high
 /// surrogate, and the mouse buttons held at the previous mouse record.
-priv struct RecordEncoder {
+struct RecordEncoder {
   mut high_surrogate : Int32?
   mut mouse_buttons : Int32
 }
 
 ///|
-fn RecordEncoder::new() -> RecordEncoder {
+pub fn RecordEncoder::new() -> RecordEncoder {
   { high_surrogate: None, mouse_buttons: 0, }
 }
 
 ///|
-fn RecordEncoder::encode(
+/// Encode one raw little-endian `INPUT_RECORD` into VT input bytes. Records
+/// that a terminal would not report, such as key releases, encode to nothing.
+pub fn RecordEncoder::encode(self : RecordEncoder, record : Bytes) -> Bytes {
+  let out = @buffer.Buffer()
+  self.encode_record(InputRecord::parse(record), out)
+  out.to_bytes()
+}
+
+///|
+fn RecordEncoder::encode_record(
   self : RecordEncoder,
   record : InputRecord,
   out : @buffer.Buffer,

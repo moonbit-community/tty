@@ -18,15 +18,10 @@ async fn with_fake_sidecar(
 ///|
 async test "frames round trip" {
   with_fake_sidecar((conn, events, commands) => {
-    events.write(b"\x80\x09\x00\x00\x00\x01\x00\x00\x00\x18\x00\x50\x00\x00")
+    events.write(b"\x80\x08\x00\x00\x00\x01\x00\x00\x00\x18\x00\x50\x00")
     debug_inspect(
       conn.read_frame(),
-      content="Some(Hello(version=1, rows=24, cols=80, kind=Bytes))",
-    )
-    events.write(b"\x80\x09\x00\x00\x00\x01\x00\x00\x00\x18\x00\x50\x00\x01")
-    debug_inspect(
-      conn.read_frame(),
-      content="Some(Hello(version=1, rows=24, cols=80, kind=Records))",
+      content="Some(Hello(version=1, rows=24, cols=80))",
     )
     // A record is exactly one 20-byte INPUT_RECORD.
     let record = Bytes::make(20, b'r')
