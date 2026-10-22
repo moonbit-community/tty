@@ -72,8 +72,12 @@ jobs:
       - name: Run tests (wasm)
         run: moon test --target wasm --deny-warn
 
+      # `@async/types.Fd` is `Int32` on Unix and an opaque handle on Windows,
+      # so the generated interface of the `Fd` trait differs there.
       - name: Generate interfaces
+        if: runner.os != 'Windows'
         run: moon info
 
       - name: Verify generated files are current
+        if: runner.os != 'Windows'
         run: git diff --exit-code
