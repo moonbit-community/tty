@@ -1,7 +1,6 @@
 # WebAssembly support through a tty sidecar
 
-Status: implemented; the wasm CI steps stay red until a `moonbitlang/async`
-release with a wasm-capable `raw_fd` is published and pinned.
+Status: implemented.
 
 ## Goal
 
@@ -70,8 +69,17 @@ Tests:
 
 ## Public API diff
 
-None intended. `moon info` must leave every `.mbti` unchanged except the new
-`internal/sidecar` interface.
+The root package used `@async/raw_fd.RawFdStream` to wrap `/dev/tty` and the
+Windows console devices, and implemented `Fd`, `Reader` and `Writer` for it.
+`raw_fd` is native only, and the orphan rule keeps those impls in the root,
+so the root could not support wasm while importing it. `Tty::open()` now
+opens the terminal with `@async/fs.open` on both platforms (current
+`moonbitlang/async` classifies non-regular handles with `GetFileType` and
+skips the stat probing that made this fail in 0.19.4) and the three
+`RawFdStream` impls are removed from the public API. This is a breaking
+change for callers passing a `RawFdStream` to `Tty::new`; the next release
+is `0.6.0`. `tty_open.c` is gone with it. Nothing else in the `.mbti`
+changes besides the new `internal/sidecar` interface.
 
 ## Invariants
 
@@ -81,8 +89,7 @@ None intended. `moon info` must leave every `.mbti` unchanged except the new
 
 ## Validation
 
-Run on macOS with moon 0.1.20261020 and a local `moonbitlang/async` checkout
-carrying the `raw_fd` wasm change (added to `moon.work` for the run only):
+Run on macOS with moon 0.1.20261020 against the pinned `moonbitlang/async`:
 
 - `moon fmt --check`, `git diff --check`: clean.
 - `moon check --deny-warn` and `moon check --target wasm --deny-warn`: clean.
@@ -92,12 +99,13 @@ carrying the `raw_fd` wasm change (added to `moon.work` for the run only):
   packages: 33 passed.
 - `moon test` in `tests/`: 5 passed, including the two new wasm runner tests
   that build the sidecar with `cc` and drive `moonrun` through a pty.
-- `moon info`: only `internal/sidecar/pkg.generated.mbti` is new; the root
-  `.mbti` is byte-for-byte unchanged.
+- `moon info`: `internal/sidecar/pkg.generated.mbti` is new; the root
+  `.mbti` loses exactly the three `RawFdStream` impls.
 
 ## Public API audit
 
-- Native `.mbti`: unchanged.
+- Native `.mbti`: the three `pub impl ... for @raw_fd.RawFdStream` lines are
+  removed, nothing else changes.
 - wasm only, not visible in the generated interface: `Tty::set_state`,
   `Tty::enter_raw_mode`, `Tty::leave_raw_mode` are `async` and raise `Error`
   rather than `OSError`, because they write to the sidecar's pipe.
