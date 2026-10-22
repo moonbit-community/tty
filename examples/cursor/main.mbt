@@ -1,6 +1,7 @@
 ///|
 async fn main {
-  let tty = @tty.Tty::stdio()
+  let tty = @tty.Tty::open()
+  defer tty.close()
   with_screen(tty, () => tty.with_raw_mode(() => run_cursor_demo(tty)))
 }
 
@@ -103,11 +104,13 @@ async fn run_cursor_demo(tty : @tty.Tty) -> Unit {
   draw_marker(tty, anchor, x, y)
   draw_status(tty, anchor, size, x, y, visible)
   while true {
-    let key = @async/stdio.stdin.read_exactly(1)[0]
-    if key == b'q' || key == b'Q' || key == b'\x03' {
+    guard tty.read_event() is Input(Key({ code: Char(key), .. })) else {
+      continue
+    }
+    if key == 'q' || key == 'Q' {
       break
     }
-    if key == b'c' || key == b'C' {
+    if key == 'c' || key == 'C' {
       visible = !visible
       if visible {
         tty.show_cursor()
@@ -119,13 +122,13 @@ async fn run_cursor_demo(tty : @tty.Tty) -> Unit {
     }
     let old_x = x
     let old_y = y
-    if key == b'w' || key == b'W' || key == b'k' || key == b'K' {
+    if key == 'w' || key == 'W' || key == 'k' || key == 'K' {
       y = clamp(y - 1, 0, size.height - 1)
-    } else if key == b's' || key == b'S' || key == b'j' || key == b'J' {
+    } else if key == 's' || key == 'S' || key == 'j' || key == 'J' {
       y = clamp(y + 1, 0, size.height - 1)
-    } else if key == b'a' || key == b'A' || key == b'h' || key == b'H' {
+    } else if key == 'a' || key == 'A' || key == 'h' || key == 'H' {
       x = clamp(x - 1, 0, size.width - 1)
-    } else if key == b'd' || key == b'D' || key == b'l' || key == b'L' {
+    } else if key == 'd' || key == 'D' || key == 'l' || key == 'L' {
       x = clamp(x + 1, 0, size.width - 1)
     }
     if x != old_x || y != old_y {

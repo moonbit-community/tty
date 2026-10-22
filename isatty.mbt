@@ -1,4 +1,5 @@
 ///|
+#cfg(target="native")
 extern "c" fn tty_isatty(fd : @async/types.Fd) -> Int32 = "moonbit_tty_isatty"
 
 ///|
@@ -6,6 +7,7 @@ extern "c" fn tty_isatty(fd : @async/types.Fd) -> Int32 = "moonbit_tty_isatty"
 ///
 /// Valid non-terminal handles return `false`; OS-level failures raise
 /// `OSError`.
+#cfg(target="native")
 pub fn[T : Fd] isatty(fd : T) -> Bool raise {
   let fd = fd.fd()
   let rc = tty_isatty(fd)
@@ -17,6 +19,17 @@ pub fn[T : Fd] isatty(fd : T) -> Bool raise {
   } else {
     true
   }
+}
+
+///|
+/// Return whether a handle refers to a terminal.
+///
+/// Not available on wasm: `moonbitlang/async` exposes no descriptor kind
+/// query there, so this raises `OSError(ENOTSUP)`.
+#cfg(target="wasm")
+pub fn[T : Fd] isatty(fd : T) -> Bool raise {
+  ignore(fd.fd())
+  raise @os_error.OSError(@os_error.errno_ENOTSUP, context="isatty")
 }
 
 ///|
@@ -53,11 +66,4 @@ pub impl Fd for @async/stdio.Input with fn fd(self) {
 /// Allow process output handles to be used with file-descriptor based terminal APIs.
 pub impl Fd for @async/stdio.Output with fn fd(self) {
   @async/stdio.Output::fd(self)
-}
-
-///|
-/// Allow raw file-descriptor streams (used for the controlling terminal and
-/// Windows console devices) to be used with file-descriptor based terminal APIs.
-pub impl Fd for @async/raw_fd.RawFdStream with fn fd(self) {
-  self.fd
 }

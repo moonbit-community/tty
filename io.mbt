@@ -53,15 +53,16 @@ pub impl Writer for @async/stdio.Output with fn close(_) {
 }
 
 ///|
-/// Allow raw file-descriptor streams to serve as terminal input handles.
-/// Used for the controlling terminal (`/dev/tty`) and Windows console devices.
-pub impl Reader for @async/raw_fd.RawFdStream with fn close(self) {
-  @async/raw_fd.RawFdStream::close(self)
+impl Fd for @sidecar.Sidecar with fn fd(_) {
+  raise @os_error.OSError(@os_error.errno_ENOTSUP, context="Tty::fd")
 }
 
 ///|
-/// Allow raw file-descriptor streams to serve as terminal output handles.
-/// Used for the controlling terminal (`/dev/tty`) and Windows console devices.
-pub impl Writer for @async/raw_fd.RawFdStream with fn close(self) {
-  @async/raw_fd.RawFdStream::close(self)
+impl Reader for @sidecar.Sidecar with fn close(self) {
+  self.close()
+}
+
+///|
+impl Writer for @sidecar.Sidecar with fn close(self) {
+  self.close()
 }

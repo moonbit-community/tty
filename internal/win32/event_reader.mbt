@@ -5,8 +5,21 @@ pub(all) enum Event {
 } derive(Eq)
 
 ///|
+/// Size of a raw `INPUT_RECORD`: a 16-bit event type, padding, and a
+/// 16-byte event union.
+const INPUT_RECORD_SIZE : Int32 = 20
+
+///|
+/// Decodes console input read as a stream of raw `INPUT_RECORD`s, each
+/// `INPUT_RECORD_SIZE` bytes, from `reader`. Window resizes do not travel in
+/// that stream: the tty sidecar reports them out of band by interrupting the
+/// read, see `internal/sidecar`.
 struct EventReader {
-  input_fd : @async/types.Fd
+  reader : &@async/io.Reader
+  // A record received so far; kept on the reader because the task reading
+  // records is cancelled whenever a `read_event` call returns.
+  record : FixedArray[Byte]
+  mut record_len : Int32
   byte_queue : @internal_io.ByteQueue
   decoder : @input.EventReader
   events : @async.Queue[Event]
@@ -15,10 +28,12 @@ struct EventReader {
 }
 
 ///|
-pub fn EventReader::new(input_fd : @async/types.Fd) -> EventReader {
+pub fn EventReader::new(reader : &@async/io.Reader) -> EventReader {
   let byte_queue = @internal_io.ByteQueue::new()
   {
-    input_fd,
+    reader,
+    record: FixedArray::make(INPUT_RECORD_SIZE, b'\x00'),
+    record_len: 0,
     byte_queue,
     decoder: @input.EventReader::new(byte_queue as &@async/io.Reader),
     events: Queue(kind=Unbounded),
@@ -91,24 +106,31 @@ async fn EventReader::read_decoded_input_event(
 
 ///|
 async fn EventReader::read_records(self : EventReader) -> Unit {
-  for ;; {
-    if !self.drain_records() {
-      @async.sleep(10)
-    }
+  while self.read_raw_record() is Some(record) {
+    self.read_record(InputRecord::parse(record))
   }
+  self.events.close()
 }
 
 ///|
-fn EventReader::drain_records(self : EventReader) -> Bool raise {
-  let mut read_any = false
-  for ;; {
-    if read_console_input_record(self.input_fd) is Some(record) {
-      read_any = true
-      self.read_record(record)
-    } else {
-      return read_any
+/// One whole raw record, or `None` at a clean end of the stream.
+async fn EventReader::read_raw_record(self : EventReader) -> Bytes? {
+  while self.record_len < INPUT_RECORD_SIZE {
+    let n = self.reader.read(
+      self.record,
+      offset=self.record_len,
+      max_len=INPUT_RECORD_SIZE - self.record_len,
+    )
+    if n == 0 {
+      if self.record_len == 0 {
+        return None
+      }
+      fail("console input closed in the middle of a record")
     }
+    self.record_len += n
   }
+  self.record_len = 0
+  Some(Bytes::from_array(self.record[:]))
 }
 
 ///|
@@ -174,33 +196,6 @@ fn EventReader::read_mouse_record(
   match self.mouse_button_state.input_event(record) {
     Some(input) => queue_event(self.events, Input(input))
     None => ()
-  }
-}
-
-///|
-extern "c" fn sizeof_input_record() -> Int32 = "moonbit_tty_get_sizeof_input_record"
-
-///|
-let sizeof_win32_input_record : Int32 = sizeof_input_record()
-
-///|
-#borrow(record)
-extern "c" fn read_console_input_record_ffi(
-  fd : @async/types.Fd,
-  record : Bytes,
-) -> Int32 = "moonbit_tty_read_console_input_record"
-
-///|
-fn read_console_input_record(fd : @async/types.Fd) -> InputRecord? raise {
-  let record = Bytes::make(sizeof_win32_input_record, 0)
-  let rc = read_console_input_record_ffi(fd, record)
-  if rc < 0 {
-    @os_error.check_errno("ReadConsoleInputW")
-  }
-  if rc == 0 {
-    None
-  } else {
-    Some(InputRecord::parse(record))
   }
 }
 

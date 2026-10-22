@@ -44,12 +44,8 @@ fn win32_test_mouse_record(
 }
 
 ///|
-fn win32_test_event_reader() -> EventReader raise {
-  let (read, write) = @async/pipe.pipe()
-  write.close()
-  let reader = EventReader::new(read.fd())
-  read.close()
-  reader
+fn win32_test_event_reader() -> EventReader {
+  EventReader::new(@internal_io.ByteQueue::new())
 }
 
 ///|

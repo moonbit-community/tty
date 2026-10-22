@@ -2,6 +2,7 @@
 package "moonbit-community/tty/internal/win32"
 
 import {
+  "moonbitlang/async/io",
   "moonbitlang/core/ref",
 }
 
@@ -64,7 +65,7 @@ pub fn Event::not_equal(Self, Self) -> Bool
 
 type EventReader
 pub fn EventReader::close(Self) -> Unit
-pub fn EventReader::new(Int32) -> Self
+pub fn EventReader::new(&@io.Reader) -> Self
 pub async fn EventReader::read_event(Self, esc_timeout_ms? : Int32) -> Event?
 pub async fn EventReader::read_internal_event(Self, esc_timeout_ms? : Int32) -> @moonbit-community/tty/internal/input.Event
 

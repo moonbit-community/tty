@@ -1,33 +1,4 @@
 ///|
-let number_to_xdigit : ReadOnlyArray[Byte] = [
-  b'0', b'1', b'2', b'3', b'4', b'5', b'6', b'7', b'8', b'9', b'a', b'b', b'c', b'd',
-  b'e', b'f',
-]
-
-///|
-fn byte_to_printable_char(byte : Byte) -> Char? {
-  if byte >= b' ' && byte <= b'~' {
-    Some(byte.to_char())
-  } else {
-    None
-  }
-}
-
-///|
-fn byte_to_raw_line(byte : Byte) -> String {
-  let line = StringBuilder(size_hint=16)
-  line.write_string("0x")
-  line.write_char(number_to_xdigit[byte.to_int() / 16].to_char())
-  line.write_char(number_to_xdigit[byte.to_int() % 16].to_char())
-  if byte_to_printable_char(byte) is Some(char) {
-    line.write_string(" ")
-    line.write_string(char.escape(quote=true))
-  }
-  line.write_string("\r\n")
-  line.to_string()
-}
-
-///|
 async fn write_line(tty : @tty.Tty, line : String) -> Unit {
   tty.write(line)
   tty.write("\r\n")
@@ -36,35 +7,40 @@ async fn write_line(tty : @tty.Tty, line : String) -> Unit {
 ///|
 async fn run_raw_loop(tty : @tty.Tty) -> Unit {
   while true {
-    let byte = @async/stdio.stdin.read_exactly(1)[0] catch {
-        @async/io.ReaderClosed => break
-        error => raise error
+    match tty.read_event() {
+      Input(Key({ code: Char('q'), .. })) => {
+        write_line(tty, "q pressed; leaving raw mode")
+        break
       }
-    if byte == b'q' {
-      write_line(tty, "q pressed; leaving raw mode")
-      break
+      event => {
+        // Debug rendering can contain bare LF, which does not return to
+        // column one in raw mode. Keep each event on one logical line.
+        let text = Repr(event)
+          .to_string()
+          .split("\n")
+          .map(line => line.trim())
+          .join(" ")
+        write_line(tty, "event: \{text}")
+      }
     }
-    tty.write("read ")
-    tty.write(byte_to_raw_line(byte))
   }
 }
 
 ///|
 async fn main {
-  let tty = @tty.Tty::stdio()
+  let tty = @tty.Tty::open()
+  defer tty.close()
   write_line(tty, "raw-mode demo")
   write_line(
-    tty, "The program will switch stdin to raw mode and print one byte per key press.",
+    tty, "The program will switch the terminal to raw mode and print one decoded event per key press.",
   )
   write_line(
-    tty, "Checks: normal keys should print immediately; Enter should not be required.",
+    tty, "Checks: keys should print immediately; Enter should not be required.",
   )
   write_line(
-    tty, "Ctrl-C should print 0x03 instead of terminating the process.",
+    tty, "Ctrl-C should print a key event instead of terminating the process.",
   )
-  write_line(
-    tty, "Backspace is usually 0x7f or 0x08. Press q to restore and exit.",
-  )
+  write_line(tty, "Press q to restore the terminal and exit.")
   write_line(tty, "If the terminal is left raw after a crash, run: stty sane")
   write_line(tty, "")
   write_line(tty, "entering raw mode...")

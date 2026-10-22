@@ -1,107 +1,55 @@
 ///|
-/// Opaque terminal state snapshot.
-///
-/// Capture a state with `Tty::get_state`, derive raw mode with
-/// `State::make_raw`, and restore it with `Tty::set_state` or
-/// `Tty::leave_raw_mode`.
-struct State(Bytes)
+/// Whether the terminal was in raw mode before an `enter_raw_mode` call;
+/// `leave_raw_mode` restores exactly that, so nested scopes compose as long
+/// as each caller restores the state it captured.
+struct State(Bool)
 
 ///|
-/// Capture the current terminal state for this handle.
-pub fn Tty::get_state(self : Self) -> State raise @os_error.OSError {
-  let state = State::new()
-  let rc = tty_get_state(self.input_fd, self.output_fd, state)
-  if rc < 0 {
-    @os_error.check_errno("Tty::get_state")
+/// The sidecar that holds this handle's terminal, or `OSError(ENOTSUP)` for
+/// stream handles, which have no terminal state of their own.
+fn Tty::sidecar_or_raise(
+  self : Self,
+  context : String,
+) -> @sidecar.Sidecar raise @os_error.OSError {
+  guard self.sidecar is Some(sidecar) else {
+    raise OSError(@os_error.errno_ENOTSUP, context~)
   }
+  sidecar
+}
+
+///|
+/// Enter raw mode: no echo, no line buffering, no signal keys, VT input.
+/// Returns the previous state for `leave_raw_mode`.
+pub async fn Tty::enter_raw_mode(self : Self) -> State {
+  let sidecar = self.sidecar_or_raise("Tty::enter_raw_mode")
+  let state = State(sidecar.is_raw())
+  sidecar.set_raw(true)
   state
 }
 
 ///|
-/// Apply a terminal state and return the previous state.
-pub fn Tty::set_state(
-  self : Self,
-  state : State,
-) -> State raise @os_error.OSError {
-  let old_state = self.get_state()
-  let rc = tty_set_state(self.input_fd, self.output_fd, state)
-  if rc < 0 {
-    ignore(tty_set_state(self.input_fd, self.output_fd, old_state))
-    @os_error.check_errno("Tty::set_state")
-  }
-  old_state
-}
-
-///|
-/// Derive a raw-mode state from this captured terminal state.
-pub fn State::make_raw(self : Self) -> State {
-  let raw = State::new()
-  tty_make_raw_state(self, raw)
-  raw
-}
-
-///|
-/// Enter raw mode and return the previous terminal state.
-pub fn Tty::enter_raw_mode(self : Self) -> State raise @os_error.OSError {
-  let old_state = self.get_state()
-  let raw_state = old_state.make_raw()
-  let rc = tty_set_state(self.input_fd, self.output_fd, raw_state)
-  if rc < 0 {
-    ignore(tty_set_state(self.input_fd, self.output_fd, old_state))
-    @os_error.check_errno("Tty::enter_raw_mode")
-  }
-  old_state
-}
-
-///|
-/// Restore a terminal state captured before or during raw mode.
-pub fn Tty::leave_raw_mode(
-  self : Self,
-  state : State,
-) -> Unit raise @os_error.OSError {
-  let rc = tty_set_state(self.input_fd, self.output_fd, state)
-  if rc < 0 {
-    @os_error.check_errno("Tty::leave_raw_mode")
+/// Restore the state captured by `enter_raw_mode`: leaves raw mode unless
+/// the terminal was already raw when that call was made.
+pub async fn Tty::leave_raw_mode(self : Self, state : State) -> Unit {
+  let sidecar = self.sidecar_or_raise("Tty::leave_raw_mode")
+  if !state.0 {
+    sidecar.set_raw(false)
   }
 }
 
 ///|
 /// Run an async callback with raw mode enabled.
 ///
-/// The captured terminal state is restored on success, error, or cancellation.
+/// The captured state is restored on success, error, or cancellation.
 pub async fn[T] Tty::with_raw_mode(self : Self, f : async () -> T) -> T {
   let state = self.enter_raw_mode()
-  defer self.leave_raw_mode(state)
+  defer self.restore_raw_mode(state)
   f()
 }
 
 ///|
-extern "c" fn get_sizeof_state() -> Int32 = "moonbit_tty_get_sizeof_state"
-
-///|
-let sizeof_state : Int32 = get_sizeof_state()
-
-///|
-fn State::new() -> State {
-  Bytes::make(sizeof_state, 0)
+/// Restoring the terminal must happen even while the task is being
+/// cancelled, so the sidecar command is sent under `protect_from_cancel`.
+async fn Tty::restore_raw_mode(self : Self, state : State) -> Unit {
+  @async.protect_from_cancel(() => self.leave_raw_mode(state))
 }
-
-///|
-#borrow(state)
-extern "c" fn tty_get_state(
-  input_fd : @async/types.Fd,
-  output_fd : @async/types.Fd,
-  state : State,
-) -> Int32 = "moonbit_tty_get_state"
-
-///|
-#borrow(state)
-extern "c" fn tty_set_state(
-  input_fd : @async/types.Fd,
-  output_fd : @async/types.Fd,
-  state : State,
-) -> Int32 = "moonbit_tty_set_state"
-
-///|
-#borrow(state, raw)
-extern "c" fn tty_make_raw_state(state : State, raw : State) -> Unit = "moonbit_tty_make_raw_state"

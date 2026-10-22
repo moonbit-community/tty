@@ -1,9 +1,0 @@
-import {
-  "moonbitlang/async",
-  "moonbitlang/async/stdio",
-  "moonbit-community/tty",
-}
-
-supported_targets = "native"
-
-pkgtype(kind: "executable")

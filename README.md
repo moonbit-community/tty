@@ -10,8 +10,20 @@ pane system, or scrollback buffer.
 
 ## Status
 
-This module is early and native-target focused. Public APIs are still being
-shaped around small terminal programs and the examples in this repository.
+This module is early. Public APIs are still being shaped around small terminal
+programs and the examples in this repository.
+
+`Tty::open()` holds the terminal through a sidecar process: a small C
+program that owns the terminal and relays input, resize events and output
+over pipes (`sidecar/README.md`). The same mechanism serves native programs
+and wasm programs run with `moonrun`. The executable is embedded in the
+package per OS and architecture and written to a temporary directory when
+needed; the `TTY_SIDECAR` environment variable overrides it with an
+executable of your own. Only `Tty::open()` has terminal capabilities:
+`Tty::stdio()` and `Tty::new` are plain stream handles, and `window_size`,
+`enter_raw_mode` and `leave_raw_mode` on them raise `OSError(ENOTSUP)`.
+The raw mode operations and `close` are `async`.
+`isatty` raises on wasm.
 
 ## Packages
 
@@ -26,8 +38,8 @@ Use `Tty` when an operation needs a real terminal handle:
 - controlling terminal: `Tty::open()`
 - custom handles: `Tty::new(input, output)` with `Reader` and `Writer` traits
   for async files, stdio, and OS pipes
-- raw mode: `Tty::get_state`, `State::make_raw`, `Tty::set_state`,
-  `Tty::with_raw_mode`
+- raw mode: `Tty::enter_raw_mode` returns a `State` that
+  `Tty::leave_raw_mode` restores; `Tty::with_raw_mode` scopes the pair
 - terminal size: `Tty::window_size`
 - cursor position report: `Tty::query_cursor_position`
 - kitty keyboard protocol support query: `Tty::query_kitty_keyboard_support`
@@ -106,7 +118,8 @@ Run a scoped raw-mode input loop:
 
 ```moonbit
 async fn main {
-  let tty = @tty.Tty::stdio()
+  let tty = @tty.Tty::open()
+  defer tty.close()
   tty.with_raw_mode(() => {
     tty.write("press q to quit\r\n")
     while true {
@@ -132,6 +145,12 @@ async fn main {
 
 Examples live in a separate workspace member under `examples/`.
 
+All examples support `--target native` (the default) and `--target wasm`.
+The wasm programs run locally through `moonrun`, using the host's sidecar.
+For a source checkout with an empty embedded sidecar table, build the sidecar
+as described in `sidecar/README.md` and set `TTY_SIDECAR` to its absolute path
+before running an interactive example.
+
 ```sh
 moon run examples/raw
 moon run examples/input
@@ -139,6 +158,14 @@ moon run examples/color
 moon run examples/cursor
 moon run examples/pager -- README.md
 moon run examples/agent
+```
+
+To exercise the wasm backend, for example:
+
+```sh
+moon run examples/raw --target wasm
+moon run examples/input --target wasm
+moon run examples/pager --target wasm -- README.md
 ```
 
 The examples are manual validation tools, not framework APIs:
