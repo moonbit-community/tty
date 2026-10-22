@@ -1,4 +1,5 @@
 ///|
+#cfg(target="native")
 async fn with_pipe_tty(f : async (Tty) -> Unit) -> String {
   let (input, input_writer) = @async/pipe.pipe()
   let (output_reader, output) = @async/pipe.pipe()
@@ -13,15 +14,17 @@ async fn with_pipe_tty(f : async (Tty) -> Unit) -> String {
 }
 
 ///|
+#cfg(target="native")
 test "state buffer can be made raw" {
   assert_true(sizeof_state > 0)
   let state = State::new()
-  @debug.assert_eq(state.0.length(), sizeof_state)
+  assert_eq(state.0.length(), sizeof_state)
   let raw = state.make_raw()
-  @debug.assert_eq(raw.0.length(), sizeof_state)
+  assert_eq(raw.0.length(), sizeof_state)
 }
 
 ///|
+#cfg(target="native")
 async test "tty state operations reject non tty pipe" {
   ignore(
     with_pipe_tty(tty => {

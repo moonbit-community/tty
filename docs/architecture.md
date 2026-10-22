@@ -226,6 +226,16 @@ The public API should describe terminal capabilities in terms of coordinated
 terminal handles, state, and events. The implementation can choose fd-based or
 handle-based storage per target.
 
+On the wasm target there is no C and `moonrun` exposes no terminal host
+imports, so the terminal is owned by a sidecar process (`sidecar/sidecar.c`)
+driven over its stdio pipes with a small frame protocol (`internal/sidecar`).
+Only `Tty::open()` creates a sidecar-backed handle; stream handles from
+`Tty::new` and `Tty::stdio` have no terminal capabilities on wasm. Raw mode on
+wasm is a sidecar command, so the state operations are `async` there and
+`State` is a single raw-or-not byte. The public `.mbti`, generated for the
+native target, is unchanged by this. The decision to use a sidecar instead of
+host imports is recorded in `docs/plans/2026-10-22-wasm-sidecar-backend.md`.
+
 Window size is exposed through `Tty` because callers usually need the visible
 screen buffer size while coordinating terminal input and output. The current
 query implementation uses the output-side handle. Unix resize notification is a

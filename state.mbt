@@ -8,6 +8,7 @@ struct State(Bytes)
 
 ///|
 /// Capture the current terminal state for this handle.
+#cfg(target="native")
 pub fn Tty::get_state(self : Self) -> State raise @os_error.OSError {
   let state = State::new()
   let rc = tty_get_state(self.input_fd, self.output_fd, state)
@@ -19,6 +20,7 @@ pub fn Tty::get_state(self : Self) -> State raise @os_error.OSError {
 
 ///|
 /// Apply a terminal state and return the previous state.
+#cfg(target="native")
 pub fn Tty::set_state(
   self : Self,
   state : State,
@@ -34,6 +36,7 @@ pub fn Tty::set_state(
 
 ///|
 /// Derive a raw-mode state from this captured terminal state.
+#cfg(target="native")
 pub fn State::make_raw(self : Self) -> State {
   let raw = State::new()
   tty_make_raw_state(self, raw)
@@ -42,6 +45,7 @@ pub fn State::make_raw(self : Self) -> State {
 
 ///|
 /// Enter raw mode and return the previous terminal state.
+#cfg(target="native")
 pub fn Tty::enter_raw_mode(self : Self) -> State raise @os_error.OSError {
   let old_state = self.get_state()
   let raw_state = old_state.make_raw()
@@ -55,6 +59,7 @@ pub fn Tty::enter_raw_mode(self : Self) -> State raise @os_error.OSError {
 
 ///|
 /// Restore a terminal state captured before or during raw mode.
+#cfg(target="native")
 pub fn Tty::leave_raw_mode(
   self : Self,
   state : State,
@@ -76,17 +81,21 @@ pub async fn[T] Tty::with_raw_mode(self : Self, f : async () -> T) -> T {
 }
 
 ///|
+#cfg(target="native")
 extern "c" fn get_sizeof_state() -> Int32 = "moonbit_tty_get_sizeof_state"
 
 ///|
+#cfg(target="native")
 let sizeof_state : Int32 = get_sizeof_state()
 
 ///|
+#cfg(target="native")
 fn State::new() -> State {
   Bytes::make(sizeof_state, 0)
 }
 
 ///|
+#cfg(target="native")
 #borrow(state)
 extern "c" fn tty_get_state(
   input_fd : @async/types.Fd,
@@ -95,6 +104,7 @@ extern "c" fn tty_get_state(
 ) -> Int32 = "moonbit_tty_get_state"
 
 ///|
+#cfg(target="native")
 #borrow(state)
 extern "c" fn tty_set_state(
   input_fd : @async/types.Fd,
@@ -103,5 +113,6 @@ extern "c" fn tty_set_state(
 ) -> Int32 = "moonbit_tty_set_state"
 
 ///|
+#cfg(target="native")
 #borrow(state, raw)
 extern "c" fn tty_make_raw_state(state : State, raw : State) -> Unit = "moonbit_tty_make_raw_state"

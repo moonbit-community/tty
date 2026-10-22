@@ -33,7 +33,7 @@ struct Tty {
 }
 
 ///|
-#cfg(not(platform="windows"))
+#cfg(all(target="native", not(platform="windows")))
 struct Tty {
   input : &Reader
   input_fd : @async/types.Fd
@@ -44,6 +44,54 @@ struct Tty {
   // Serializes output writes so a single `write`/`write_string` call lands on
   // the terminal atomically with respect to other concurrent writers.
   write_lock : @lock.Lock
+}
+
+///|
+/// On wasm the terminal is reached through a sidecar process; see
+/// `sidecar/README.md`. `sidecar` is `Some` only for handles made by
+/// `Tty::open`.
+#cfg(target="wasm")
+struct Tty {
+  input : &Reader
+  output : &Writer
+  reader : @input.EventReader
+  pending_input : Array[@public_input.InputEvent]
+  // Serializes output writes so a single `write`/`write_string` call lands on
+  // the terminal atomically with respect to other concurrent writers.
+  write_lock : @lock.Lock
+  sidecar : @sidecar.Sidecar?
+  // A resize noticed while a request/response query owned the reader; it is
+  // reported by the next `read_event`.
+  mut resize_pending : Bool
+}
+
+///|
+/// Create a coordinated terminal handle from input and output handles.
+///
+/// Keeps the native signature; nothing can fail here on wasm because the
+/// descriptors are not queried.
+#cfg(target="wasm")
+#warnings("-24")
+pub fn[I : Reader, O : Writer] Tty::new(input : I, output : O) -> Tty raise {
+  Tty::from_streams(input as &Reader, output as &Writer, sidecar=None)
+}
+
+///|
+#cfg(target="wasm")
+fn Tty::from_streams(
+  input : &Reader,
+  output : &Writer,
+  sidecar~ : @sidecar.Sidecar?,
+) -> Tty {
+  {
+    input,
+    output,
+    reader: @input.EventReader::new(input as &@async/io.Reader),
+    pending_input: [],
+    write_lock: @lock.Lock::new(),
+    sidecar,
+    resize_pending: false,
+  }
 }
 
 ///|
@@ -68,7 +116,7 @@ pub fn[I : Reader, O : Writer] Tty::new(input : I, output : O) -> Tty raise {
 
 ///|
 /// Create a coordinated terminal handle from input and output handles.
-#cfg(not(platform="windows"))
+#cfg(all(target="native", not(platform="windows")))
 pub fn[I : Reader, O : Writer] Tty::new(input : I, output : O) -> Tty raise {
   let input = input as &Reader
   let input_fd = Fd::fd(input)
@@ -94,6 +142,18 @@ pub fn Tty::stdio() -> Tty raise {
 ///|
 /// Close the underlying input and output handles.
 ///
+/// Closing stdio-backed handles is a no-op. For a handle from `Tty::open`
+/// this closes the sidecar's pipes, which makes it restore the terminal and
+/// exit.
+#cfg(target="wasm")
+pub fn Tty::close(self : Self) -> Unit {
+  self.input.close()
+  self.output.close()
+}
+
+///|
+/// Close the underlying input and output handles.
+///
 /// Closing stdio-backed handles is a no-op.
 #cfg(platform="windows")
 pub fn Tty::close(self : Self) -> Unit {
@@ -106,7 +166,7 @@ pub fn Tty::close(self : Self) -> Unit {
 /// Close the underlying input and output handles.
 ///
 /// Closing stdio-backed handles is a no-op.
-#cfg(not(platform="windows"))
+#cfg(all(target="native", not(platform="windows")))
 pub fn Tty::close(self : Self) -> Unit {
   self.input.close()
   self.output.close()

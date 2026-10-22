@@ -1,0 +1,16 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/fs" @async/fs,
+  "moonbitlang/async/io" @async/io,
+  "moonbitlang/async/os_error",
+  "moonbitlang/async/process" @async/process,
+  "moonbitlang/core/buffer",
+  "moonbitlang/core/debug",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/env",
+}
+
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/pipe" @async/pipe,
+} for "test"

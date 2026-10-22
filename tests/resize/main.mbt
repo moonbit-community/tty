@@ -1,6 +1,7 @@
 ///|
 async fn main {
-  let tty = @tty.Tty::stdio()
+  let tty = @tty.Tty::open()
+  defer tty.close()
   tty.with_raw_mode(() => {
     @stdio.stdout.write("ready\n")
     @async.with_timeout(5000, () => {

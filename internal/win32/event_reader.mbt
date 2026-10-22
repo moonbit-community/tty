@@ -178,12 +178,15 @@ fn EventReader::read_mouse_record(
 }
 
 ///|
+#cfg(target="native")
 extern "c" fn sizeof_input_record() -> Int32 = "moonbit_tty_get_sizeof_input_record"
 
 ///|
+#cfg(target="native")
 let sizeof_win32_input_record : Int32 = sizeof_input_record()
 
 ///|
+#cfg(target="native")
 #borrow(record)
 extern "c" fn read_console_input_record_ffi(
   fd : @async/types.Fd,
@@ -191,6 +194,16 @@ extern "c" fn read_console_input_record_ffi(
 ) -> Int32 = "moonbit_tty_read_console_input_record"
 
 ///|
+/// Console input records only exist on Windows; on wasm the root package
+/// never builds an `EventReader`, this just keeps the package compiling.
+#cfg(target="wasm")
+fn read_console_input_record(fd : @async/types.Fd) -> InputRecord? raise {
+  ignore(fd)
+  raise @os_error.OSError(@os_error.errno_ENOTSUP, context="ReadConsoleInputW")
+}
+
+///|
+#cfg(target="native")
 fn read_console_input_record(fd : @async/types.Fd) -> InputRecord? raise {
   let record = Bytes::make(sizeof_win32_input_record, 0)
   let rc = read_console_input_record_ffi(fd, record)

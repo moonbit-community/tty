@@ -1,0 +1,180 @@
+///|
+/// Raised out of a byte read when the sidecar reports a window resize
+/// instead of input. The size is already updated when this is raised; the
+/// read can simply be retried.
+pub suberror Resized derive(Debug)
+
+///|
+pub extend Resized with @debug.Debug::{to_repr}
+
+///|
+/// The sidecar reported an error of its own.
+pub suberror SidecarError {
+  SidecarError(String)
+} derive(Debug)
+
+///|
+pub extend SidecarError with @debug.Debug::{to_repr}
+
+///|
+/// A running sidecar process. Reading from it yields terminal input bytes;
+/// writing to it writes to the terminal.
+#warnings("-14")
+struct Sidecar {
+  pid : Int32
+  to_child : @async/process.WriteToProcess
+  from_child : @async/process.ReadFromProcess
+  conn : Connection
+  read_buf : @async/io.ReaderBuffer
+  mut rows : Int32
+  mut cols : Int32
+  mut raw : Bool
+  // Input bytes received but not yet handed out by `_direct_read`.
+  mut pending : BytesView
+  mut closed : Bool
+}
+
+///|
+/// Start the sidecar executable at `path` and wait for its hello frame.
+#warnings("-14")
+pub async fn spawn(path : String) -> Sidecar {
+  let (child_stdin, to_child) = @async/process.write_to_process()
+  let (from_child, child_stdout) = @async/process.read_from_process()
+  let pid = {
+    defer child_stdout.close()
+    @async/process.spawn_orphan(
+      path,
+      [],
+      stdin=child_stdin,
+      stdout=child_stdout,
+    )
+  }
+  let conn = Connection::new(from_child, to_child)
+  let sidecar = {
+    pid,
+    to_child,
+    from_child,
+    conn,
+    read_buf: @async/io.ReaderBuffer::new(),
+    rows: 0,
+    cols: 0,
+    raw: false,
+    pending: b""[:],
+    closed: false,
+  }
+  errdefer sidecar.close()
+  match conn.read_frame() {
+    Some(Hello(version~, rows~, cols~)) => {
+      guard version == 1 else {
+        raise ProtocolError("unsupported sidecar protocol version \{version}")
+      }
+      sidecar.rows = rows
+      sidecar.cols = cols
+    }
+    Some(Error(message)) => raise SidecarError(message)
+    Some(_) => raise ProtocolError("sidecar did not start with a hello frame")
+    None => raise ProtocolError("sidecar exited before saying hello")
+  }
+  sidecar
+}
+
+///|
+pub fn Sidecar::pid(self : Sidecar) -> Int32 {
+  self.pid
+}
+
+///|
+/// Last known terminal size as `(rows, cols)`.
+pub fn Sidecar::size(self : Sidecar) -> (Int32, Int32) {
+  (self.rows, self.cols)
+}
+
+///|
+pub fn Sidecar::is_raw(self : Sidecar) -> Bool {
+  self.raw
+}
+
+///|
+pub async fn Sidecar::set_raw(self : Sidecar, on : Bool) -> Unit {
+  self.conn.set_raw(on)
+  self.raw = on
+}
+
+///|
+/// Close both pipes. The sidecar restores the terminal and exits when its
+/// command pipe closes. Safe to call more than once.
+pub fn Sidecar::close(self : Sidecar) -> Unit {
+  if self.closed {
+    return
+  }
+  self.closed = true
+  self.to_child.close()
+  self.from_child.close()
+}
+
+///|
+/// Reap the sidecar process after `close`.
+pub async fn Sidecar::wait(self : Sidecar) -> Int32 {
+  @async/process.wait_pid(self.pid)
+}
+
+///|
+pub impl @async/io.Reader for Sidecar with fn _get_internal_buffer(self) {
+  self.read_buf
+}
+
+///|
+pub impl @async/io.Reader for Sidecar with fn _direct_read(
+  self,
+  buf,
+  offset~,
+  max_len~,
+) {
+  while self.pending.length() == 0 {
+    guard self.conn.read_frame() is Some(frame) else { return 0 }
+    match frame {
+      Input(bytes) => self.pending = bytes[:]
+      Resize(rows~, cols~) => {
+        self.rows = rows
+        self.cols = cols
+        raise Resized
+      }
+      Error(message) => raise SidecarError(message)
+      Hello(..) => ()
+    }
+  }
+  let n = if max_len < self.pending.length() {
+    max_len
+  } else {
+    self.pending.length()
+  }
+  buf.blit_from_bytesview(offset, self.pending[:n])
+  self.pending = self.pending[n:]
+  n
+}
+
+///|
+pub extend Sidecar with @async/io.Reader::{
+  _direct_read,
+  _get_internal_buffer,
+  read,
+  read_some,
+  drop,
+  read_all,
+  read_until,
+  read_exactly,
+}
+
+///|
+pub impl @async/io.Writer for Sidecar with fn write_once(
+  self,
+  buf,
+  offset~,
+  len~,
+) {
+  self.conn.write(buf[offset:offset + len])
+  len
+}
+
+///|
+pub extend Sidecar with @async/io.Writer::{write_once, write, write_reader}

@@ -73,7 +73,7 @@ async fn Tty::read_internal_event_from_sources(
 }
 
 ///|
-#cfg(not(platform="windows"))
+#cfg(all(target="native", not(platform="windows")))
 async fn Tty::read_internal_event_from_sources(
   self : Self,
   esc_timeout_ms : Int32,

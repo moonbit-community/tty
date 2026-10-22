@@ -1,0 +1,70 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbit-community/tty/internal/sidecar"
+
+import {
+  "moonbitlang/async/io",
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub const SIDECAR_ENV : String = "TTY_SIDECAR"
+
+pub async fn open() -> Sidecar
+
+pub async fn spawn(String) -> Sidecar
+
+// Errors
+pub suberror ProtocolError {
+  ProtocolError(String)
+} derive(@debug.Debug)
+pub fn ProtocolError::to_repr(Self) -> @debug.Repr
+
+pub suberror Resized derive(@debug.Debug)
+pub fn Resized::to_repr(Self) -> @debug.Repr
+
+pub suberror SidecarError {
+  SidecarError(String)
+} derive(@debug.Debug)
+pub fn SidecarError::to_repr(Self) -> @debug.Repr
+
+// Types and methods
+type Connection
+pub fn Connection::new(&@io.Reader, &@io.Writer) -> Self
+pub async fn Connection::read_frame(Self) -> Frame?
+pub async fn Connection::set_raw(Self, Bool) -> Unit
+pub async fn Connection::write(Self, BytesView) -> Unit
+
+pub(all) enum Frame {
+  Hello(version~ : Int32, rows~ : Int32, cols~ : Int32)
+  Input(Bytes)
+  Resize(rows~ : Int32, cols~ : Int32)
+  Error(String)
+} derive(Eq, @debug.Debug)
+pub fn Frame::equal(Self, Self) -> Bool
+pub fn Frame::not_equal(Self, Self) -> Bool
+pub fn Frame::to_repr(Self) -> @debug.Repr
+
+type Sidecar
+pub async fn Sidecar::_direct_read(Self, FixedArray[Byte], offset~ : Int32, max_len~ : Int32) -> Int32
+pub fn Sidecar::_get_internal_buffer(Self) -> @io.ReaderBuffer
+pub fn Sidecar::close(Self) -> Unit
+pub async fn Sidecar::drop(Self, Int32) -> Int32
+pub fn Sidecar::is_raw(Self) -> Bool
+pub fn Sidecar::pid(Self) -> Int32
+pub async fn Sidecar::read(Self, FixedArray[Byte], offset? : Int32, max_len? : Int32) -> Int32
+pub async fn Sidecar::read_all(Self) -> &@io.Data
+pub async fn Sidecar::read_exactly(Self, Int32) -> Bytes
+pub async fn Sidecar::read_some(Self, max_len? : Int32) -> Bytes?
+pub async fn Sidecar::read_until(Self, StringView) -> String?
+pub async fn Sidecar::set_raw(Self, Bool) -> Unit
+pub fn Sidecar::size(Self) -> (Int32, Int32)
+pub async fn Sidecar::wait(Self) -> Int32
+pub async fn Sidecar::write(Self, &@io.Data) -> Unit
+pub async fn Sidecar::write_once(Self, Bytes, offset~ : Int32, len~ : Int32) -> Int32
+pub async fn Sidecar::write_reader(Self, &@io.Reader) -> Unit
+pub impl @io.Reader for Sidecar
+pub impl @io.Writer for Sidecar
+
+// Type aliases
+
+// Traits

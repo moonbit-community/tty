@@ -66,6 +66,14 @@ jobs:
       - name: Run tests
         run: moon test --deny-warn
 
+      - name: Check packages (wasm)
+        if: runner.os != 'Windows'
+        run: moon check --target wasm --deny-warn
+
+      - name: Run tests (wasm)
+        if: runner.os != 'Windows'
+        run: moon test --target wasm --deny-warn
+
       - name: Generate interfaces
         if: runner.os != 'Windows'
         run: moon info

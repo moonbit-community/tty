@@ -10,8 +10,18 @@ pane system, or scrollback buffer.
 
 ## Status
 
-This module is early and native-target focused. Public APIs are still being
-shaped around small terminal programs and the examples in this repository.
+This module is early. Public APIs are still being shaped around small terminal
+programs and the examples in this repository.
+
+The native target is the primary one. The wasm target (programs run with
+`moonrun`) is supported through a sidecar process: `Tty::open()` starts a
+small C program that owns the terminal and relays input, resize events and
+output over pipes, so no host imports are needed. See `sidecar/README.md`.
+On wasm only `Tty::open()` has terminal capabilities; `Tty::stdio()` and
+`Tty::new` are plain stream handles there, `isatty` and `Tty::window_size`
+on them raise `OSError(ENOTSUP)`, and the raw mode operations are `async`.
+The sidecar executable is found through the `TTY_SIDECAR` environment
+variable or an embedded copy; this release does not ship embedded binaries.
 
 ## Packages
 

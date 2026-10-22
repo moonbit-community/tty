@@ -3,7 +3,7 @@ name = "moonbit-community/tty"
 version = "0.5.0"
 
 import {
-  "moonbitlang/async@0.22.4",
+  "moonbitlang/async@0.22.5",
 }
 
 readme = "README.md"

@@ -21,7 +21,7 @@ import {
   "moonbit-community/tty/input" @public_input,
 } for "wbtest"
 
-supported_targets = "native"
+supported_targets = "-all+native+wasm"
 
 options(
   "native-stub": [ "win32_input.c" ],

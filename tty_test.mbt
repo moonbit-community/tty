@@ -453,6 +453,7 @@ async test "pipe tty with top bottom margins restores on success" {
 }
 
 ///|
+#cfg(target="native")
 test "stdout window size when stdout is a tty" {
   if @tty.isatty(@async/stdio.stdout) {
     let tty = @tty.Tty::stdio()

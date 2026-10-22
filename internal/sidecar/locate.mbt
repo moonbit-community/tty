@@ -1,0 +1,57 @@
+///|
+/// Environment variable naming the sidecar executable to use.
+pub const SIDECAR_ENV : String = "TTY_SIDECAR"
+
+///|
+/// `<os>-<arch>` of the running host, the key into `embedded_sidecars`.
+async fn platform_key() -> String {
+  let os = match @async.platform {
+    Linux => "linux"
+    MacOS => "macos"
+    Windows => "windows"
+  }
+  let arch = match @async.platform {
+    Windows =>
+      match @env.get_env_var("PROCESSOR_ARCHITECTURE") {
+        Some("ARM64") => "arm64"
+        _ => "x86_64"
+      }
+    _ => {
+      let (exit, out) = @async/process.collect_stdout("uname", ["-m"])
+      guard exit == 0 else { return os + "-unknown" }
+      match out.text().trim().to_owned() {
+        "aarch64" | "arm64" => "arm64"
+        "x86_64" | "amd64" => "x86_64"
+        other => other
+      }
+    }
+  }
+  "\{os}-\{arch}"
+}
+
+///|
+/// Start a sidecar, found through `TTY_SIDECAR` or the embedded table.
+pub async fn open() -> Sidecar {
+  if @env.get_env_var(SIDECAR_ENV) is Some(path) && path != "" {
+    return spawn(path)
+  }
+  if embedded_sidecars.length() == 0 {
+    raise @os_error.OSError(
+      @os_error.errno_ENOTSUP,
+      context="@tty.Tty::open(): no tty sidecar executable, set \{SIDECAR_ENV}",
+    )
+  }
+  let key = platform_key()
+  guard embedded_sidecars.get(key) is Some(executable) else {
+    raise @os_error.OSError(
+      @os_error.errno_ENOTSUP,
+      context="@tty.Tty::open(): no embedded tty sidecar for \{key}, set \{SIDECAR_ENV}",
+    )
+  }
+  let dir = @async/fs.tmpdir(prefix="tty-sidecar")
+  defer @async/fs.rmdir(dir, recursive=true)
+  let path = "\{dir}/sidecar"
+  @async/fs.write_file(path, executable, permission=0o755)
+  @async/fs.chmod(path, 0o755)
+  spawn(path)
+}

@@ -7,6 +7,7 @@ pub struct WindowSize {
 
 ///|
 /// Query the visible terminal window size.
+#cfg(target="native")
 pub fn Tty::window_size(self : Self) -> WindowSize raise @os_error.OSError {
   let rows = Ref(0)
   let cols = Ref(0)
@@ -18,6 +19,7 @@ pub fn Tty::window_size(self : Self) -> WindowSize raise @os_error.OSError {
 }
 
 ///|
+#cfg(target="native")
 #borrow(rows, cols)
 extern "c" fn tty_get_window_size(
   fd : @async/types.Fd,

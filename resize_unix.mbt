@@ -1,17 +1,17 @@
 ///|
 #warnings("-7")
-#cfg(not(platform="windows"))
+#cfg(all(target="native", not(platform="windows")))
 priv struct SigwinchWatcher {
   read : @async/pipe.PipeRead
   write : @async/pipe.PipeWrite
 }
 
 ///|
-#cfg(not(platform="windows"))
+#cfg(all(target="native", not(platform="windows")))
 let global_sigwinch_watcher : Ref[SigwinchWatcher?] = Ref(None)
 
 ///|
-#cfg(not(platform="windows"))
+#cfg(all(target="native", not(platform="windows")))
 fn sigwinch_watcher() -> SigwinchWatcher raise {
   if global_sigwinch_watcher.val is Some(watcher) {
     return watcher
@@ -28,7 +28,7 @@ fn sigwinch_watcher() -> SigwinchWatcher raise {
 }
 
 ///|
-#cfg(not(platform="windows"))
+#cfg(all(target="native", not(platform="windows")))
 async fn SigwinchWatcher::wait(self : SigwinchWatcher) -> Unit {
   let buf = FixedArray::make(64, b'\x00')
   ignore(self.read.read(buf, max_len=buf.length()))
@@ -39,7 +39,7 @@ async fn SigwinchWatcher::wait(self : SigwinchWatcher) -> Unit {
 }
 
 ///|
-#cfg(not(platform="windows"))
+#cfg(all(target="native", not(platform="windows")))
 async fn Tty::read_resize_event(self : Self) -> Event {
   let watcher = sigwinch_watcher()
   for ;; {
@@ -53,7 +53,7 @@ async fn Tty::read_resize_event(self : Self) -> Event {
 }
 
 ///|
-#cfg(not(platform="windows"))
+#cfg(all(target="native", not(platform="windows")))
 async fn Tty::read_event_from_sources(
   self : Self,
   esc_timeout_ms : Int32,
@@ -69,9 +69,9 @@ async fn Tty::read_event_from_sources(
 }
 
 ///|
-#cfg(not(platform="windows"))
+#cfg(all(target="native", not(platform="windows")))
 extern "C" fn install_sigwinch_handler(fd : @async/types.Fd) -> Int32 = "moonbit_tty_install_sigwinch_handler"
 
 ///|
-#cfg(not(platform="windows"))
+#cfg(all(target="native", not(platform="windows")))
 extern "C" fn drain_sigwinch_pipe(fd : @async/types.Fd) -> Unit = "moonbit_tty_drain_sigwinch_pipe"
