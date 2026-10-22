@@ -45,7 +45,6 @@ fn sidecar_path() -> String {
 /// Compile `sidecar/sidecar.c` for the wasm runners.
 #cfg(not(platform="windows"))
 async fn build_sidecar() -> Unit {
-  @fs.mkdir(tests_path("_build"), allow_exist=true)
   let (exit, _, stderr) = @process.collect_output("cc", [
     "-O2",
     "-o",
@@ -79,6 +78,8 @@ async fn read_until_text(
 
 ///|
 async fn build_runner(name : String, target~ : String = "native") -> Unit {
+  // Also where `build_sidecar` puts its executable; CI starts without it.
+  @fs.mkdir(tests_path("_build"), allow_exist=true)
   let (exit, _, stderr) = @process.collect_output("moon", [
     "-C",
     tests_path(name),
