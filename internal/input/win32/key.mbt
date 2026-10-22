@@ -41,9 +41,10 @@ priv struct KeyReport {
 ///
 /// The report shape is `CSI Vk ; Sc ; Uc ; Kd ; Cs ; Rc _`, as defined by the
 /// Windows Terminal win32-input-mode specification. Empty parameters take the
-/// specification defaults (`0`, and `1` for the repeat count). Reports that do
-/// not describe a key with a terminal meaning, such as a lone modifier key,
-/// return `None`.
+/// specification defaults (`0`, and `1` for the repeat count). `Uc` may also
+/// hold a full code point above `0xFFFF`: `internal/win32` joins surrogate
+/// pairs before encoding a report. Reports that do not describe a key with a
+/// terminal meaning, such as a lone modifier key, return `None`.
 pub fn parse_key(params : Array[Int32?]) -> @public_input.KeyEvent? {
   guard params is [vk, _, uc, kd, cs, rc] else { return None }
   let report = {
@@ -66,6 +67,19 @@ fn KeyReport::key_event(self : KeyReport) -> @public_input.KeyEvent? {
   let kind = self.kind()
   let modifiers = self.modifiers()
   let state = self.state()
+  if self.is_nul() {
+    return Some(
+      @public_input.KeyEvent::new(
+        Char(' '),
+        modifiers=@public_input.KeyModifiers::new(
+          alt=self.has_state(LeftAltPressed | RightAltPressed),
+          ctrl=true,
+        ),
+        kind~,
+        state~,
+      ),
+    )
+  }
   if self.named_key_code() is Some(code) {
     return Some(@public_input.KeyEvent::new(code, modifiers~, kind~, state~))
   }
@@ -86,6 +100,17 @@ fn KeyReport::key_event(self : KeyReport) -> @public_input.KeyEvent? {
         }
       })
   }
+}
+
+///|
+/// The NUL character, Ctrl+Space or Ctrl+@. Conhost's VT input translation
+/// synthesizes it as the `2` key (Ctrl+Shift+2, `Uc == 0`), which is the one
+/// translated record that carries a real virtual key code. It decodes like the
+/// NUL byte does from a terminal, without the Shift of the synthesized chord.
+fn KeyReport::is_nul(self : KeyReport) -> Bool {
+  self.virtual_key_code == 0x32 &&
+  self.unicode_char == 0 &&
+  self.has_state(LeftCtrlPressed | RightCtrlPressed)
 }
 
 ///|

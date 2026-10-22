@@ -167,3 +167,43 @@ test "parse defaults and malformed reports" {
   @debug.assert_eq(@win32.parse_key(report(vk=0x10, cs=0x0010)), None)
   @debug.assert_eq(@win32.parse_key([Some(0x26), Some(0), Some(0)]), None)
 }
+
+///|
+test "parse conhost NUL as ctrl space" {
+  @debug.assert_eq(
+    @win32.parse_key(report(vk=0x32, cs=0x0008 | 0x0010)),
+    Some(
+      @public_input.KeyEvent::new(
+        Char(' '),
+        modifiers=@public_input.KeyModifiers::new(ctrl=true),
+      ),
+    ),
+  )
+  @debug.assert_eq(
+    @win32.parse_key(report(vk=0x32, cs=0x0008 | 0x0010 | 0x0002)),
+    Some(
+      @public_input.KeyEvent::new(
+        Char(' '),
+        modifiers=@public_input.KeyModifiers::new(ctrl=true, alt=true),
+      ),
+    ),
+  )
+  @debug.assert_eq(
+    @win32.parse_key(report(vk=0x32, uc='2'.to_int())),
+    Some(@public_input.KeyEvent::new(Char('2'), text="2")),
+  )
+}
+
+///|
+test "parse full code points in Uc" {
+  @debug.assert_eq(
+    @win32.parse_key(report(vk=0xe7, uc=0x1f600, cs=0x0002)),
+    Some(
+      @public_input.KeyEvent::new(
+        Char('\u{1F600}'),
+        modifiers=@public_input.KeyModifiers::new(alt=true),
+        text="\u{1F600}",
+      ),
+    ),
+  )
+}

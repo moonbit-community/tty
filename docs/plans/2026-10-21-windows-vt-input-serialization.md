@@ -340,3 +340,37 @@ Validation:
   `main`
 - Pending: `windows-latest` CI for the Windows half of `sidecar.c`, and the
   manual Windows validation above
+
+## Follow-up: Review Fixes For Surrogate Modifiers And Ctrl+Space
+
+A second review of `7372a35`, run on Windows, found one regression and one
+pre-existing problem made more visible; manual testing on Windows confirmed
+the second.
+
+- Modified surrogate pairs lost their modifiers. The encoder sent every
+  surrogate record down the text path, so a `Vk != 0` pair (for example
+  `VK_PACKET`, `Vk = 0xE7`) with Alt became plain UTF-8 and decoded without
+  Alt, where `main`'s direct mapping kept it. Now only `Vk == 0` records
+  become text. For `Vk != 0` the encoder joins the pair and writes one
+  win32-input-mode report whose `Uc` is the full code point, a local extension
+  of the format that `internal/input/win32.parse_key` accepts.
+- Ctrl+Space decoded as `Unknown`. Conhost's VT input translation synthesizes
+  NUL as the `2` key (`Vk = 0x32`, `Uc = 0`, Ctrl+Shift), the one translated
+  record that carries a real virtual key code. The old backend dropped it;
+  this branch reported it as `Unknown` bytes. `parse_key` now decodes that
+  record as `Char(' ')` with Ctrl (and Alt if held), the same as the NUL byte
+  from a terminal. This is the known exception to the `Vk == 0` assumption
+  above, and it is handled; the review's manual run confirmed arrow keys,
+  text, and bracketed paste decode correctly in raw mode.
+
+Open question, not changed: with input injected into a ConPTY, `A😀B`
+delivered the emoji's surrogate pair only on key-up records, which both the
+old backend and this encoder drop. Real IME, clipboard paste, and keyboard
+input on Windows did not reproduce it. If it shows up with real input, track
+surrogate halves per key direction (as ultraviolet does) and emit a pair
+completed on key-up unless it repeats the pair just emitted on key-down.
+
+Validation: `moon fmt`, `moon check --deny-warn` (native and wasm),
+`moon test --deny-warn` (native 211, wasm 206), `moon test internal/win32`
+(18), `moon test internal/input/win32` (10), `tests/` `moon test` (180),
+`moon info` with no `.mbti` change, `git diff --check`.

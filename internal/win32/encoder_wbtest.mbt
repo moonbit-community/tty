@@ -137,12 +137,22 @@ test "encoder joins UTF-16 surrogate pairs" {
     encode_records([key_charcode(0xd83d), key_charcode(0xde00)]),
     @utf8.encode("\u{1F600}"),
   )
+  // With a virtual key code the pair becomes one report whose `Uc` is the
+  // full code point, so the key keeps its modifiers.
   @debug.assert_eq(
     encode_records([
-      key_charcode(0xd83d, virtual_key_code=0xe7),
-      key_charcode(0xde00, virtual_key_code=0xe7),
+      key_charcode(
+        0xd83d,
+        virtual_key_code=0xe7,
+        control_key_state=LeftAltPressed,
+      ),
+      key_charcode(
+        0xde00,
+        virtual_key_code=0xe7,
+        control_key_state=LeftAltPressed,
+      ),
     ]),
-    @utf8.encode("\u{1F600}"),
+    b"\x1b[231;0;128512;1;2;1_",
   )
   @debug.assert_eq(
     encode_records([key_charcode(0xd83d), Focus(true), key_charcode(0xde00)]),
@@ -373,4 +383,41 @@ test "encoder encodes raw records one at a time" {
   out.write_bytes(encoder.encode(raw_focus(false)))
   @debug.assert_eq(out.to_bytes(), b"\x1b[I\x1b[1;5D\x1b[O")
   @debug.assert_eq(encoder.encode(b"\x01"), b"")
+}
+
+///|
+async test "encoded modified surrogate pairs and conhost NUL decode with modifiers" {
+  @debug.assert_eq(
+    decode_records(
+      [
+        key_charcode(
+          0xd83d,
+          virtual_key_code=0xe7,
+          control_key_state=LeftAltPressed,
+        ),
+        key_charcode(
+          0xde00,
+          virtual_key_code=0xe7,
+          control_key_state=LeftAltPressed,
+        ),
+        // Ctrl+Space as conhost's VT input translation synthesizes it.
+        key_charcode(
+          0,
+          virtual_key_code=0x32,
+          control_key_state=LeftCtrlPressed | ShiftPressed,
+        ),
+      ],
+      count=2,
+    ),
+    [
+      key_event(
+        @public_input.KeyEvent::new(
+          Char('\u{1F600}'),
+          modifiers=@public_input.KeyModifiers::new(alt=true),
+          text="\u{1F600}",
+        ),
+      ),
+      key_event(@public_input.KeyEvent::new(Char(' '), modifiers=ctrl())),
+    ],
+  )
 }

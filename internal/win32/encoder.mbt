@@ -33,7 +33,8 @@ const SgrWheel : Int32 = 64
 /// one byte decoder handles console input in record order:
 ///
 /// - key records without a virtual key code become their UTF-8 text, and the
-///   rest become win32-input-mode reports (`CSI Vk;Sc;Uc;Kd;Cs;Rc _`)
+///   rest become win32-input-mode reports (`CSI Vk;Sc;Uc;Kd;Cs;Rc _`), with
+///   surrogate pairs joined into one code point in either form
 /// - mouse records become SGR mouse reports (`CSI < Cb;col;row M/m`)
 /// - focus records become focus reports (`CSI I` / `CSI O`)
 ///
@@ -107,10 +108,13 @@ fn RecordEncoder::encode_key(
   } else {
     1
   }
-  if record.virtual_key_code == 0 || is_surrogate(record.unicode_char) {
+  if record.virtual_key_code == 0 {
     // Records without a virtual key carry synthesized text: conhost's VT input
-    // translation, IME output, or one half of a surrogate pair.
-    guard self.text_char(record.unicode_char) is Some(char) else { return }
+    // translation or IME output.
+    guard self.code_point(record.unicode_char) is Some(code) && code != 0 else {
+      return
+    }
+    guard code.to_char() is Some(char) else { return }
     for _ in 0..<repeat_count {
       out.write_char_utf8(char)
     }
@@ -118,9 +122,14 @@ fn RecordEncoder::encode_key(
     is_lone_modifier_key(record.virtual_key_code) {
     ()
   } else {
-    self.high_surrogate = None
+    // A surrogate pair is joined first so the report keeps the key's
+    // modifiers; its `Uc` then carries the full code point, a local extension
+    // of win32-input-mode that `internal/input/win32` accepts.
+    guard self.code_point(record.unicode_char) is Some(unicode_char) else {
+      return
+    }
     let ControlKeyState(control_key_state) = record.control_key_state
-    let report = "\u{1b}[\{record.virtual_key_code};\{record.virtual_scan_code};\{record.unicode_char};1;\{control_key_state};\{repeat_count}_"
+    let report = "\u{1b}[\{record.virtual_key_code};\{record.virtual_scan_code};\{unicode_char};1;\{control_key_state};\{repeat_count}_"
     for _ in 0..<repeat_count {
       out.write_string_utf8(report)
     }
@@ -128,14 +137,11 @@ fn RecordEncoder::encode_key(
 }
 
 ///|
-/// Decode one UTF-16 code unit from a key record, joining surrogate pairs that
-/// Windows splits across two records.
-fn RecordEncoder::text_char(self : RecordEncoder, unit : Int32) -> Char? {
+/// The code point for one UTF-16 code unit from a key record, joining the
+/// surrogate pairs that Windows splits across two records. `None` while a
+/// high surrogate waits for its low half, and for an unpaired low surrogate.
+fn RecordEncoder::code_point(self : RecordEncoder, unit : Int32) -> Int32? {
   match unit {
-    0 => {
-      self.high_surrogate = None
-      None
-    }
     0xd800..<=0xdbff => {
       self.high_surrogate = Some(unit)
       None
@@ -144,18 +150,13 @@ fn RecordEncoder::text_char(self : RecordEncoder, unit : Int32) -> Char? {
       let high = self.high_surrogate
       self.high_surrogate = None
       guard high is Some(high) else { return None }
-      (0x10000 + (high - 0xd800) * 0x400 + (unit - 0xdc00)).to_char()
+      Some(0x10000 + (high - 0xd800) * 0x400 + (unit - 0xdc00))
     }
     _ => {
       self.high_surrogate = None
-      unit.to_char()
+      Some(unit)
     }
   }
-}
-
-///|
-fn is_surrogate(unit : Int32) -> Bool {
-  unit >= 0xd800 && unit <= 0xdfff
 }
 
 ///|
