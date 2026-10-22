@@ -110,6 +110,8 @@ pub fn MouseTrackingMode::equal(Self, Self) -> Bool
 pub fn MouseTrackingMode::not_equal(Self, Self) -> Bool
 pub fn MouseTrackingMode::to_repr(Self) -> @debug.Repr
 
+type State
+
 type Tty
 pub async fn Tty::begin_synchronized_update(Self) -> Unit
 pub async fn Tty::close(Self) -> Unit
@@ -126,14 +128,14 @@ pub async fn Tty::enable_focus_tracking(Self) -> Unit
 pub async fn Tty::enable_mouse(Self, MouseTrackingMode) -> Unit
 pub async fn Tty::end_synchronized_update(Self) -> Unit
 pub async fn Tty::enter_alt_screen(Self) -> Unit
-pub async fn Tty::enter_raw_mode(Self) -> Unit
+pub async fn Tty::enter_raw_mode(Self) -> State
 pub async fn Tty::erase_display(Self) -> Unit
 pub async fn Tty::erase_line_all(Self) -> Unit
 pub async fn Tty::erase_scrollback(Self) -> Unit
 pub async fn Tty::execute(Self, Array[Command]) -> Unit
 pub async fn Tty::hide_cursor(Self) -> Unit
 pub async fn Tty::leave_alt_screen(Self) -> Unit
-pub async fn Tty::leave_raw_mode(Self) -> Unit
+pub async fn Tty::leave_raw_mode(Self, State) -> Unit
 pub fn[I : Reader, O : Writer] Tty::new(I, O) -> Self
 pub async fn Tty::open() -> Self
 pub async fn Tty::pop_keyboard_enhancement_flags(Self) -> Unit

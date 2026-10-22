@@ -35,9 +35,9 @@ async fn main {
   write_line(tty, "If the terminal is left raw after a crash, run: stty sane")
   write_line(tty, "")
   write_line(tty, "entering raw mode...")
-  tty.enter_raw_mode()
+  let state = tty.enter_raw_mode()
   {
-    defer tty.leave_raw_mode()
+    defer tty.leave_raw_mode(state)
     write_line(tty, "raw mode active")
     run_raw_loop(tty)
   }

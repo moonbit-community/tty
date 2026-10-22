@@ -22,6 +22,7 @@ needed; the `TTY_SIDECAR` environment variable overrides it with an
 executable of your own. Only `Tty::open()` has terminal capabilities:
 `Tty::stdio()` and `Tty::new` are plain stream handles, and `window_size`,
 `enter_raw_mode` and `leave_raw_mode` on them raise `OSError(ENOTSUP)`.
+The raw mode operations and `close` are `async`.
 `isatty` raises on wasm.
 
 ## Packages
@@ -37,8 +38,8 @@ Use `Tty` when an operation needs a real terminal handle:
 - controlling terminal: `Tty::open()`
 - custom handles: `Tty::new(input, output)` with `Reader` and `Writer` traits
   for async files, stdio, and OS pipes
-- raw mode: `Tty::enter_raw_mode`, `Tty::leave_raw_mode`,
-  `Tty::with_raw_mode`
+- raw mode: `Tty::enter_raw_mode` returns a `State` that
+  `Tty::leave_raw_mode` restores; `Tty::with_raw_mode` scopes the pair
 - terminal size: `Tty::window_size`
 - cursor position report: `Tty::query_cursor_position`
 - kitty keyboard protocol support query: `Tty::query_kitty_keyboard_support`

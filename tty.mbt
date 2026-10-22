@@ -35,8 +35,6 @@ struct Tty {
   // A resize noticed while a request/response query owned the reader; it is
   // reported by the next `read_event`.
   mut resize_pending : Bool
-  // Nesting depth of `with_raw_mode`; only the outermost scope leaves.
-  mut raw_depth : Int32
 }
 
 ///|
@@ -59,7 +57,6 @@ pub fn[I : Reader, O : Writer] Tty::new(input : I, output : O) -> Tty {
     write_lock: @lock.Lock::new(),
     sidecar: None,
     resize_pending: false,
-    raw_depth: 0,
   }
 }
 
@@ -89,7 +86,6 @@ pub async fn Tty::open() -> Tty {
     write_lock: @lock.Lock::new(),
     sidecar: Some(sidecar),
     resize_pending: false,
-    raw_depth: 0,
   }
 }
 

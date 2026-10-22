@@ -55,16 +55,17 @@ and `@io`.
   `OSError(ENOTSUP)`.
 - Removed: `state.c`, `size.c`, `resize.c`, `tty_open.c`,
   `internal/win32/win32_input.c`, the `RawFdStream` impls, the
-  `State` API and the per-platform `Tty` variants.
+  snapshot-based `State` operations and the per-platform `Tty` variants.
 
 ## Public API diff
 
 Breaking, next release `0.6.0`:
 
-- `State`, `State::make_raw`, `Tty::get_state`, `Tty::set_state` are gone.
-  Raw mode is idempotent: `enter_raw_mode()` and `leave_raw_mode()` take no
-  state and are `async`, because they talk to the sidecar. `with_raw_mode`
-  is unchanged.
+- `State::make_raw`, `Tty::get_state` and `Tty::set_state` are gone; they
+  exposed a termios snapshot that the sidecar now owns. `State` stays as an
+  opaque "was the terminal already raw" token: `enter_raw_mode() -> State`
+  and `leave_raw_mode(State)` keep their shapes but become `async`, because
+  they talk to the sidecar. `with_raw_mode` is unchanged.
 - `Tty::close` is `async` (it reaps the sidecar).
 - `Tty::new` no longer raises (nothing is queried at construction).
 - `pub impl Fd/Reader/Writer for @raw_fd.RawFdStream` are gone; the root no

@@ -249,12 +249,13 @@ this matches the Unix signal-backed resize model.
 ## Raw Mode
 
 Raw mode is a property of the terminal held by the sidecar, so it is only
-available on handles from `Tty::open()`. It is idempotent: `enter_raw_mode`
-switches the terminal to raw mode if it is not already, `leave_raw_mode`
-restores the settings captured on entry, and both are `async` because they
-are sidecar commands. There is no state value to capture or pass around;
-`Tty::with_raw_mode` is the scoped form. The sidecar also restores the
-terminal when the program goes away, however it goes away.
+available on handles from `Tty::open()`. `enter_raw_mode` returns an opaque
+`State` recording whether the terminal was already raw, and `leave_raw_mode`
+restores exactly that, so nested scopes compose when each caller restores
+the state it captured; `Tty::with_raw_mode` is the scoped form and restores
+even under cancellation. Both are `async` because they are sidecar
+commands. The sidecar also restores the terminal when the program goes
+away, however it goes away.
 
 ## VT Sequences
 
