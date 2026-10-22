@@ -92,6 +92,9 @@ struct Connection {
   // A frame is one transaction on the command pipe: concurrent senders are
   // serialized and a frame once started is not cut short by cancellation.
   send_lock : @lock.Lock
+  // Set once a send failed part way: the sidecar is then waiting for the
+  // rest of that frame and nothing sent later can be parsed correctly.
+  mut broken : Bool
 }
 
 ///|
@@ -105,6 +108,7 @@ pub fn Connection::new(
     buf: FixedArray::make(4096, b'\x00'),
     len: 0,
     send_lock: @lock.Lock::new(),
+    broken: false,
   }
 }
 
@@ -201,8 +205,19 @@ async fn Connection::send(
   buf.write_bytes(payload)
   let frame = buf.contents()
   self.send_lock.with_lock(() => {
-    @async.protect_from_cancel(() => self.writer.write(frame))
+    guard !self.broken else {
+      raise ProtocolError("sidecar connection broken by an earlier failed send")
+    }
+    @async.protect_from_cancel(() => {
+      errdefer self.mark_broken()
+      self.writer.write(frame)
+    })
   })
+}
+
+///|
+fn Connection::mark_broken(self : Connection) -> Unit {
+  self.broken = true
 }
 
 ///|

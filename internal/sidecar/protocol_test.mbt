@@ -103,6 +103,27 @@ async test "unknown tag is rejected" {
 }
 
 ///|
+/// Once a send fails the sidecar may be waiting for the rest of a frame, so
+/// the connection refuses to send anything else.
+async test "a failed send poisons the connection" {
+  with_fake_sidecar((conn, _, commands) => {
+    commands.close()
+    try conn.set_raw(true) catch {
+      @sidecar.ProtocolError(_) => fail("the first failure is the OS error")
+      _ => ()
+    } noraise {
+      _ => fail("expected the send to fail without a reader")
+    }
+    try conn.set_raw(false) catch {
+      @sidecar.ProtocolError(_) => ()
+      error => fail("expected a protocol error, got \{Repr(error)}")
+    } noraise {
+      _ => fail("expected the connection to be poisoned")
+    }
+  })
+}
+
+///|
 async test "fixed-size frames must have their exact size" {
   with_fake_sidecar((conn, events, _) => {
     events.write(b"\x84\x02\x00\x00\x00ab")
