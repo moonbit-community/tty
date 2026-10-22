@@ -1,5 +1,6 @@
 import {
   "moonbitlang/async",
+  "moonbitlang/async/fs",
   "moonbitlang/async/process",
   "moonbit-community/pty",
   "moonbitlang/core/encoding/utf8",
@@ -7,3 +8,5 @@ import {
 } for "test"
 
 supported_targets = "native"
+
+max_concurrent_tests = 1

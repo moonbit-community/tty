@@ -392,11 +392,6 @@ async test "tty window size rejects non tty output" {
 async test "tty raw mode operations reject non tty pipe" {
   ignore(
     with_pipe_tty(b"", tty => {
-      try tty.get_state() catch {
-        _ => ()
-      } noraise {
-        _ => fail("expected get_state to reject non tty pipe")
-      }
       try tty.enter_raw_mode() catch {
         _ => ()
       } noraise {
@@ -450,21 +445,6 @@ async test "pipe tty with top bottom margins restores on success" {
     assert_true(value == 42)
   })
   inspect(output, content="\u{1B}[2;7rbody\u{1B}[r")
-}
-
-///|
-test "stdout window size when stdout is a tty" {
-  if @tty.isatty(@async/stdio.stdout) {
-    let tty = @tty.Tty::stdio()
-    try tty.window_size() catch {
-      _ => fail("expected stdout window size")
-    } noraise {
-      size => {
-        assert_true(size.rows > 0)
-        assert_true(size.cols > 0)
-      }
-    }
-  }
 }
 
 ///|

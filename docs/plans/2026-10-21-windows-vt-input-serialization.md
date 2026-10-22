@@ -1,5 +1,10 @@
 # Windows Console Input As VT Bytes
 
+> The sections up to "Follow-up: Private Record Types" describe the design as
+> first built on the native polling backend. WASM-1 (#59) replaced that backend
+> with the tty sidecar; "Follow-up: Rebuilt On The Sidecar Backend" below
+> supersedes the `ConsoleReader`, console-mode FFI, and resize-queue parts.
+
 ## Goal
 
 Serialize Windows console input records into VT input bytes and feed one byte
@@ -213,3 +218,86 @@ white-box tests do not justify visibility.
 - Validation: `moon fmt`, `moon check --deny-warn`, `moon test internal/win32`
   (17 tests), `moon test --deny-warn` (203 tests), `tests/` `moon test`
   (171 tests), `moon info`, `git diff --check`.
+
+## Follow-up: Rebuilt On The Sidecar Backend
+
+WASM-1 (#59) moved terminal ownership into a sidecar process. The Windows
+sidecar reads `ReadConsoleInputW`, forwards raw `INPUT_RECORD`s as `RECORD`
+frames, and reports `WINDOW_BUFFER_SIZE_EVENT` out of band as `RESIZE` frames
+(the root sees `@sidecar.Resized` interrupting a read). `internal/win32` lost
+its FFI, and `main` still decoded records with the two-lane `EventReader`.
+Merging `main` keeps the sidecar and re-applies the serialization on its
+record stream.
+
+Accepted shape:
+
+- `internal/win32.RecordReader` replaces both `main`'s `EventReader` and this
+  plan's `ConsoleReader`. It wraps the sidecar's raw record reader and is an
+  `@async/io.Reader` of VT bytes: it reads one 20-byte record, encodes it with
+  `RecordEncoder`, and hands out the bytes. A partially read record stays on
+  the reader, so cancellation or a sidecar resize interrupting a read never
+  loses record bytes.
+- The console-mode FFI (`moonbit_tty_console_input_vt_enabled`,
+  `win32_input.c`), the `ConsoleReader` resize queue, and `wait_resize` are
+  gone. Resize is entirely the sidecar's out-of-band `RESIZE` path from
+  WASM-1. `internal/win32` has no C stub and builds for wasm.
+- Root `Tty` replaces `main`'s `InputDecoder` enum (`Bytes` / `Console`) with
+  one `@input.EventReader`, whose byte source is the sidecar itself for
+  `Bytes` input and `RecordReader(sidecar)` for `Records` input.
+- `RecordEncoder` no longer takes `vt_input`. A key record with `Vk == 0` or a
+  surrogate `Uc` becomes UTF-8 text; any other key record becomes a
+  win32-input-mode report.
+
+### Assumption: conhost VT translation records have `Vk == 0`
+
+With `ENABLE_VIRTUAL_TERMINAL_INPUT` (the sidecar sets it in raw mode),
+conhost translates keys into VT sequences and synthesizes one key record per
+character. The per-record rule assumes those synthesized records carry
+`Vk == 0` (and `Sc == 0`, `dwControlKeyState == 0`); recollection of
+`TerminalInput::_SendInputSequence` and `InputBuffer::_writeString` agrees,
+and VT bytes Windows Terminal sends through conpty take the same path, but it
+has not been verified on Windows.
+
+- Safe degradation: if a record still carries `Vk != 0` in VT mode, the
+  win32-input-mode report decodes to the same key, with `Uc` and key-down
+  state intact.
+- Failure mode to watch: if conhost split a synthesized sequence such as
+  `ESC [ A` (Up) into records that carry real virtual key codes, the decoder
+  would see Esc, `[`, and `A` as three keys instead of Up.
+
+### Manual Windows Validation
+
+Run `examples/input` on classic conhost and on Windows Terminal:
+
+- raw mode: arrow keys, Shift+Enter, Alt+F, F1 to F12, IME Chinese input,
+  multi-line paste
+- non-raw mode: `read_event` still reports arrow keys as `Up`/`Down`/... and
+  not as text
+- typing continuously across entering and leaving raw mode loses and reorders
+  no keys
+- resize: repeated resizes report the visible window size
+
+### Open Question: Fallback If The Assumption Fails
+
+If manual validation finds synthesized records with real virtual key codes,
+switch to passing `vt_input = sidecar.is_raw()` into the encoder. Known
+timing gap: `Sidecar::set_raw` flips its raw flag as soon as it sends the
+`SET_RAW` frame, without an acknowledgement, and the Windows sidecar reads
+input on a thread separate from its command thread, so records already read
+but still in the pipe at a mode switch would be classified by the new mode.
+Reporting the mode from the sidecar would close that window but changes the
+protocol on both platforms; it is not worth it unless the gap shows up.
+
+### Validation Results (after merging `main`)
+
+- Passed: `moon fmt`
+- Passed: `moon check --deny-warn` (native) and `moon check --target wasm
+  --deny-warn`
+- Passed: `moon test --deny-warn` (209 tests) and `moon test --target wasm
+  --deny-warn` (204 tests)
+- Passed: `moon test internal/win32` (18 tests, including `RecordReader`
+  record-order and split-record tests)
+- Passed: `moon test` in `tests/` (178 tests, pty runners with the sidecar)
+- Passed: `moon info`; root, `input`, and `internal/input` `.mbti` match
+  `main`; `internal/win32` exports only `RecordReader`
+- Pending: `windows-latest` CI and the manual Windows validation above

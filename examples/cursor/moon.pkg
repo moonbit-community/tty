@@ -1,9 +1,8 @@
 import {
   "moonbitlang/async",
-  "moonbitlang/async/stdio" @async/stdio,
   "moonbit-community/tty",
 }
 
-supported_targets = "native"
+supported_targets = "-all+native+wasm"
 
 pkgtype(kind: "executable")

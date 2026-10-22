@@ -1,24 +1,15 @@
 import {
-  "moonbitlang/async",
-  "moonbitlang/async/aqueue",
   "moonbitlang/async/io" @async/io,
-  "moonbitlang/async/os_error",
-  "moonbitlang/async/types" @async/types,
   "moonbitlang/core/buffer",
 }
 
 import {
   "moonbitlang/async",
   "moonbitlang/async/io" @async/io,
-  "moonbitlang/async/pipe" @async/pipe,
   "moonbitlang/core/debug",
   "moonbitlang/core/encoding/utf8",
   "moonbit-community/tty/input" @public_input,
   "moonbit-community/tty/internal/input",
 } for "wbtest"
 
-supported_targets = "native"
-
-options(
-  "native-stub": [ "win32_input.c" ],
-)
+supported_targets = "-all+native+wasm"

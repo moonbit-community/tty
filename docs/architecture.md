@@ -51,12 +51,11 @@ operations:
   and snapshot them in tests
 - system clipboard write (OSC 52) through `Tty`, without reading the clipboard
   back or detecting terminal support
-- terminal state operations such as `Tty::get_state`, `Tty::set_state`, and raw
-  mode helpers through `Tty`
+- raw mode through `Tty::enter_raw_mode`, `Tty::leave_raw_mode` and
+  `Tty::with_raw_mode`
 
-Platform FFI belongs here because raw mode, terminal dimensions, and handle
-lifetime are properties of the underlying terminal device, not of VT byte
-generation.
+The terminal device itself is owned by a sidecar process (`sidecar/`), driven
+by `internal/sidecar`; the root package holds no platform FFI for it.
 
 `Tty` is intentionally opaque and non-generic. `Tty::new` accepts concrete
 handles through root `Reader`/`Writer` trait bounds and stores trait objects
@@ -227,20 +226,37 @@ The public API should describe terminal capabilities in terms of coordinated
 terminal handles, state, and events. The implementation can choose fd-based or
 handle-based storage per target.
 
+On every target the terminal is owned by a sidecar process driven over its
+stdio pipes with a small frame protocol (`sidecar/README.md`,
+`internal/sidecar`). The sidecar executable is embedded in the package per
+OS and architecture, or named by `TTY_SIDECAR`; this is what makes wasm
+possible without `moonrun` host imports, and native uses the same path so
+there is one implementation.
+The Unix sidecar forwards VT bytes, the Windows sidecar forwards raw console
+`INPUT_RECORD`s that `internal/win32` decodes. Only `Tty::open()` creates a
+sidecar-backed handle; stream handles from `Tty::new` and `Tty::stdio` have
+no terminal capabilities. The decision is recorded in
+`docs/plans/2026-10-22-wasm-sidecar-backend.md`.
+
 Window size is exposed through `Tty` because callers usually need the visible
-screen buffer size while coordinating terminal input and output. The current
-query implementation uses the output-side handle. Unix resize notification is a
-process-global `SIGWINCH` source surfaced as coalesced root `Tty::read_event`
-resize events.
+screen buffer size while coordinating terminal input and output. The size is
+the one last reported by the sidecar, at start and on every resize. Resize
+notification comes from the sidecar, out of band from input: `SIGWINCH` on
+Unix, window size console records on Windows, both surfaced as root
+`Tty::read_event` resize events. Resize events are not ordered against decoded
+input, on either platform.
 
-Windows console input handles deliver typed `INPUT_RECORD` values instead of a
-byte stream. Following charmbracelet/ultraviolet, the internal
-`internal/win32.ConsoleReader` serializes input records into the VT input bytes
-a terminal would send, and the shared byte decoder reads that one stream:
+The Windows sidecar forwards typed `INPUT_RECORD` values instead of a byte
+stream. Following charmbracelet/ultraviolet, `internal/win32.RecordReader`
+serializes those records into the VT input bytes a terminal would send, and
+the shared byte decoder reads that one stream:
 
-- key records become their UTF-8 text when the console has VT input enabled
-  (raw mode), and win32-input-mode reports (`CSI Vk;Sc;Uc;Kd;Cs;Rc _`)
-  otherwise; `internal/input/win32` decodes those reports into key events
+- key records without a virtual key code become their UTF-8 text; this covers
+  conhost's VT input translation in raw mode, which is assumed to synthesize
+  records with `Vk == 0`, as well as IME output
+- other key records become win32-input-mode reports
+  (`CSI Vk;Sc;Uc;Kd;Cs;Rc _`), which `internal/input/win32` decodes into key
+  events
 - mouse records become SGR mouse reports
 - focus records become focus reports
 
@@ -248,28 +264,16 @@ So Windows console keys, mouse, and focus events keep record order. The
 win32-input-mode encoding is produced locally from console records; the package
 does not enable private mode 9001 on the terminal.
 
-Resize stays out-of-band on both platforms. Window buffer size records are
-console notifications, not terminal input, so `ConsoleReader` reports them
-through a coalesced notification that root `Tty::read_event` races against
-decoded input, the same way it races Unix `SIGWINCH`; root `Tty` then queries
-the visible window size. On either platform, resize events are not ordered
-against decoded input.
-
 ## Raw Mode
 
-Raw mode is input-side terminal state, but root callers should access it through
-`Tty` so terminal capabilities share one user-facing handle. The implementation
-still applies raw mode to the input side behind `Tty`.
-
-State snapshots should be explicit:
-
-- `Tty::get_state` captures current terminal state
-- `State::make_raw` derives a raw-mode state from a captured state
-- `Tty::set_state` applies a state and returns the previous state
-- scoped helpers such as `Tty::with_raw_mode` should restore captured state
-
-Nested raw-mode calls are valid only when each caller restores the state it
-captured. The package should not hide raw mode behind one global singleton.
+Raw mode is a property of the terminal held by the sidecar, so it is only
+available on handles from `Tty::open()`. `enter_raw_mode` returns an opaque
+`State` recording whether the terminal was already raw, and `leave_raw_mode`
+restores exactly that, so nested scopes compose when each caller restores
+the state it captured; `Tty::with_raw_mode` is the scoped form and restores
+even under cancellation. Both are `async` because they are sidecar
+commands. The sidecar also restores the terminal when the program goes
+away, however it goes away.
 
 ## VT Sequences
 

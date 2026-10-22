@@ -3,7 +3,6 @@ import {
   "moonbitlang/async/types" @async/types,
   "moonbitlang/async/fs" @async/fs,
   "moonbitlang/async/pipe" @async/pipe,
-  "moonbitlang/async/raw_fd" @async/raw_fd,
   "moonbitlang/async/stdio" @async/stdio,
   "moonbitlang/async/os_error",
   "moonbitlang/async/io" @async/io,
@@ -12,6 +11,7 @@ import {
   "moonbit-community/tty/color",
   "moonbit-community/tty/input" @public_input,
   "moonbit-community/tty/internal/lock",
+  "moonbit-community/tty/internal/sidecar",
   "moonbit-community/tty/internal/input",
   "moonbit-community/tty/internal/win32",
   "moonbit-community/tty/internal/vt",
@@ -30,8 +30,8 @@ import {
   "moonbitlang/core/debug",
 } for "wbtest"
 
-supported_targets = "native"
+supported_targets = "-all+native+wasm"
 
 options(
-  "native-stub": [ "isatty.c", "state.c", "size.c", "tty_open.c", "resize.c" ],
+  "native-stub": [ "isatty.c" ],
 )

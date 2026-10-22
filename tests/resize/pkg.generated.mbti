@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbit-community/tty/examples/isatty"
+package "moonbit-community/tty/tests/resize"
 
 // Values
 

@@ -5,6 +5,6 @@ import {
   "moonbit-community/tty/input" @tty/input,
 }
 
-supported_targets = "native"
+supported_targets = "-all+native+wasm"
 
 pkgtype(kind: "executable")

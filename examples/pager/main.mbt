@@ -410,7 +410,8 @@ async fn run_pager(
 
 ///|
 async fn with_pager_terminal(title : String, lines : Array[String]) -> Unit {
-  let tty = @tty.Tty::stdio()
+  let tty = @tty.Tty::open()
+  defer tty.close()
   tty.with_raw_mode(() => run_pager(tty, title, lines))
 }
 

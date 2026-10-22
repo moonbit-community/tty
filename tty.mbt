@@ -19,58 +19,83 @@ pub(all) enum Event {
 ///
 /// `Tty` is for terminal protocols that need to write a request and read the
 /// response from the same terminal input stream. It does not model a screen.
+///
+/// A handle from `Tty::open` owns a sidecar process that holds the terminal
+/// (see `sidecar/README.md`); handles from `Tty::new` and `Tty::stdio` are
+/// plain streams and have no terminal state of their own.
 struct Tty {
   input : &Reader
-  input_fd : @async/types.Fd
   output : &Writer
-  output_fd : @async/types.Fd
-  // Windows console input source, when the input handle is a console. It is
-  // the decoder's byte source and reports resize out-of-band.
-  console : @win32.ConsoleReader?
+  // Decodes terminal input. Windows console records forwarded by the sidecar
+  // reach it as VT bytes through `@win32.RecordReader`.
   reader : @input.EventReader
   pending_input : Array[@public_input.InputEvent]
   // Serializes output writes so a single `write`/`write_string` call lands on
   // the terminal atomically with respect to other concurrent writers.
   write_lock : @lock.Lock
+  sidecar : @sidecar.Sidecar?
+  // A resize noticed while a request/response query owned the reader; it is
+  // reported by the next `read_event`.
+  mut resize_pending : Bool
 }
 
 ///|
 /// Create a coordinated terminal handle from input and output handles.
-pub fn[I : Reader, O : Writer] Tty::new(input : I, output : O) -> Tty raise {
+pub fn[I : Reader, O : Writer] Tty::new(input : I, output : O) -> Tty {
   let input = input as &Reader
-  let input_fd = Fd::fd(input)
-  let output = output as &Writer
-  let output_fd = Fd::fd(output)
-  let console = console_input_reader(input_fd)
-  let byte_source = match console {
-    Some(console) => console as &@async/io.Reader
-    None => input as &@async/io.Reader
-  }
   {
     input,
-    input_fd,
-    output,
-    output_fd,
-    console,
-    reader: @input.EventReader::new(byte_source),
+    output: output as &Writer,
+    reader: @input.EventReader::new(input as &@async/io.Reader),
     pending_input: [],
     write_lock: @lock.Lock::new(),
+    sidecar: None,
+    resize_pending: false,
   }
 }
 
 ///|
 /// Wrap process stdio as one coordinated terminal handle.
-pub fn Tty::stdio() -> Tty raise {
+pub fn Tty::stdio() -> Tty {
   Tty::new(@async/stdio.stdin, @async/stdio.stdout)
+}
+
+///|
+/// Open the controlling terminal as one coordinated terminal handle.
+///
+/// The terminal is held by a sidecar process, the executable named by
+/// `TTY_SIDECAR` or the one embedded for this platform (see
+/// `sidecar/README.md`). Input, resize events and output all go through it.
+pub async fn Tty::open() -> Tty {
+  let sidecar = @sidecar.open()
+  let byte_source = match sidecar.input_kind() {
+    Bytes => sidecar as &@async/io.Reader
+    Records =>
+      @win32.RecordReader::new(sidecar as &@async/io.Reader)
+      as &@async/io.Reader
+  }
+  {
+    input: sidecar,
+    output: sidecar,
+    reader: @input.EventReader::new(byte_source),
+    pending_input: [],
+    write_lock: @lock.Lock::new(),
+    sidecar: Some(sidecar),
+    resize_pending: false,
+  }
 }
 
 ///|
 /// Close the underlying input and output handles.
 ///
-/// Closing stdio-backed handles is a no-op.
-pub fn Tty::close(self : Self) -> Unit {
+/// Closing stdio-backed handles is a no-op. For a handle from `Tty::open`
+/// this ends the sidecar, which restores the terminal, and reaps it.
+pub async fn Tty::close(self : Self) -> Unit {
   self.input.close()
   self.output.close()
+  if self.sidecar is Some(sidecar) {
+    ignore(sidecar.wait())
+  }
 }
 
 ///|
@@ -85,7 +110,18 @@ pub async fn Tty::read_event(
   if self.pending_input.length() > 0 {
     return Input(self.pending_input.remove(0))
   }
-  self.read_event_from_sources(esc_timeout_ms)
+  for ;; {
+    if self.resize_pending {
+      self.resize_pending = false
+      return Resize(self.window_size())
+    }
+    try read_decoded_input_event(self.reader, esc_timeout_ms) catch {
+      @sidecar.Resized => self.resize_pending = true
+      error => raise error
+    } noraise {
+      event => return event
+    }
+  }
 }
 
 ///|
@@ -105,11 +141,20 @@ async fn read_decoded_input_event(
 }
 
 ///|
+/// Next low-level stream event for request/response queries. A resize seen
+/// meanwhile is kept for the next `read_event`.
 async fn Tty::read_internal_event(
   self : Self,
   esc_timeout_ms~ : Int32 = 50,
 ) -> @input.Event {
-  self.reader.read_event(esc_timeout_ms~)
+  for ;; {
+    try self.reader.read_event(esc_timeout_ms~) catch {
+      @sidecar.Resized => self.resize_pending = true
+      error => raise error
+    } noraise {
+      event => return event
+    }
+  }
 }
 
 ///|

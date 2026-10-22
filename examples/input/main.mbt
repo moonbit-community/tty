@@ -283,7 +283,8 @@ async fn run_input_events(tty : @tty.Tty) -> Unit {
 
 ///|
 async fn main {
-  let tty = @tty.Tty::stdio()
+  let tty = @tty.Tty::open()
+  defer tty.close()
   tty.with_raw_mode(() => {
     if tty.query_kitty_keyboard_support(timeout_ms=100) {
       tty.with_kitty_keyboard(() => {

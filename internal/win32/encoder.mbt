@@ -32,14 +32,21 @@ const SgrWheel : Int32 = 64
 /// Every record kind becomes the sequence a VT terminal would send for it, so
 /// one byte decoder handles console input in record order:
 ///
-/// - key records become their UTF-8 text when the console has VT input
-///   enabled, and win32-input-mode reports (`CSI Vk;Sc;Uc;Kd;Cs;Rc _`)
-///   otherwise
+/// - key records without a virtual key code become their UTF-8 text, and the
+///   rest become win32-input-mode reports (`CSI Vk;Sc;Uc;Kd;Cs;Rc _`)
 /// - mouse records become SGR mouse reports (`CSI < Cb;col;row M/m`)
 /// - focus records become focus reports (`CSI I` / `CSI O`)
 ///
-/// Window buffer size records produce no bytes: resize is out-of-band, as
-/// `SIGWINCH` is on Unix, and `ConsoleReader` reports it separately.
+/// The key rule is decided per record, without asking whether the console has
+/// VT input enabled. It assumes conhost synthesizes the records of its VT
+/// translation (raw mode) with `Vk == 0`, so they pass through as plain VT
+/// bytes; an untranslated key keeps its virtual key code and still decodes to
+/// the same key through the win32-input-mode report. If conhost split a
+/// sequence such as `ESC [ A` into records carrying real virtual key codes,
+/// it would decode as three keys instead of `Up`.
+///
+/// Window buffer size records produce no bytes: the sidecar reports resize
+/// out of band and does not forward them.
 ///
 /// The encoder keeps the state that spans records: a pending UTF-16 high
 /// surrogate, and the mouse buttons held at the previous mouse record.
@@ -57,11 +64,10 @@ fn RecordEncoder::new() -> RecordEncoder {
 fn RecordEncoder::encode(
   self : RecordEncoder,
   record : InputRecord,
-  vt_input~ : Bool,
   out : @buffer.Buffer,
 ) -> Unit {
   match record {
-    Key(key) => self.encode_key(key, vt_input~, out)
+    Key(key) => self.encode_key(key, out)
     Mouse(mouse) => {
       self.high_surrogate = None
       self.encode_mouse(mouse, out)
@@ -81,7 +87,6 @@ fn RecordEncoder::encode(
 fn RecordEncoder::encode_key(
   self : RecordEncoder,
   record : KeyRecord,
-  vt_input~ : Bool,
   out : @buffer.Buffer,
 ) -> Unit {
   guard record.key_down != 0 else { return }
@@ -90,11 +95,9 @@ fn RecordEncoder::encode_key(
   } else {
     1
   }
-  if vt_input ||
-    record.virtual_key_code == 0 ||
-    is_surrogate(record.unicode_char) {
-    // With VT input the console already translated keys into VT text. Records
-    // without a virtual key carry synthesized text such as IME output.
+  if record.virtual_key_code == 0 || is_surrogate(record.unicode_char) {
+    // Records without a virtual key carry synthesized text: conhost's VT input
+    // translation, IME output, or one half of a surrogate pair.
     guard self.text_char(record.unicode_char) is Some(char) else { return }
     for _ in 0..<repeat_count {
       out.write_char_utf8(char)

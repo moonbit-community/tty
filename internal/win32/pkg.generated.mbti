@@ -10,18 +10,17 @@ import {
 // Errors
 
 // Types and methods
-type ConsoleReader
-pub async fn ConsoleReader::_direct_read(Self, FixedArray[Byte], offset~ : Int32, max_len~ : Int32) -> Int32
-pub fn ConsoleReader::_get_internal_buffer(Self) -> @io.ReaderBuffer
-pub async fn ConsoleReader::drop(Self, Int32) -> Int32
-pub fn ConsoleReader::new(Int32) -> Self
-pub async fn ConsoleReader::read(Self, FixedArray[Byte], offset? : Int32, max_len? : Int32) -> Int32
-pub async fn ConsoleReader::read_all(Self) -> &@io.Data
-pub async fn ConsoleReader::read_exactly(Self, Int32) -> Bytes
-pub async fn ConsoleReader::read_some(Self, max_len? : Int32) -> Bytes?
-pub async fn ConsoleReader::read_until(Self, StringView) -> String?
-pub async fn ConsoleReader::wait_resize(Self) -> Unit
-pub impl @io.Reader for ConsoleReader
+type RecordReader
+pub async fn RecordReader::_direct_read(Self, FixedArray[Byte], offset~ : Int32, max_len~ : Int32) -> Int32
+pub fn RecordReader::_get_internal_buffer(Self) -> @io.ReaderBuffer
+pub async fn RecordReader::drop(Self, Int32) -> Int32
+pub fn RecordReader::new(&@io.Reader) -> Self
+pub async fn RecordReader::read(Self, FixedArray[Byte], offset? : Int32, max_len? : Int32) -> Int32
+pub async fn RecordReader::read_all(Self) -> &@io.Data
+pub async fn RecordReader::read_exactly(Self, Int32) -> Bytes
+pub async fn RecordReader::read_some(Self, max_len? : Int32) -> Bytes?
+pub async fn RecordReader::read_until(Self, StringView) -> String?
+pub impl @io.Reader for RecordReader
 
 // Type aliases
 

@@ -1,0 +1,108 @@
+name: sidecars
+
+# Rebuilds the tty sidecar executables and commits them, embedded in
+# internal/sidecar/sidecars.generated.mbt, back to main. See
+# sidecar/README.md and AGENTS.md (Release Workflow).
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - sidecar/**
+      - scripts/ci_sidecars.mbtx
+      - .github/workflows/sidecars.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# One regeneration at a time; a newer run supersedes an older one.
+concurrency:
+  group: sidecars
+  cancel-in-progress: true
+
+jobs:
+  unix:
+    name: ${{ matrix.key }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - key: linux-x86_64
+            os: ubuntu-latest
+            cflags: -static
+          - key: linux-arm64
+            os: ubuntu-24.04-arm
+            cflags: -static
+          - key: macos-arm64
+            os: macos-latest
+            cflags: -arch arm64
+          - key: macos-x86_64
+            os: macos-latest
+            cflags: -arch x86_64
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: cc -O2 -Wall ${{ matrix.cflags }} -o sidecar-${{ matrix.key }} sidecar/sidecar.c
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sidecar-${{ matrix.key }}
+          path: sidecar-${{ matrix.key }}
+
+  windows:
+    name: windows-x86_64
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ilammy/msvc-dev-cmd@v1
+      - name: Build
+        run: cl /nologo /O2 /Fe:sidecar-windows-x86_64.exe sidecar\sidecar.c
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sidecar-windows-x86_64
+          path: sidecar-windows-x86_64.exe
+
+  embed:
+    name: embed and commit
+    needs: [unix, windows]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Make sure main still has the sources these binaries came from
+        run: |
+          if ! git diff --quiet ${{ github.sha }} HEAD -- sidecar scripts/ci_sidecars.mbtx; then
+            echo "sidecar sources changed on main since ${{ github.sha }}; a newer run will regenerate"
+            exit 1
+          fi
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+      - name: Install MoonBit
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+          echo "MOON_HOME=$HOME/.moon" >> "$GITHUB_ENV"
+      - name: Regenerate the embedded table
+        run: |
+          moon update
+          moon run --target native scripts/ci_sidecars.mbtx -- dist
+      - name: Check the generated file compiles
+        run: |
+          moon check --target native --deny-warn
+          moon check --target wasm --deny-warn
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add internal/sidecar/sidecars.generated.mbt
+          git diff --cached --quiet && { echo "sidecars unchanged"; exit 0; }
+          git commit -m "chore: regenerate the embedded sidecars
+
+          Built by the sidecars workflow from ${{ github.sha }}."
+          git push origin HEAD:main

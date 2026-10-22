@@ -63,11 +63,11 @@ fn mouse(
 }
 
 ///|
-fn encode_records(records : Array[InputRecord], vt_input~ : Bool) -> Bytes {
+fn encode_records(records : Array[InputRecord]) -> Bytes {
   let encoder = RecordEncoder::new()
   let out = @buffer.Buffer()
   for record in records {
-    encoder.encode(record, vt_input~, out)
+    encoder.encode(record, out)
   }
   out.to_bytes()
 }
@@ -77,10 +77,9 @@ fn encode_records(records : Array[InputRecord], vt_input~ : Bool) -> Bytes {
 /// terminal input decoder.
 async fn decode_records(
   records : Array[InputRecord],
-  vt_input~ : Bool,
   count~ : Int32 = 1,
 ) -> Array[@input.Event] {
-  let bytes = encode_records(records, vt_input~)
+  let bytes = encode_records(records)
   let events = []
   @async.with_task_group() <| group => {
     let (reader, writer) = @async/io.pipe()
@@ -109,127 +108,94 @@ fn ctrl() -> @public_input.KeyModifiers {
 
 ///|
 test "encoder drops key-up and lone modifier records" {
-  @debug.assert_eq(encode_records([key('a', key_down=0)], vt_input=true), b"")
+  @debug.assert_eq(encode_records([key('a', key_down=0)]), b"")
   @debug.assert_eq(
-    encode_records(
-      [key('a', virtual_key_code=0x41, key_down=0)],
-      vt_input=false,
-    ),
+    encode_records([key('a', virtual_key_code=0x41, key_down=0)]),
     b"",
   )
   @debug.assert_eq(
-    encode_records(
-      [
-        key_charcode(0, virtual_key_code=0x10, control_key_state=ShiftPressed),
-        key_charcode(
-          0,
-          virtual_key_code=0xa2,
-          control_key_state=LeftCtrlPressed,
-        ),
-      ],
-      vt_input=false,
-    ),
+    encode_records([
+      key_charcode(0, virtual_key_code=0x10, control_key_state=ShiftPressed),
+      key_charcode(0, virtual_key_code=0xa2, control_key_state=LeftCtrlPressed),
+    ]),
     b"",
   )
 }
 
 ///|
-test "encoder writes VT input key text" {
+test "encoder writes keys without a virtual key code as text" {
   @debug.assert_eq(
-    encode_records(
-      [
-        key('\u{1B}'),
-        key('['),
-        key('A'),
-        key('x', virtual_key_code=0x58, control_key_state=ShiftPressed),
-      ],
-      vt_input=true,
-    ),
+    encode_records([key('\u{1B}'), key('['), key('A'), key('x')]),
     b"\x1b[Ax",
   )
-  @debug.assert_eq(
-    encode_records([key('z', repeat_count=3)], vt_input=true),
-    b"zzz",
-  )
+  @debug.assert_eq(encode_records([key('z', repeat_count=3)]), b"zzz")
 }
 
 ///|
 test "encoder joins UTF-16 surrogate pairs" {
   @debug.assert_eq(
-    encode_records([key_charcode(0xd83d), key_charcode(0xde00)], vt_input=true),
+    encode_records([key_charcode(0xd83d), key_charcode(0xde00)]),
     @utf8.encode("\u{1F600}"),
   )
   @debug.assert_eq(
-    encode_records(
-      [
-        key_charcode(0xd83d, virtual_key_code=0xe7),
-        key_charcode(0xde00, virtual_key_code=0xe7),
-      ],
-      vt_input=false,
-    ),
+    encode_records([
+      key_charcode(0xd83d, virtual_key_code=0xe7),
+      key_charcode(0xde00, virtual_key_code=0xe7),
+    ]),
     @utf8.encode("\u{1F600}"),
   )
   @debug.assert_eq(
-    encode_records(
-      [key_charcode(0xd83d), Focus(true), key_charcode(0xde00)],
-      vt_input=true,
-    ),
+    encode_records([key_charcode(0xd83d), Focus(true), key_charcode(0xde00)]),
     b"\x1b[I",
   )
 }
 
 ///|
-test "encoder writes win32-input-mode reports without VT input" {
+test "encoder writes keys with a virtual key code as win32-input-mode reports" {
   @debug.assert_eq(
-    encode_records(
-      [
-        Key(
-          KeyRecord::new(
-            virtual_key_code=0x41,
-            virtual_scan_code=0x1e,
-            unicode_char='a'.to_int(),
-          ),
+    encode_records([
+      Key(
+        KeyRecord::new(
+          virtual_key_code=0x41,
+          virtual_scan_code=0x1e,
+          unicode_char='a'.to_int(),
         ),
-        key_charcode(
-          0,
-          virtual_key_code=0x26,
-          control_key_state=EnhancedKey,
-          repeat_count=2,
-        ),
-      ],
-      vt_input=false,
-    ),
+      ),
+      key_charcode(
+        0,
+        virtual_key_code=0x26,
+        control_key_state=EnhancedKey,
+        repeat_count=2,
+      ),
+    ]),
     b"\x1b[65;30;97;1;0;1_\x1b[38;0;0;1;256;2_\x1b[38;0;0;1;256;2_",
   )
-  @debug.assert_eq(encode_records([key('h'), key('i')], vt_input=false), b"hi")
+  @debug.assert_eq(encode_records([key('h'), key('i')]), b"hi")
 }
 
 ///|
 test "encoder writes SGR mouse reports" {
   @debug.assert_eq(
-    encode_records(
-      [
-        mouse(x=30, y=2, event_flags=MouseMoved),
-        mouse(x=30, y=2, button_state=MouseLeftButton),
-        mouse(
-          x=31,
-          y=2,
-          button_state=MouseLeftButton,
-          control_key_state=ShiftPressed,
-          event_flags=MouseMoved,
-        ),
-        mouse(x=31, y=2),
-        mouse(x=31, y=2, button_state=120 * 0x10000, event_flags=MouseWheeled),
-        mouse(x=31, y=2, button_state=-120 * 0x10000, event_flags=MouseWheeled),
-        mouse(
-          x=0,
-          y=0,
-          button_state=-120 * 0x10000,
-          event_flags=MouseHorizontalWheeled,
-        ),
-      ],
-      vt_input=true,
-    ),
+    encode_records([
+      mouse(x=30, y=2, event_flags=MouseMoved),
+      mouse(x=30, y=2, button_state=MouseLeftButton),
+      mouse(
+        x=31,
+        y=2,
+        button_state=MouseLeftButton,
+        control_key_state=ShiftPressed,
+        event_flags=MouseMoved,
+      ),
+      mouse(x=31, y=2),
+      mouse(x=31, y=2, button_state=120 * 0x10000, event_flags=MouseWheeled),
+      mouse(x=31, y=2, button_state=-120 * 0x10000, event_flags=MouseWheeled),
+      mouse(
+        x=0,
+        y=0,
+        button_state=-120 * 0x10000,
+        event_flags=MouseHorizontalWheeled,
+      ),
+    ]),
     b"\x1b[<35;31;3M\x1b[<0;31;3M\x1b[<36;32;3M\x1b[<0;32;3m\x1b[<64;32;3M\x1b[<65;32;3M\x1b[<66;1;1M",
   )
 }
@@ -237,10 +203,7 @@ test "encoder writes SGR mouse reports" {
 ///|
 test "encoder writes focus reports and no resize bytes" {
   @debug.assert_eq(
-    encode_records(
-      [Focus(true), WindowBufferSize, Focus(false), Unsupported],
-      vt_input=true,
-    ),
+    encode_records([Focus(true), WindowBufferSize, Focus(false), Unsupported]),
     b"\x1b[I\x1b[O",
   )
 }
@@ -251,7 +214,7 @@ async test "encoded records decode in record order" {
   records.append(text_keys("\u{1B}[7;9R"))
   records.push(WindowBufferSize)
   records.push(mouse(x=19, y=3, button_state=MouseLeftButton))
-  @debug.assert_eq(decode_records(records, vt_input=true, count=3), [
+  @debug.assert_eq(decode_records(records, count=3), [
     Input(FocusIn),
     CursorPosition(row=7, col=9),
     Input(Mouse(@public_input.MouseEvent::new(Press(Left), 4, 20))),
@@ -260,10 +223,9 @@ async test "encoded records decode in record order" {
 
 ///|
 async test "encoded bracketed paste decodes as one paste event" {
-  @debug.assert_eq(
-    decode_records(text_keys("\u{1B}[200~hello\u{1B}[201~"), vt_input=true),
-    [Input(Paste("hello"))],
-  )
+  @debug.assert_eq(decode_records(text_keys("\u{1B}[200~hello\u{1B}[201~")), [
+    Input(Paste("hello")),
+  ])
 }
 
 ///|
@@ -283,7 +245,6 @@ async test "encoded mouse records decode to mouse events" {
         mouse(x=31, y=2),
         mouse(x=31, y=2, button_state=120 * 0x10000, event_flags=MouseWheeled),
       ],
-      vt_input=true,
       count=5,
     ),
     [
@@ -306,7 +267,7 @@ async test "encoded mouse records decode to mouse events" {
 }
 
 ///|
-async test "encoded keys without VT input decode with key metadata" {
+async test "encoded win32-input-mode reports decode with key metadata" {
   @debug.assert_eq(
     decode_records(
       [
@@ -325,7 +286,6 @@ async test "encoded keys without VT input decode with key metadata" {
         key('1', virtual_key_code=0x61, control_key_state=NumLockOn),
         key('\r', virtual_key_code=0x0d, control_key_state=EnhancedKey),
       ],
-      vt_input=false,
       count=6,
     ),
     [
@@ -356,7 +316,7 @@ async test "encoded keys without VT input decode with key metadata" {
 }
 
 ///|
-async test "encoded VT input keys decode like terminal bytes" {
+async test "encoded VT translation records decode like terminal bytes" {
   @debug.assert_eq(
     decode_records(
       [
@@ -370,7 +330,6 @@ async test "encoded VT input keys decode like terminal bytes" {
         key('5'),
         key('D'),
       ],
-      vt_input=true,
       count=2,
     ),
     [
@@ -383,29 +342,4 @@ async test "encoded VT input keys decode like terminal bytes" {
       key_event(@public_input.KeyEvent::new(Left, modifiers=ctrl())),
     ],
   )
-}
-
-///|
-fn test_console_reader() -> ConsoleReader raise {
-  let (read, write) = @async/pipe.pipe()
-  write.close()
-  let reader = ConsoleReader::new(read.fd())
-  read.close()
-  reader
-}
-
-///|
-async test "console reader reports resize records out of band" {
-  let reader = test_console_reader()
-  let out = @buffer.Buffer()
-  reader.read_record(WindowBufferSize, vt_input=true, out)
-  reader.read_record(key('a'), vt_input=true, out)
-  reader.read_record(WindowBufferSize, vt_input=true, out)
-  @debug.assert_eq(out.to_bytes(), b"a")
-  guard @async.with_timeout_opt(10, () => reader.wait_resize()) is Some(_) else {
-    fail("expected a resize notification")
-  }
-  guard @async.with_timeout_opt(10, () => reader.wait_resize()) is None else {
-    fail("expected repeated resizes to coalesce into one notification")
-  }
 }
