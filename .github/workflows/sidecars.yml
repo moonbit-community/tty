@@ -10,7 +10,7 @@ on:
       - main
     paths:
       - sidecar/**
-      - scripts/embed_sidecar.mbtx
+      - scripts/ci_sidecars.mbtx
       - .github/workflows/sidecars.yml
   workflow_dispatch:
 
@@ -78,13 +78,7 @@ jobs:
       - name: Regenerate the embedded table
         run: |
           moon update
-          args=()
-          for dir in dist/sidecar-*; do
-            key=${dir#dist/sidecar-}
-            file=$(ls "$dir" | head -n 1)
-            args+=("$key=$dir/$file")
-          done
-          moon run --target native scripts/embed_sidecar.mbtx -- "${args[@]}"
+          moon run --target native scripts/ci_sidecars.mbtx -- dist
       - name: Check the generated file compiles
         run: |
           moon check --target native --deny-warn

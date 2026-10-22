@@ -42,7 +42,7 @@ and `@io`.
   written to a temporary directory, started and deleted again. The embedded
   table lives in `internal/sidecar/sidecars.generated.mbt`; the `sidecars`
   workflow rebuilds the five binaries whenever `sidecar/` changes on `main`,
-  regenerates the file with `scripts/embed_sidecar.mbtx`, checks it compiles
+  regenerates the file with `scripts/ci_sidecars.mbtx`, checks it compiles
   and commits it back to `main`. A self-spawning native variant (a
   constructor in a native stub) was tried and dropped: no magic in other
   people's programs.
