@@ -73,9 +73,7 @@ jobs:
         run: moon test --target wasm --deny-warn
 
       - name: Generate interfaces
-        if: runner.os != 'Windows'
         run: moon info
 
       - name: Verify generated files are current
-        if: runner.os != 'Windows'
         run: git diff --exit-code
