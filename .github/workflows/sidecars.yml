@@ -10,7 +10,7 @@ on:
       - main
     paths:
       - sidecar/**
-      - scripts/embed_sidecar.py
+      - scripts/embed_sidecar.mbtx
       - .github/workflows/sidecars.yml
   workflow_dispatch:
 
@@ -70,23 +70,23 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: dist
+      - name: Install MoonBit
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+          echo "MOON_HOME=$HOME/.moon" >> "$GITHUB_ENV"
       - name: Regenerate the embedded table
         run: |
+          moon update
           args=()
           for dir in dist/sidecar-*; do
             key=${dir#dist/sidecar-}
             file=$(ls "$dir" | head -n 1)
             args+=("$key=$dir/$file")
           done
-          python3 scripts/embed_sidecar.py "${args[@]}" > internal/sidecar/sidecars.generated.mbt
-      - name: Install MoonBit
-        run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
-          echo "MOON_HOME=$HOME/.moon" >> "$GITHUB_ENV"
+          moon run --target native scripts/embed_sidecar.mbtx -- "${args[@]}"
       - name: Check the generated file compiles
         run: |
-          moon update
           moon check --target native --deny-warn
           moon check --target wasm --deny-warn
       - name: Commit and push
