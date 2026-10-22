@@ -74,6 +74,7 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
+          ssh-key: ${{ secrets.SIDECARS_DEPLOY_KEY }}
       - name: Make sure main still has the sources these binaries came from
         run: |
           if ! git diff --quiet ${{ github.sha }} HEAD -- sidecar scripts/ci_sidecars.mbtx; then
