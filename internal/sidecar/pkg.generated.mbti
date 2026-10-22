@@ -14,7 +14,7 @@ pub async fn open() -> Sidecar
 pub async fn spawn(String, env? : Map[String, String]) -> Sidecar
 
 // Errors
-pub(all) suberror ProtocolError {
+pub suberror ProtocolError {
   ProtocolError(String)
 } derive(@debug.Debug)
 pub fn ProtocolError::to_repr(Self) -> @debug.Repr
@@ -22,7 +22,7 @@ pub fn ProtocolError::to_repr(Self) -> @debug.Repr
 pub suberror Resized derive(@debug.Debug)
 pub fn Resized::to_repr(Self) -> @debug.Repr
 
-pub(all) suberror SidecarError {
+pub suberror SidecarError {
   SidecarError(String)
 } derive(@debug.Debug)
 pub fn SidecarError::to_repr(Self) -> @debug.Repr

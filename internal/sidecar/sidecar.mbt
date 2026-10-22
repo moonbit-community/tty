@@ -9,7 +9,7 @@ pub extend Resized with @debug.Debug::{to_repr}
 
 ///|
 /// The sidecar reported an error of its own.
-pub(all) suberror SidecarError {
+pub suberror SidecarError {
   SidecarError(String)
 } derive(Debug)
 
@@ -17,8 +17,9 @@ pub(all) suberror SidecarError {
 pub extend SidecarError with @debug.Debug::{to_repr}
 
 ///|
-/// A running sidecar process. Reading from it yields terminal input bytes;
-/// writing to it writes to the terminal.
+/// A running sidecar process. Reading from it yields the terminal input,
+/// VT bytes or raw console records depending on `input_kind`; writing to it
+/// writes to the terminal.
 #warnings("-14")
 struct Sidecar {
   pid : Int32
@@ -103,16 +104,15 @@ pub fn Sidecar::is_raw(self : Sidecar) -> Bool {
 }
 
 ///|
-/// Whether input arrives as VT bytes (read through `@io.Reader`) or as
-/// console records (read through `read_frame`).
+/// Whether the bytes read through `@io.Reader` are VT input or raw console
+/// records of a fixed size.
 pub fn Sidecar::input_kind(self : Sidecar) -> InputKind {
   self.kind
 }
 
 ///|
 /// Next frame from the sidecar with the size bookkeeping applied, `None`
-/// once it has exited. Callers that read bytes through `@io.Reader` must
-/// not mix in calls to this.
+/// once it has exited. Not to be mixed with reads through `@io.Reader`.
 pub async fn Sidecar::read_frame(self : Sidecar) -> Frame? {
   let frame = self.conn.read_frame()
   if frame is Some(Resize(rows~, cols~)) {
@@ -161,10 +161,8 @@ pub impl @async/io.Reader for Sidecar with fn _direct_read(
   while self.pending.length() == 0 {
     guard self.read_frame() is Some(frame) else { return 0 }
     match frame {
-      Input(bytes) => self.pending = bytes[:]
+      Input(bytes) | Record(bytes) => self.pending = bytes[:]
       Resize(..) => raise Resized
-      Record(_) =>
-        raise ProtocolError("console record on a byte stream sidecar")
       Error(message) => raise SidecarError(message)
       Hello(..) => ()
     }

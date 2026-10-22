@@ -45,7 +45,7 @@ fn win32_test_mouse_record(
 
 ///|
 fn win32_test_event_reader() -> EventReader {
-  EventReader::new(() => None)
+  EventReader::new(@internal_io.ByteQueue::new())
 }
 
 ///|

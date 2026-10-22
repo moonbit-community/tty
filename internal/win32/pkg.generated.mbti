@@ -2,6 +2,7 @@
 package "moonbit-community/tty/internal/win32"
 
 import {
+  "moonbitlang/async/io",
   "moonbitlang/core/ref",
 }
 
@@ -64,7 +65,7 @@ pub fn Event::not_equal(Self, Self) -> Bool
 
 type EventReader
 pub fn EventReader::close(Self) -> Unit
-pub fn EventReader::new(async () -> SourceEvent?) -> Self
+pub fn EventReader::new(&@io.Reader) -> Self
 pub async fn EventReader::read_event(Self, esc_timeout_ms? : Int32) -> Event?
 pub async fn EventReader::read_internal_event(Self, esc_timeout_ms? : Int32) -> @moonbit-community/tty/internal/input.Event
 
@@ -106,11 +107,6 @@ pub struct MouseRecord {
   event_flags : Int32
 }
 pub fn MouseRecord::new(x? : Int32, y? : Int32, button_state? : Int32, control_key_state? : Int32, event_flags? : Int32) -> Self
-
-pub(all) enum SourceEvent {
-  Record(InputRecord)
-  Resize
-}
 
 // Type aliases
 

@@ -32,7 +32,7 @@ pub extend Frame with @debug.Debug::{to_repr}
 
 ///|
 /// The sidecar sent something we cannot make sense of.
-pub(all) suberror ProtocolError {
+pub suberror ProtocolError {
   ProtocolError(String)
 } derive(Debug)
 

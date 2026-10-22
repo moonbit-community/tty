@@ -5,16 +5,17 @@ pub(all) enum Event {
 } derive(Eq)
 
 ///|
-/// What the console record source hands out: the sidecar forwards raw
-/// `INPUT_RECORD`s and turns window size events into `Resize`.
-pub(all) enum SourceEvent {
-  Record(InputRecord)
-  Resize
-}
+/// Size of a raw `INPUT_RECORD`: a 16-bit event type, padding, and a
+/// 16-byte event union.
+const INPUT_RECORD_SIZE : Int32 = 20
 
 ///|
+/// Decodes console input read as a stream of raw `INPUT_RECORD`s, each
+/// `INPUT_RECORD_SIZE` bytes, from `reader`. Window resizes do not travel in
+/// that stream: the tty sidecar reports them out of band by interrupting the
+/// read, see `internal/sidecar`.
 struct EventReader {
-  source : async () -> SourceEvent?
+  reader : &@async/io.Reader
   byte_queue : @internal_io.ByteQueue
   decoder : @input.EventReader
   events : @async.Queue[Event]
@@ -23,10 +24,10 @@ struct EventReader {
 }
 
 ///|
-pub fn EventReader::new(source : async () -> SourceEvent?) -> EventReader {
+pub fn EventReader::new(reader : &@async/io.Reader) -> EventReader {
   let byte_queue = @internal_io.ByteQueue::new()
   {
-    source,
+    reader,
     byte_queue,
     decoder: @input.EventReader::new(byte_queue as &@async/io.Reader),
     events: Queue(kind=Unbounded),
@@ -99,16 +100,32 @@ async fn EventReader::read_decoded_input_event(
 
 ///|
 async fn EventReader::read_records(self : EventReader) -> Unit {
-  while (self.source)() is Some(event) {
-    match event {
-      Record(record) => self.read_record(record)
-      Resize => {
-        self.pending_surrogate.val = 0
-        queue_event(self.events, Resize)
-      }
-    }
+  while self.read_raw_record() is Some(record) {
+    self.read_record(InputRecord::parse(record))
   }
   self.events.close()
+}
+
+///|
+/// One whole raw record, or `None` at a clean end of the stream.
+async fn EventReader::read_raw_record(self : EventReader) -> Bytes? {
+  let buf = FixedArray::make(INPUT_RECORD_SIZE, b'\x00')
+  let mut filled = 0
+  while filled < INPUT_RECORD_SIZE {
+    let n = self.reader.read(
+      buf,
+      offset=filled,
+      max_len=INPUT_RECORD_SIZE - filled,
+    )
+    if n == 0 {
+      if filled == 0 {
+        return None
+      }
+      fail("console input closed in the middle of a record")
+    }
+    filled += n
+  }
+  Some(Bytes::from_array(buf[:]))
 }
 
 ///|

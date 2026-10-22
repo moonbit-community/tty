@@ -77,8 +77,7 @@ pub async fn Tty::open() -> Tty {
   let sidecar = @sidecar.open()
   let decoder = match sidecar.input_kind() {
     Bytes => Bytes(@input.EventReader::new(sidecar as &@async/io.Reader))
-    Records =>
-      Console(@win32.EventReader::new(() => read_console_source(sidecar)))
+    Records => Console(@win32.EventReader::new(sidecar as &@async/io.Reader))
   }
   {
     input: sidecar,
@@ -88,22 +87,6 @@ pub async fn Tty::open() -> Tty {
     write_lock: @lock.Lock::new(),
     sidecar: Some(sidecar),
     resize_pending: false,
-  }
-}
-
-///|
-/// Console records and resizes from a Windows sidecar.
-async fn read_console_source(sidecar : @sidecar.Sidecar) -> @win32.SourceEvent? {
-  for ;; {
-    guard sidecar.read_frame() is Some(frame) else { return None }
-    match frame {
-      Record(bytes) => return Some(Record(@win32.InputRecord::parse(bytes)))
-      Resize(..) => return Some(Resize)
-      Input(_) =>
-        raise @sidecar.ProtocolError("byte input from a console sidecar")
-      Error(message) => raise @sidecar.SidecarError(message)
-      Hello(..) => ()
-    }
   }
 }
 
@@ -137,21 +120,26 @@ pub async fn Tty::read_event(
       self.resize_pending = false
       return Resize(self.window_size())
     }
-    match self.decoder {
-      Bytes(reader) =>
-        try read_decoded_input_event(reader, esc_timeout_ms) catch {
-          @sidecar.Resized => self.resize_pending = true
-          error => raise error
-        } noraise {
-          event => return event
-        }
-      Console(reader) =>
-        match reader.read_event(esc_timeout_ms~) {
-          Some(Input(event)) => return Input(event)
-          Some(Resize) => return Resize(self.window_size())
-          None => fail("console input closed")
-        }
+    try self.decode_event(esc_timeout_ms) catch {
+      @sidecar.Resized => self.resize_pending = true
+      error => raise error
+    } noraise {
+      event => return event
     }
+  }
+}
+
+///|
+/// One user input event from whichever decoder this handle has.
+async fn Tty::decode_event(self : Self, esc_timeout_ms : Int32) -> Event {
+  match self.decoder {
+    Bytes(reader) => read_decoded_input_event(reader, esc_timeout_ms)
+    Console(reader) =>
+      match reader.read_event(esc_timeout_ms~) {
+        Some(Input(event)) => Input(event)
+        Some(Resize) => Resize(self.window_size())
+        None => fail("console input closed")
+      }
   }
 }
 
@@ -178,16 +166,23 @@ async fn Tty::read_internal_event(
   self : Self,
   esc_timeout_ms~ : Int32 = 50,
 ) -> @input.Event {
+  for ;; {
+    try self.decode_internal_event(esc_timeout_ms) catch {
+      @sidecar.Resized => self.resize_pending = true
+      error => raise error
+    } noraise {
+      event => return event
+    }
+  }
+}
+
+///|
+async fn Tty::decode_internal_event(
+  self : Self,
+  esc_timeout_ms : Int32,
+) -> @input.Event {
   match self.decoder {
-    Bytes(reader) =>
-      for ;; {
-        try reader.read_event(esc_timeout_ms~) catch {
-          @sidecar.Resized => self.resize_pending = true
-          error => raise error
-        } noraise {
-          event => return event
-        }
-      }
+    Bytes(reader) => reader.read_event(esc_timeout_ms~)
     Console(reader) => reader.read_internal_event(esc_timeout_ms~)
   }
 }
