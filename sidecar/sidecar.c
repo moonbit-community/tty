@@ -370,7 +370,9 @@ static int set_raw(int on) {
 
 int main(void) {
   tty_fd = open("/dev/tty", O_RDWR | O_NOCTTY | O_CLOEXEC);
-  if (tty_fd < 0) { report_failure("open /dev/tty"); return 1; }
+  // Frames are only queued until the main loop flushes them, and stdout is
+  // still blocking here, so flush the error before exiting.
+  if (tty_fd < 0) { report_failure("open /dev/tty"); flush_out(); return 1; }
   signal(SIGPIPE, SIG_IGN);
   // Restoring the terminal from a background process group (the shell took
   // the foreground back after the parent died) must not stop us.

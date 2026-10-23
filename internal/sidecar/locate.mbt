@@ -50,7 +50,10 @@ pub async fn open() -> Sidecar {
     )
   }
   let dir = @async/fs.tmpdir(prefix="tty-sidecar")
-  errdefer @async/fs.rmdir(dir, recursive=true)
+  // A `spawn` that fails after starting the process has already removed
+  // the directory while reaping it; a second removal must not replace the
+  // error `spawn` raised.
+  errdefer remove_temp_dir(dir)
   // Windows runs executables by suffix, forbids `chmod`, and keeps a
   // running image locked, which is why the directory outlives `spawn` and
   // is removed by `Sidecar::wait`.
