@@ -244,11 +244,7 @@ pub impl @async/io.Reader for Sidecar with fn _direct_read(
       Hello(..) => ()
     }
   }
-  let n = if max_len < self.pending.length() {
-    max_len
-  } else {
-    self.pending.length()
-  }
+  let n = max_len.min(self.pending.length())
   buf.blit_from_bytesview(offset, self.pending[:n])
   self.pending = self.pending[n:]
   n
@@ -274,7 +270,7 @@ pub impl @async/io.Writer for Sidecar with fn write_once(
   len~,
 ) {
   // One frame per call; the default `write` loops over the rest.
-  let len = if len > MAX_WRITE { MAX_WRITE } else { len }
+  let len = len.min(MAX_WRITE)
   self.conn.write(buf[offset:offset + len])
   len
 }
