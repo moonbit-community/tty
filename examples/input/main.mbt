@@ -219,11 +219,7 @@ fn describe_mouse(mouse : @tty/input.MouseEvent) -> String {
 
 ///|
 fn string_char_count(text : String) -> Int32 {
-  let mut count = 0
-  for _ in text {
-    count += 1
-  }
-  count
+  text.char_length()
 }
 
 ///|
