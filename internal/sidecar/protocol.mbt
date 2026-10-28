@@ -108,9 +108,7 @@ pub fn Connection::new(
 async fn Connection::fill(self : Connection, needed : Int32) -> Bool {
   if self.buf.length() < needed {
     let grown = FixedArray::make(needed, b'\x00')
-    for i in 0..<self.len {
-      grown[i] = self.buf[i]
-    }
+    self.buf.blit_to(grown, len=self.len)
     self.buf = grown
   }
   while self.len < needed {
@@ -133,9 +131,7 @@ async fn Connection::fill(self : Connection, needed : Int32) -> Bool {
 ///|
 /// Drop the first `count` buffered bytes.
 fn Connection::consume(self : Connection, count : Int32) -> Unit {
-  for i in count..<self.len {
-    self.buf[i - count] = self.buf[i]
-  }
+  self.buf.blit_to(self.buf, len=self.len - count, src_offset=count)
   self.len -= count
 }
 
