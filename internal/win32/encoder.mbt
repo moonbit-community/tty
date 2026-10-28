@@ -103,11 +103,7 @@ fn RecordEncoder::encode_key(
   out : @buffer.Buffer,
 ) -> Unit {
   guard record.key_down != 0 else { return }
-  let repeat_count = if record.repeat_count > 0 {
-    record.repeat_count
-  } else {
-    1
-  }
+  let repeat_count = record.repeat_count.max(1)
   if record.virtual_key_code == 0 {
     // Records without a virtual key carry synthesized text: conhost's VT input
     // translation or IME output.
@@ -207,10 +203,7 @@ fn RecordEncoder::mouse_report(
         None
       }
     MouseMoved =>
-      match sgr_button(buttons) {
-        Some(button) => Some((SgrMotion | button, false))
-        None => Some((SgrMotion | SgrNoButton, false))
-      }
+      Some((SgrMotion | sgr_button(buttons).unwrap_or(SgrNoButton), false))
     MouseDoubleClick => sgr_button(buttons).map(button => (button, false))
     MouseWheeled =>
       match signed_high_word(record.button_state) {
