@@ -14,10 +14,8 @@ pub fn[T : Fd] isatty(fd : T) -> Bool raise {
   if rc < 0 {
     @os_error.check_errno("isatty")
     false
-  } else if rc == 0 {
-    false
   } else {
-    true
+    rc > 0
   }
 }
 

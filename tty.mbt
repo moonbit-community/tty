@@ -204,23 +204,19 @@ pub async fn Tty::query_kitty_keyboard_support(
   self : Self,
   timeout_ms~ : Int32 = 50,
 ) -> Bool {
-  match
-    @async.with_timeout_opt(timeout_ms, () => {
-      self.write(@vt.query_keyboard_enhancement_flags)
-      self.write(@vt.request_primary_device_attributes)
-      for ;; {
-        match self.read_internal_event() {
-          KeyboardEnhancementFlags(_) => return true
-          PrimaryDeviceAttributes(_) => return false
-          CursorPosition(..) => ()
-          DynamicColor(..) => ()
-          Input(event) => self.pending_input.push(event)
-        }
+  @async.with_timeout_opt(timeout_ms, () => {
+    self.write(@vt.query_keyboard_enhancement_flags)
+    self.write(@vt.request_primary_device_attributes)
+    for ;; {
+      match self.read_internal_event() {
+        KeyboardEnhancementFlags(_) => return true
+        PrimaryDeviceAttributes(_) => return false
+        CursorPosition(..) => ()
+        DynamicColor(..) => ()
+        Input(event) => self.pending_input.push(event)
       }
-    }) {
-    Some(supported) => supported
-    None => false
-  }
+    }
+  }).unwrap_or(false)
 }
 
 ///|
