@@ -131,67 +131,21 @@ fn key_event_from_parts(
   shifted_code : @public_input.KeyCode?,
   base_code : @public_input.KeyCode?,
 ) -> @public_input.KeyEvent {
-  match (text, shifted_code, base_code) {
-    (Some(text), Some(shifted_code), Some(base_code)) =>
-      @public_input.KeyEvent::new(
-        code,
-        modifiers~,
-        kind~,
-        state~,
-        text~,
-        shifted_code~,
-        base_code~,
-      )
-    (Some(text), Some(shifted_code), None) =>
-      @public_input.KeyEvent::new(
-        code,
-        modifiers~,
-        kind~,
-        state~,
-        text~,
-        shifted_code~,
-      )
-    (Some(text), None, Some(base_code)) =>
-      @public_input.KeyEvent::new(
-        code,
-        modifiers~,
-        kind~,
-        state~,
-        text~,
-        base_code~,
-      )
-    (Some(text), None, None) =>
-      @public_input.KeyEvent::new(code, modifiers~, kind~, state~, text~)
-    (None, Some(shifted_code), Some(base_code)) =>
-      @public_input.KeyEvent::new(
-        code,
-        modifiers~,
-        kind~,
-        state~,
-        shifted_code~,
-        base_code~,
-      )
-    (None, Some(shifted_code), None) =>
-      @public_input.KeyEvent::new(
-        code,
-        modifiers~,
-        kind~,
-        state~,
-        shifted_code~,
-      )
-    (None, None, Some(base_code)) =>
-      @public_input.KeyEvent::new(code, modifiers~, kind~, state~, base_code~)
-    (None, None, None) =>
-      @public_input.KeyEvent::new(code, modifiers~, kind~, state~)
-  }
+  @public_input.KeyEvent::new(
+    code,
+    modifiers~,
+    kind~,
+    state~,
+    text?,
+    shifted_code?,
+    base_code?,
+  )
 }
 
 ///|
 pub fn parse_key(params : Array[Array[Int32?]]) -> @public_input.KeyEvent? {
   guard parse_key_fields(params) is Some(fields) else { return None }
-  guard fields.key_codes.length() > 0 && fields.key_codes.length() <= 3 else {
-    return None
-  }
+  guard fields.key_codes.length() <= 3 else { return None }
   guard fields.key_codes is [Some(codepoint), ..] else { return None }
   guard key_code_from_codepoint(codepoint) is Some(parsed_code) else {
     return None
@@ -217,9 +171,8 @@ pub fn parse_key(params : Array[Array[Int32?]]) -> @public_input.KeyEvent? {
     OptionalKeyCode(code) => code
     InvalidOptionalKeyCode => return None
   }
-  match shifted_code {
-    Some(_) if !modifiers.shift() => return None
-    _ => ()
+  if shifted_code is Some(_) && !modifiers.shift() {
+    return None
   }
   let associated_text = match fields.associated_text {
     Some(associated_text) =>
@@ -229,9 +182,8 @@ pub fn parse_key(params : Array[Array[Int32?]]) -> @public_input.KeyEvent? {
       }
     None => default_key_text(parsed_code.code, modifiers, shifted_code)
   }
-  match (parsed_code.code, associated_text) {
-    (Text, None) => return None
-    _ => ()
+  if parsed_code.code is Text && associated_text is None {
+    return None
   }
   Some(
     key_event_from_parts(
