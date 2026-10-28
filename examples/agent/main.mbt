@@ -110,7 +110,7 @@ fn grapheme_slice(text : String, start : Int32, end : Int32) -> String {
 
 ///|
 fn is_newline_grapheme(grapheme : StringView) -> Bool {
-  grapheme.to_owned() == "\n"
+  grapheme == "\n"
 }
 
 ///|
@@ -125,12 +125,7 @@ fn line_display_width(lines : Array[String], line : Int32) -> Int32 {
 
 ///|
 fn max_view_start(text : String) -> Int32 {
-  let value = line_count(text) - input_text_rows
-  if value < 0 {
-    0
-  } else {
-    value
-  }
+  (line_count(text) - input_text_rows).max(0)
 }
 
 ///|
@@ -420,14 +415,11 @@ fn input_prefix(
 
 ///|
 fn editor_cursor_row(editor : Editor) -> Int32 {
-  let row = editor.cursor_point().line - editor.view_start
-  if row < 0 {
-    0
-  } else if row >= input_text_rows {
-    input_text_rows - 1
-  } else {
-    row
-  }
+  clamp_int(
+    editor.cursor_point().line - editor.view_start,
+    0,
+    input_text_rows - 1,
+  )
 }
 
 ///|
@@ -448,22 +440,12 @@ fn input_cursor_offset(editor : Editor, cols : Int32) -> Int32 {
 
 ///|
 fn viewport_top_from_cursor(row : Int32, editor : Editor) -> Int32 {
-  let top = row - editor_cursor_row(editor) - 1
-  if top < 1 {
-    1
-  } else {
-    top
-  }
+  (row - editor_cursor_row(editor) - 1).max(1)
 }
 
 ///|
 fn max_viewport_top(size : AgentSize) -> Int32 {
-  let top = size.rows - composer_rows + 1
-  if top < 1 {
-    1
-  } else {
-    top
-  }
+  (size.rows - composer_rows + 1).max(1)
 }
 
 ///|
@@ -474,15 +456,6 @@ fn clamp_viewport_top(top : Int32, size : AgentSize) -> Int32 {
 ///|
 fn viewport_bottom(top : Int32) -> Int32 {
   top + composer_rows - 1
-}
-
-///|
-fn min_int(a : Int32, b : Int32) -> Int32 {
-  if a < b {
-    a
-  } else {
-    b
-  }
 }
 
 ///|
@@ -854,7 +827,7 @@ async fn shift_viewport_down_for_insert(
   size : AgentSize,
 ) -> Int32 {
   let space = size.rows - viewport_bottom(top)
-  let shift = min_int(lines, if space < 0 { 0 } else { space })
+  let shift = lines.min(space.max(0))
   if shift <= 0 {
     top
   } else {
@@ -1019,10 +992,7 @@ fn text_from_key(key : @tty/input.KeyEvent) -> String? {
   match key.code {
     Text => key.text
     Char(ch) if !key.modifiers.ctrl() && !key.modifiers.alt() =>
-      match key.text {
-        Some(text) => Some(text)
-        None => Some([ch])
-      }
+      Some(key.text.unwrap_or([ch]))
     _ => None
   }
 }
