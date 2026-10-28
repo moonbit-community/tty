@@ -57,8 +57,8 @@ async fn build_sidecar() -> Unit {
     @process.collect_output_merged("cl", [
       "/nologo",
       "/O2",
-      "/Fe:" + sidecar_path(),
-      "/Fo:" + tests_path("_build") + "\\",
+      "/Fe:\{sidecar_path()}",
+      "/Fo:\{tests_path("_build")}\\",
       tests_path("../sidecar/sidecar.c"),
     ])
   } else {
