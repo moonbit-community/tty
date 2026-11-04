@@ -1,9 +1,10 @@
 ///|
 /// Terminal window size in rows and columns.
+#derive(Eq, Debug)
 pub struct WindowSize {
   rows : Int32
   cols : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 /// The visible terminal window size, as last reported by the sidecar.

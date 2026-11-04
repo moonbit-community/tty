@@ -1,6 +1,7 @@
 ///|
 /// Frame protocol spoken with `sidecar/sidecar.c`, see `sidecar/README.md`.
 /// Every frame is `tag:u8 len:u32le payload`.
+#derive(Eq, Debug)
 pub(all) enum Frame {
   Hello(version~ : Int32, rows~ : Int32, cols~ : Int32)
   /// Terminal input as VT bytes (Unix sidecar).
@@ -10,7 +11,7 @@ pub(all) enum Frame {
   Record(Bytes)
   Resize(rows~ : Int32, cols~ : Int32)
   Error(String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Frame with Eq::{equal, not_equal}
@@ -20,9 +21,10 @@ pub extend Frame with @debug.Debug::{to_repr}
 
 ///|
 /// The sidecar sent something we cannot make sense of.
+#derive(Debug)
 pub suberror ProtocolError {
   ProtocolError(String)
-} derive(Debug)
+}
 
 ///|
 pub extend ProtocolError with @debug.Debug::{to_repr}
