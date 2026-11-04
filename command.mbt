@@ -3,6 +3,7 @@
 ///
 /// A `Command` is inert data. It only writes bytes when passed to
 /// `Tty::execute`.
+#derive(Eq, Debug)
 pub(all) enum Command {
   Print(StringView)
   SetClipboard(StringView)
@@ -51,7 +52,7 @@ pub(all) enum Command {
   SetReverse
   ResetReverse
   ResetStyle
-} derive(Eq, Debug)
+}
 
 ///|
 fn Command::write_to(self : Command, buf : @buffer.Buffer) -> Unit {

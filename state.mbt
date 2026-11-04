@@ -50,6 +50,6 @@ pub async fn[T] Tty::with_raw_mode(self : Self, f : async () -> T) -> T {
 ///|
 /// Restoring the terminal must happen even while the task is being
 /// cancelled, so the sidecar command is sent under `protect_from_cancel`.
-async fn Tty::restore_raw_mode(self : Self, state : State) -> Unit {
+async fn Tty::restore_raw_mode(self : Self, state : State) -> Unit nocancel {
   @async.protect_from_cancel(() => self.leave_raw_mode(state))
 }
