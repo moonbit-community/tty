@@ -2,7 +2,7 @@
 /// Cursor Up (CUU), ECMA-48.
 pub fn write_cursor_up(buf : @buffer.Buffer, n : Int32) -> Unit {
   if n <= 1 {
-    buf.write_bytes(b"\x1b[A")
+    buf.write_bytesview(b"\x1b[A")
   } else {
     write_csi1(buf, n, b'A')
   }
@@ -38,7 +38,7 @@ pub let restore_cursor : Bytes = b"\x1b8"
 /// Cursor Down (CUD), ECMA-48.
 pub fn write_cursor_down(buf : @buffer.Buffer, n : Int32) -> Unit {
   if n <= 1 {
-    buf.write_bytes(b"\x1b[B")
+    buf.write_bytesview(b"\x1b[B")
   } else {
     write_csi1(buf, n, b'B')
   }
@@ -58,7 +58,7 @@ pub fn cursor_down(n : Int32) -> Bytes {
 /// Cursor Forward (CUF), ECMA-48.
 pub fn write_cursor_forward(buf : @buffer.Buffer, n : Int32) -> Unit {
   if n <= 1 {
-    buf.write_bytes(b"\x1b[C")
+    buf.write_bytesview(b"\x1b[C")
   } else {
     write_csi1(buf, n, b'C')
   }
@@ -78,7 +78,7 @@ pub fn cursor_forward(n : Int32) -> Bytes {
 /// Cursor Backward (CUB), ECMA-48.
 pub fn write_cursor_back(buf : @buffer.Buffer, n : Int32) -> Unit {
   if n <= 1 {
-    buf.write_bytes(b"\x1b[D")
+    buf.write_bytesview(b"\x1b[D")
   } else {
     write_csi1(buf, n, b'D')
   }
@@ -98,7 +98,7 @@ pub fn cursor_back(n : Int32) -> Bytes {
 /// Cursor Next Line (CNL), ECMA-48.
 pub fn write_cursor_next_line(buf : @buffer.Buffer, n : Int32) -> Unit {
   if n <= 1 {
-    buf.write_bytes(b"\x1b[E")
+    buf.write_bytesview(b"\x1b[E")
   } else {
     write_csi1(buf, n, b'E')
   }
@@ -118,7 +118,7 @@ pub fn cursor_next_line(n : Int32) -> Bytes {
 /// Cursor Previous Line (CPL), ECMA-48.
 pub fn write_cursor_prev_line(buf : @buffer.Buffer, n : Int32) -> Unit {
   if n <= 1 {
-    buf.write_bytes(b"\x1b[F")
+    buf.write_bytesview(b"\x1b[F")
   } else {
     write_csi1(buf, n, b'F')
   }
@@ -141,7 +141,7 @@ pub fn write_cursor_horizontal_absolute(
   n : Int32,
 ) -> Unit {
   if n <= 1 {
-    buf.write_bytes(b"\x1b[G")
+    buf.write_bytesview(b"\x1b[G")
   } else {
     write_csi1(buf, n, b'G')
   }
@@ -169,7 +169,7 @@ pub fn write_cursor_position(
   let row = if row <= 1 { 1 } else { row }
   let col = if col <= 1 { 1 } else { col }
   if row == 1 && col == 1 {
-    buf.write_bytes(b"\x1b[H")
+    buf.write_bytesview(b"\x1b[H")
   } else {
     write_csi2(buf, row, col, b'H')
   }

@@ -16,7 +16,7 @@ test "set clipboard sequence with empty text has an empty payload" {
 ///|
 test "write set clipboard appends to the buffer" {
   let buf = @buffer.Buffer()
-  buf.write_bytes(b"x")
+  buf.write_bytesview(b"x")
   @vt.write_set_clipboard(buf, "hello")
   @debug.assert_eq(buf.to_bytes(), b"x\x1b]52;c;aGVsbG8=\x1b\\")
 }
