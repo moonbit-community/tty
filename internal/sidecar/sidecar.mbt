@@ -2,16 +2,18 @@
 /// Raised out of a byte read when the sidecar reports a window resize
 /// instead of input. The size is already updated when this is raised; the
 /// read can simply be retried.
-pub suberror Resized derive(Debug)
+#derive(Debug)
+pub suberror Resized
 
 ///|
 pub extend Resized with @debug.Debug::{to_repr}
 
 ///|
 /// The sidecar reported an error of its own.
+#derive(Debug)
 pub suberror SidecarError {
   SidecarError(String)
-} derive(Debug)
+}
 
 ///|
 pub extend SidecarError with @debug.Debug::{to_repr}
@@ -156,7 +158,7 @@ pub fn Sidecar::close(self : Sidecar) -> Unit {
 /// Reap the sidecar process after `close` and remove its temporary
 /// directory. Safe to call more than once. Reaping is not cancellable: a
 /// cancelled first call would leave a zombie.
-pub async fn Sidecar::wait(self : Sidecar) -> Unit {
+pub async fn Sidecar::wait(self : Sidecar) -> Unit nocancel {
   if self.reaped {
     return
   }

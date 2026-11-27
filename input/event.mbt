@@ -3,6 +3,7 @@
 ///
 /// Unsupported, malformed, invalid UTF-8, or unclosed sequences are preserved
 /// as `Unknown` bytes instead of becoming decoder errors.
+#derive(Eq, Debug)
 pub(all) enum InputEvent {
   Key(KeyEvent)
   Mouse(MouseEvent)
@@ -10,7 +11,7 @@ pub(all) enum InputEvent {
   FocusIn
   FocusOut
   Unknown(Bytes)
-} derive(Eq, Debug)
+}
 
 ///|
 /// Decoded key event.
@@ -21,6 +22,7 @@ pub(all) enum InputEvent {
 /// `shifted_code` and `base_code` are available when kitty keyboard protocol
 /// alternate key reports are enabled. `shifted_code` is the shifted key in the
 /// active layout; `base_code` is the key in a standard PC-101 layout.
+#derive(Eq, Debug)
 pub struct KeyEvent {
   code : KeyCode
   modifiers : KeyModifiers
@@ -29,7 +31,7 @@ pub struct KeyEvent {
   text : String?
   shifted_code : KeyCode?
   base_code : KeyCode?
-} derive(Eq, Debug)
+}
 
 ///|
 /// Construct a key event.
@@ -47,14 +49,16 @@ pub fn KeyEvent::new(
 
 ///|
 /// Keyboard event action.
+#derive(Eq, Debug)
 pub(all) enum KeyEventKind {
   Press
   Repeat
   Release
-} derive(Eq, Debug)
+}
 
 ///|
 /// Logical key code decoded from terminal input.
+#derive(Eq, Debug)
 pub(all) enum KeyCode {
   Char(Char)
   Text
@@ -134,10 +138,11 @@ pub(all) enum KeyCode {
   KeypadSeparator
   Media(MediaKeyCode)
   Modifier(ModifierKeyCode)
-} derive(Eq, Debug)
+}
 
 ///|
 /// Media key decoded from kitty keyboard functional key reports.
+#derive(Eq, Debug)
 pub(all) enum MediaKeyCode {
   Play
   Pause
@@ -152,10 +157,11 @@ pub(all) enum MediaKeyCode {
   LowerVolume
   RaiseVolume
   MuteVolume
-} derive(Eq, Debug)
+}
 
 ///|
 /// Modifier key decoded from kitty keyboard functional key reports.
+#derive(Eq, Debug)
 pub(all) enum ModifierKeyCode {
   LeftShift
   LeftControl
@@ -171,15 +177,17 @@ pub(all) enum ModifierKeyCode {
   RightMeta
   IsoLevel3Shift
   IsoLevel5Shift
-} derive(Eq, Debug)
+}
 
 ///|
 /// Opaque set of key modifiers.
-struct KeyModifiers(Int32) derive(Eq, Debug)
+#derive(Eq, Debug)
+struct KeyModifiers(Int32)
 
 ///|
 /// Opaque set of keyboard event state flags.
-struct KeyEventState(Int32) derive(Eq, Debug)
+#derive(Eq, Debug)
+struct KeyEventState(Int32)
 
 ///|
 /// Construct a modifier set.
@@ -291,12 +299,13 @@ pub fn KeyEventState::num_lock(self : KeyEventState) -> Bool {
 /// Decoded mouse event.
 ///
 /// Rows and columns are 1-based terminal cell coordinates.
+#derive(Eq, Debug)
 pub struct MouseEvent {
   kind : MouseEventKind
   row : Int32
   col : Int32
   modifiers : KeyModifiers
-} derive(Eq, Debug)
+}
 
 ///|
 /// Construct a mouse event with optional key modifiers.
@@ -311,30 +320,33 @@ pub fn MouseEvent::new(
 
 ///|
 /// Mouse input action decoded from an SGR mouse report.
+#derive(Eq, Debug)
 pub(all) enum MouseEventKind {
   Press(MouseButton)
   Release(MouseButton)
   Drag(MouseButton)
   Move
   Scroll(MouseScroll)
-} derive(Eq, Debug)
+}
 
 ///|
 /// Supported mouse buttons.
+#derive(Eq, Debug)
 pub(all) enum MouseButton {
   Left
   Middle
   Right
-} derive(Eq, Debug)
+}
 
 ///|
 /// Supported mouse scroll directions.
+#derive(Eq, Debug)
 pub(all) enum MouseScroll {
   Up
   Down
   Left
   Right
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend InputEvent with Eq::{equal, not_equal}

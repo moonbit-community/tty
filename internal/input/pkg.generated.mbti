@@ -11,13 +11,14 @@ import {
 // Errors
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub(all) enum Event {
   Input(@moonbit-community/tty/input.InputEvent)
   CursorPosition(row~ : Int32, col~ : Int32)
   KeyboardEnhancementFlags(Int32)
   PrimaryDeviceAttributes(Bytes)
   DynamicColor(code~ : Int32, red~ : Int32, green~ : Int32, blue~ : Int32)
-} derive(Eq, @debug.Debug)
+}
 pub fn Event::equal(Self, Self) -> Bool
 pub fn Event::not_equal(Self, Self) -> Bool
 pub fn Event::to_repr(Self) -> @debug.Repr

@@ -118,7 +118,8 @@ const KeyboardReportAssociatedText : Int32 = 16
 
 ///|
 /// Kitty keyboard protocol progressive enhancement flags.
-struct KeyboardEnhancementFlags(Int32) derive(Eq, Debug)
+#derive(Eq, Debug)
+struct KeyboardEnhancementFlags(Int32)
 
 ///|
 /// Construct kitty keyboard protocol progressive enhancement flags.
@@ -247,11 +248,12 @@ pub async fn[T] Tty::with_kitty_keyboard(self : Self, f : async () -> T) -> T {
 
 ///|
 /// Mouse tracking scope for SGR mouse reports.
+#derive(Eq, Debug)
 pub(all) enum MouseTrackingMode {
   Click
   Drag
   Motion
-} derive(Eq, Debug)
+}
 
 ///|
 /// Enable SGR mouse tracking.

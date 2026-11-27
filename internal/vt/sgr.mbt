@@ -165,7 +165,7 @@ fn basic_background_code(color : @color.BasicColor) -> Int32 {
 /// Construct the SGR sequence for a foreground color command.
 pub fn write_set_foreground(buf : @buffer.Buffer, color : @color.Color) -> Unit {
   match color {
-    Default => buf.write_bytes(reset_foreground)
+    Default => buf.write_bytesview(reset_foreground)
     Basic(color) => write_sgr1(buf, basic_foreground_code(color))
     Indexed(index) => write_sgr3(buf, 38, 5, clamp_byte_value(index))
     Rgb(r, g, b) =>
@@ -193,7 +193,7 @@ pub fn set_foreground(color : @color.Color) -> Bytes {
 /// Construct the SGR sequence for a background color command.
 pub fn write_set_background(buf : @buffer.Buffer, color : @color.Color) -> Unit {
   match color {
-    Default => buf.write_bytes(reset_background)
+    Default => buf.write_bytesview(reset_background)
     Basic(color) => write_sgr1(buf, basic_background_code(color))
     Indexed(index) => write_sgr3(buf, 48, 5, clamp_byte_value(index))
     Rgb(r, g, b) =>

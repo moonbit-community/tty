@@ -87,7 +87,7 @@ fn RecordEncoder::encode_record(
     }
     Focus(focus_set) => {
       self.high_surrogate = None
-      out.write_bytes(if focus_set { b"\x1b[I" } else { b"\x1b[O" })
+      out.write_bytesview(if focus_set { b"\x1b[I" } else { b"\x1b[O" })
     }
     WindowBufferSize | Unsupported => self.high_surrogate = None
   }

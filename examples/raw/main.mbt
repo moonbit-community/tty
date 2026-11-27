@@ -46,7 +46,7 @@ async fn main {
   write_line(tty, "entering raw mode...")
   let state = tty.enter_raw_mode()
   {
-    defer tty.leave_raw_mode(state)
+    defer @async.protect_from_cancel(() => tty.leave_raw_mode(state))
     write_line(tty, "raw mode active")
     run_raw_loop(tty)
   }

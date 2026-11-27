@@ -1,5 +1,6 @@
 ///|
 /// ANSI basic and bright colors.
+#derive(Eq, Debug)
 pub(all) enum BasicColor {
   Black
   Red
@@ -17,26 +18,28 @@ pub(all) enum BasicColor {
   BrightMagenta
   BrightCyan
   BrightWhite
-} derive(Eq, Debug)
+}
 
 ///|
 /// 16-bit RGB color value.
 ///
 /// Components are expected to be in the range `0..65535`.
+#derive(Eq, Debug)
 pub(all) struct Rgb16 {
   red : Int32
   green : Int32
   blue : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 /// Terminal color value for foreground and background style sequences.
+#derive(Eq, Debug)
 pub(all) enum Color {
   Default
   Basic(BasicColor)
   Indexed(Int32)
   Rgb(Int32, Int32, Int32)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend BasicColor with Eq::{equal, not_equal}

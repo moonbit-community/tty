@@ -18,6 +18,7 @@ pub fn[T : Fd] isatty(T) -> Bool raise
 // Errors
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub(all) enum Command {
   Print(StringView)
   SetClipboard(StringView)
@@ -66,28 +67,31 @@ pub(all) enum Command {
   SetReverse
   ResetReverse
   ResetStyle
-} derive(Eq, @debug.Debug)
+}
 pub fn Command::equal(Self, Self) -> Bool
 pub fn Command::not_equal(Self, Self) -> Bool
 pub fn Command::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub struct CursorPosition {
   row : Int32
   col : Int32
-} derive(Eq, @debug.Debug)
+}
 pub fn CursorPosition::equal(Self, Self) -> Bool
 pub fn CursorPosition::not_equal(Self, Self) -> Bool
 pub fn CursorPosition::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum Event {
   Input(@input.InputEvent)
   Resize(WindowSize)
-} derive(Eq, @debug.Debug)
+}
 pub fn Event::equal(Self, Self) -> Bool
 pub fn Event::not_equal(Self, Self) -> Bool
 pub fn Event::to_repr(Self) -> @debug.Repr
 
-type KeyboardEnhancementFlags derive(Eq, @debug.Debug)
+#derive(Eq, @debug.Debug)
+type KeyboardEnhancementFlags
 pub fn KeyboardEnhancementFlags::bits(Self) -> Int32
 pub fn KeyboardEnhancementFlags::disambiguate() -> Self
 pub fn KeyboardEnhancementFlags::disambiguate_escape_codes(Self) -> Bool
@@ -101,11 +105,12 @@ pub fn KeyboardEnhancementFlags::report_associated_text(Self) -> Bool
 pub fn KeyboardEnhancementFlags::report_event_types(Self) -> Bool
 pub fn KeyboardEnhancementFlags::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum MouseTrackingMode {
   Click
   Drag
   Motion
-} derive(Eq, @debug.Debug)
+}
 pub fn MouseTrackingMode::equal(Self, Self) -> Bool
 pub fn MouseTrackingMode::not_equal(Self, Self) -> Bool
 pub fn MouseTrackingMode::to_repr(Self) -> @debug.Repr
@@ -114,7 +119,7 @@ type State
 
 type Tty
 pub async fn Tty::begin_synchronized_update(Self) -> Unit
-pub async fn Tty::close(Self) -> Unit
+pub async fn Tty::close(Self) -> Unit nocancel
 pub async fn Tty::cursor_back(Self, Int32) -> Unit
 pub async fn Tty::cursor_forward(Self, Int32) -> Unit
 pub async fn Tty::cursor_up(Self, Int32) -> Unit
@@ -185,10 +190,11 @@ pub async fn[T] Tty::with_top_bottom_margins(Self, Int32, Int32, async () -> T) 
 pub async fn Tty::write(Self, &@io.Data) -> Unit
 pub async fn Tty::write_string(Self, String) -> Unit
 
+#derive(Eq, @debug.Debug)
 pub struct WindowSize {
   rows : Int32
   cols : Int32
-} derive(Eq, @debug.Debug)
+}
 pub fn WindowSize::equal(Self, Self) -> Bool
 pub fn WindowSize::not_equal(Self, Self) -> Bool
 pub fn WindowSize::to_repr(Self) -> @debug.Repr

@@ -10,6 +10,7 @@ import {
 // Errors
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub(all) enum BasicColor {
   Black
   Red
@@ -27,26 +28,28 @@ pub(all) enum BasicColor {
   BrightMagenta
   BrightCyan
   BrightWhite
-} derive(Eq, @debug.Debug)
+}
 pub fn BasicColor::equal(Self, Self) -> Bool
 pub fn BasicColor::not_equal(Self, Self) -> Bool
 pub fn BasicColor::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum Color {
   Default
   Basic(BasicColor)
   Indexed(Int32)
   Rgb(Int32, Int32, Int32)
-} derive(Eq, @debug.Debug)
+}
 pub fn Color::equal(Self, Self) -> Bool
 pub fn Color::not_equal(Self, Self) -> Bool
 pub fn Color::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct Rgb16 {
   red : Int32
   green : Int32
   blue : Int32
-} derive(Eq, @debug.Debug)
+}
 pub fn Rgb16::equal(Self, Self) -> Bool
 pub fn Rgb16::not_equal(Self, Self) -> Bool
 pub fn Rgb16::to_repr(Self) -> @debug.Repr

@@ -20,7 +20,7 @@ fn bytes_from_buffer(
   size_hint : Int32,
   write : (@buffer.Buffer) -> Unit,
 ) -> Bytes {
-  let buf = @buffer.Buffer::Buffer(size_hint~)
+  let buf = @buffer.Buffer::Buffer(capacity=size_hint)
   write(buf)
   buf.to_bytes()
 }

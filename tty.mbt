@@ -2,17 +2,19 @@
 /// Cursor position reported by the terminal.
 ///
 /// Rows and columns are 1-based terminal coordinates.
+#derive(Eq, Debug)
 pub struct CursorPosition {
   row : Int32
   col : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 /// Terminal event reported by the coordinated root `Tty` handle.
+#derive(Eq, Debug)
 pub(all) enum Event {
   Input(@public_input.InputEvent)
   Resize(WindowSize)
-} derive(Eq, Debug)
+}
 
 ///|
 /// Coordinated terminal input/output handle.
@@ -83,7 +85,7 @@ pub async fn Tty::open() -> Tty {
 ///
 /// Closing stdio-backed handles is a no-op. For a handle from `Tty::open`
 /// this ends the sidecar, which restores the terminal, and reaps it.
-pub async fn Tty::close(self : Self) -> Unit {
+pub async fn Tty::close(self : Self) -> Unit nocancel {
   self.input.close()
   self.output.close()
   if self.sidecar is Some(sidecar) {
