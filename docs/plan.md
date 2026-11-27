@@ -72,6 +72,7 @@ This board tracks implementation direction for `moonbit-community/tty`. Use
 | DEP-2 | done | upgrade `moonbitlang/async` `0.22.4 -> 0.22.7` (latest published) in every module | `docs/plans/2026-11-04-async-0.22.7-upgrade.md`, all workspace `moon.mod` files | the workspace pins one async version again and stays source-compatible; `.mbti` unchanged, since the only interface delta is async's internal `Int` -> `Int32` rename | `moon fmt --check`, `moon check --deny-warn` (native and wasm), `moon test --deny-warn` (native and wasm), nested test-module checks, `moon info`, `git diff --check` |
 | TOOLCHAIN-2 | done | clear the deprecations the 2026-11-26 toolchain roll exposed: `Buffer::write_bytes` -> `write_bytesview`, `Buffer` `size_hint` -> `capacity`, and drop the four stale `moonbitlang/async` imports | `docs/plans/2026-11-27-deprecation-warning-cleanup.md`, `command.mbt`, `internal/vt/`, `internal/sidecar/`, `internal/win32/`, `tests/isatty_test.mbt`, `examples/*/moon.pkg`, `tests/{isatty,open}/moon.pkg` | `--deny-warn` is clean on native and wasm in every module, emitted bytes are unchanged, and `.mbti` stays untouched | `moon fmt --check`, `moon check --deny-warn` (native and wasm, root and nested modules), `moon test --deny-warn` (native and wasm), `moon info`, `git diff --check` |
 | CI-1 | done | run the pty tests against the embedded sidecars on all five `<os>-<arch>` runners | `docs/plans/2026-10-22-embedded-sidecar-ci.md`, `tests/isatty_test.mbt`, `.github/workflows/embedded-sidecars.yml` | `TTY_TEST_SIDECAR=embedded` makes the pty tests use the embedded executable; the `embedded sidecars` workflow passes on linux-x86_64, linux-arm64, macos-arm64, macos-x86_64 and windows-x86_64 after a table regeneration, on dispatch and on PRs touching `internal/sidecar/` or `tests/` | `moon fmt`, `moon check --deny-warn` (native and wasm), `moon test tests` (both modes), `moon info`, `git diff --check`, `embedded sidecars` workflow |
+| TTY-29 | done | use `moonbitlang/core/async/tty` as the native controlling-terminal backend while keeping `internal/sidecar` for wasm | `docs/plans/2026-11-27-native-core-tty-backend.md`, `moon.pkg`, `terminal_native.mbt`, `terminal_wasm.mbt`, `tty.mbt`, `state.mbt`, `size.mbt`, `io.mbt`, `tests/isatty_test.mbt` | native `Tty::open`, raw mode, size, and resize use `moonbitlang/core/async/tty` without importing `internal/sidecar`; wasm keeps sidecar; `.mbti` stays unchanged | `moon fmt --check`, `moon check --deny-warn` (native and wasm), `moon test --deny-warn` (native and wasm), `moon test tests --deny-warn`, `moon info`, `git diff --check` |
 
 ## Current Rules
 
@@ -81,5 +82,5 @@ This board tracks implementation direction for `moonbit-community/tty`. Use
 - Keep `examples/input` as a demo. Its grapheme-aware buffer validates higher-level
   editing behavior but does not create a public line-editing API.
 - When a task touches `.mbti`, include public API audit notes in its plan.
-- Resize events come from the tty sidecar on every platform (WASM-1) and are
-  coalesced.
+- Resize events come from `moonbitlang/core/async/tty` on native and the tty
+  sidecar on wasm, and are coalesced.

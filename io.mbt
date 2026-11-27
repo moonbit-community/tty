@@ -53,16 +53,16 @@ pub impl Writer for @async/stdio.Output with fn close(_) {
 }
 
 ///|
-impl Fd for @sidecar.Sidecar with fn fd(_) {
+impl Fd for Terminal with fn fd(_) {
   raise @os_error.OSError(@os_error.errno_ENOTSUP, context="Tty::fd")
 }
 
 ///|
-impl Reader for @sidecar.Sidecar with fn close(self) {
+impl Reader for Terminal with fn close(self) {
   self.close()
 }
 
 ///|
-impl Writer for @sidecar.Sidecar with fn close(self) {
+impl Writer for Terminal with fn close(self) {
   self.close()
 }

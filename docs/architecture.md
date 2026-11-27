@@ -54,8 +54,11 @@ operations:
 - raw mode through `Tty::enter_raw_mode`, `Tty::leave_raw_mode` and
   `Tty::with_raw_mode`
 
-The terminal device itself is owned by a sidecar process (`sidecar/`), driven
-by `internal/sidecar`; the root package holds no platform FFI for it.
+On native targets, `Tty::open()` is backed directly by
+`moonbitlang/core/async/tty`; on wasm targets, the terminal device is owned by
+a sidecar process (`sidecar/`), driven by `internal/sidecar`. The root package
+holds no platform FFI for raw mode, size, or resize (`isatty.c` remains on
+native because `moonbitlang/core/async/tty` does not provide `isatty`).
 
 `Tty` is intentionally opaque and non-generic. `Tty::new` accepts concrete
 handles through root `Reader`/`Writer` trait bounds and stores trait objects
@@ -226,26 +229,32 @@ The public API should describe terminal capabilities in terms of coordinated
 terminal handles, state, and events. The implementation can choose fd-based or
 handle-based storage per target.
 
-On every target the terminal is owned by a sidecar process driven over its
-stdio pipes with a small frame protocol (`sidecar/README.md`,
-`internal/sidecar`). The sidecar executable is embedded in the package per
-OS and architecture, or named by `TTY_SIDECAR`; this is what makes wasm
-possible without `moonrun` host imports, and native uses the same path so
-there is one implementation.
-The Unix sidecar forwards VT bytes, the Windows sidecar forwards raw console
-`INPUT_RECORD`s that `internal/sidecar` encodes into VT bytes, so the root sees
-one VT byte stream on every platform. Only `Tty::open()` creates a
-sidecar-backed handle; stream handles from `Tty::new` and `Tty::stdio` have
-no terminal capabilities. The decision is recorded in
-`docs/plans/2026-10-22-wasm-sidecar-backend.md`.
+On native targets, `Tty::open()` uses `moonbitlang/core/async/tty` directly
+(opening `/dev/tty` or the controlling tty device on Unix and `CONIN$`/`CONOUT$`
+on Windows, sharing the same runtime event loop and `SIGWINCH` handling as
+`moonbitlang/async`). On wasm targets, the terminal is owned by a sidecar
+process driven over its stdio pipes with a small frame protocol
+(`sidecar/README.md`, `internal/sidecar`). The sidecar executable is embedded
+in the package per OS and architecture, or named by `TTY_SIDECAR`; this is what
+makes wasm possible without `moonrun` host imports, and native builds do not
+import or embed `internal/sidecar`.
+On wasm, the Unix sidecar forwards VT bytes and the Windows sidecar forwards
+raw console `INPUT_RECORD`s that `internal/sidecar` encodes into VT bytes; on
+native, `moonbitlang/core/async/tty` delivers VT bytes on every platform, so
+the root sees one VT byte stream everywhere. Only `Tty::open()` creates a
+terminal-backed handle; stream handles from `Tty::new` and `Tty::stdio` have
+no terminal capabilities. The wasm sidecar decision is recorded in
+`docs/plans/2026-10-22-wasm-sidecar-backend.md`, and the native
+`moonbitlang/core/async/tty` switch is recorded in
+`docs/plans/2026-11-27-native-core-tty-backend.md`.
 
 Window size is exposed through `Tty` because callers usually need the visible
-screen buffer size while coordinating terminal input and output. The size is
-the one last reported by the sidecar, at start and on every resize. Resize
-notification comes from the sidecar, out of band from input: `SIGWINCH` on
-Unix, window size console records on Windows, both surfaced as root
-`Tty::read_event` resize events. Resize events are not ordered against decoded
-input, on either platform.
+screen buffer size while coordinating terminal input and output. On native it
+queries `moonbitlang/core/async/tty`; on wasm it returns the size last reported
+by the sidecar, at start and on every resize. Resize notification arrives out
+of band from input (`SIGWINCH` on Unix, window size console records on Windows)
+and is surfaced as root `Tty::read_event` resize events. Resize events are not
+ordered against decoded input, on either platform.
 
 The Windows sidecar forwards typed `INPUT_RECORD` values instead of a byte
 stream. Following charmbracelet/ultraviolet, `internal/sidecar` runs each
@@ -268,14 +277,15 @@ does not enable private mode 9001 on the terminal.
 
 ## Raw Mode
 
-Raw mode is a property of the terminal held by the sidecar, so it is only
-available on handles from `Tty::open()`. `enter_raw_mode` returns an opaque
-`State` recording whether the terminal was already raw, and `leave_raw_mode`
-restores exactly that, so nested scopes compose when each caller restores
-the state it captured; `Tty::with_raw_mode` is the scoped form and restores
-even under cancellation. Both are `async` because they are sidecar
-commands. The sidecar also restores the terminal when the program goes
-away, however it goes away.
+Raw mode is a property of the controlling terminal, so it is only available on
+handles from `Tty::open()`. `enter_raw_mode` returns an opaque `State`
+recording whether the terminal was already raw, and `leave_raw_mode` restores
+exactly that, so nested scopes compose when each caller restores the state it
+captured; `Tty::with_raw_mode` is the scoped form and restores even under
+cancellation. Both are `async` because on wasm they are sidecar commands. On
+native, `moonbitlang/core/async/tty` restores the saved terminal state when the
+event loop exits; on wasm, the sidecar restores the terminal when the program
+goes away, however it goes away.
 
 ## VT Sequences
 
