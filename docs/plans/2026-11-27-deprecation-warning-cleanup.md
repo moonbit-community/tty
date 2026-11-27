@@ -4,14 +4,22 @@ Status: implemented.
 
 ## Goal
 
-Make `moon check` clean again after `moonbitlang/async` `0.22.4 -> 0.22.7`
-landed (DEP-2). The upgrade pulled a newer core whose `Buffer` API renamed two
-members, so the workspace went from 0 to 56 warnings with no errors: 52
-`write_bytes` deprecations (E0020, "Use `write_bytesview` instead"), 2
-`Buffer` `size_hint` label deprecations ("Use capacity= instead") and 4
-`unused_package` warnings for a stale `moonbitlang/async` import.
+Make `moon check --deny-warn` clean on the toolchain CI actually installs.
+`moon check` went from 0 to 56 warnings with no errors on `moon
+0.1.20261126 (ccd306a 2026-11-26)`: 52 `write_bytes` deprecations (E0020,
+"Use `write_bytesview` instead"), 2 `Buffer` `size_hint` label deprecations
+("Use capacity= instead") and 4 `unused_package` warnings for a stale
+`moonbitlang/async` import.
 
 ## Context and decisions
+
+These come from a toolchain roll, not from the async bump. `ci.yml` installs
+`cli.moonbitlang.com/install/unix.sh` unpinned, so the runner decides which
+core the tree is checked against: `moon 0.1.20261102` accepted these calls on
+2026-11-04 and `moon 0.1.20261126` deprecates them. Measured, not assumed —
+`fix/toolchain-upgrade-warnings` still pins `moonbitlang/async@0.22.4` and
+fails `moon check --deny-warn` with the same `[0020]` errors once CI installs
+the 2026-11-26 toolchain, so async 0.22.7 is not what deprecated them.
 
 Both deprecations are renames of the same operation, not behaviour changes:
 
@@ -82,8 +90,8 @@ package import does not appear in a generated interface.
 
 ## Validation
 
-Run on macOS arm64 with the 2026-11-04 toolchain and
-`moonbitlang/async@0.22.7`:
+Run on macOS arm64 with `moon 0.1.20261126 (ccd306a 2026-11-26)` — the
+build CI installs — and `moonbitlang/async@0.22.7`:
 
 - `moon fmt` applied, then `moon fmt --check`: exit 0.
 - `moon check --deny-warn` and `moon check --target native --deny-warn`:
@@ -100,7 +108,9 @@ Run on macOS arm64 with the 2026-11-04 toolchain and
 - `moon info`: no `.mbti` diff.
 - `git diff --check`: clean.
 
-Windows is covered by CI only, as before.
+Windows is covered by CI only, as before: the `chore/async-0.22.7` run that
+carried this change installed `moon 0.1.20261126` on `windows-latest`,
+`macos-latest` and `ubuntu-latest` and passed all three.
 
 ## Public API audit
 
