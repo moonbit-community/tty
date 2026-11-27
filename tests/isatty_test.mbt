@@ -85,7 +85,7 @@ async fn read_until_text(
     for ;; {
       let tmp = FixedArray::make(1024, b'\x00')
       guard reader.read(tmp) is n && n > 0 else { break }
-      buf.write_bytes(tmp.unsafe_reinterpret_as_bytes()[:n])
+      buf.write_bytesview(tmp.unsafe_reinterpret_as_bytes()[:n])
       if buf.to_bytes().find(needle) is Some(_) {
         break
       }

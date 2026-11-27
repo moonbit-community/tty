@@ -376,11 +376,11 @@ fn raw_focus(focus_set : Bool) -> Bytes {
 test "encoder encodes raw records one at a time" {
   let encoder = RecordEncoder::new()
   let out = @buffer.Buffer()
-  out.write_bytes(encoder.encode(raw_focus(true)))
+  out.write_bytesview(encoder.encode(raw_focus(true)))
   for char in "\u{1B}[1;5D" {
-    out.write_bytes(encoder.encode(raw_text_key(char)))
+    out.write_bytesview(encoder.encode(raw_text_key(char)))
   }
-  out.write_bytes(encoder.encode(raw_focus(false)))
+  out.write_bytesview(encoder.encode(raw_focus(false)))
   @debug.assert_eq(out.to_bytes(), b"\x1b[I\x1b[1;5D\x1b[O")
   @debug.assert_eq(encoder.encode(b"\x01"), b"")
 }

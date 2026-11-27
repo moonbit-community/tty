@@ -184,10 +184,10 @@ async fn Connection::send(
   tag : Byte,
   payload : BytesView,
 ) -> Unit {
-  let buf = @buffer.Buffer(size_hint=5 + payload.length())
+  let buf = @buffer.Buffer(capacity=5 + payload.length())
   buf.write_byte(tag)
   buf.write_uint_le(payload.length().reinterpret_as_uint())
-  buf.write_bytes(payload)
+  buf.write_bytesview(payload)
   let frame = buf.contents()
   self.send_lock.with_lock(() => {
     guard !self.broken else {
