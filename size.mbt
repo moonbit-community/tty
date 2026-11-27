@@ -7,9 +7,9 @@ pub struct WindowSize {
 }
 
 ///|
-/// The visible terminal window size, as last reported by the sidecar.
+/// The visible terminal window size.
 pub fn Tty::window_size(self : Self) -> WindowSize raise @os_error.OSError {
-  let (rows, cols) = self.sidecar_or_raise("Tty::window_size").size()
+  let (rows, cols) = self.terminal_or_raise("Tty::window_size").size()
   { rows, cols, }
 }
 

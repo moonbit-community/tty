@@ -21,9 +21,10 @@ fn embedded_sidecar() -> Bool {
 }
 
 ///|
-/// Arguments for a runner, which reaches the terminal through the sidecar
-/// built by `build_sidecar`, named to it through `TTY_SIDECAR`, or through
-/// the embedded one if `embedded_sidecar()`.
+/// Arguments for a runner. Native runners use `moonbitlang/core/async/tty`
+/// directly; wasm runners reach the terminal through the sidecar built by
+/// `build_sidecar` (via `TTY_SIDECAR`) or the embedded one if
+/// `embedded_sidecar()`.
 fn runner_args(
   name : String,
   target~ : String = "native",
@@ -39,6 +40,9 @@ fn runner_args(
     "--target-dir",
     target_dir(name),
   ]
+  if target != "wasm" {
+    return moon
+  }
   if embedded_sidecar() {
     // An inherited `TTY_SIDECAR` would silently replace the embedded one.
     if @env.get_env_var("TTY_SIDECAR") is Some(path) && path != "" {
@@ -149,7 +153,6 @@ async test "isatty" {
 ///|
 async test "Tty::open" {
   @async.with_task_group() <| group => {
-    build_sidecar()
     build_runner("open")
     let pty = @pty.spawn(
       group,
@@ -171,7 +174,6 @@ async test "Tty::open" {
 ///|
 async test "resize event" {
   @async.with_task_group() <| group => {
-    build_sidecar()
     build_runner("resize")
     let pty = @pty.spawn(
       group,

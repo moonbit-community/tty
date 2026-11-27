@@ -5,25 +5,25 @@
 struct State(Bool)
 
 ///|
-/// The sidecar that holds this handle's terminal, or `OSError(ENOTSUP)` for
+/// The controlling terminal backend for this handle, or `OSError(ENOTSUP)` for
 /// stream handles, which have no terminal state of their own.
-fn Tty::sidecar_or_raise(
+fn Tty::terminal_or_raise(
   self : Self,
   context : String,
-) -> @sidecar.Sidecar raise @os_error.OSError {
-  guard self.sidecar is Some(sidecar) else {
+) -> Terminal raise @os_error.OSError {
+  guard self.terminal is Some(terminal) else {
     raise OSError(@os_error.errno_ENOTSUP, context~)
   }
-  sidecar
+  terminal
 }
 
 ///|
 /// Enter raw mode: no echo, no line buffering, no signal keys, VT input.
 /// Returns the previous state for `leave_raw_mode`.
 pub async fn Tty::enter_raw_mode(self : Self) -> State {
-  let sidecar = self.sidecar_or_raise("Tty::enter_raw_mode")
-  let state = State(sidecar.is_raw())
-  sidecar.set_raw(true)
+  let terminal = self.terminal_or_raise("Tty::enter_raw_mode")
+  let state = State(terminal.is_raw())
+  terminal.set_raw(true)
   state
 }
 
@@ -31,9 +31,9 @@ pub async fn Tty::enter_raw_mode(self : Self) -> State {
 /// Restore the state captured by `enter_raw_mode`: leaves raw mode unless
 /// the terminal was already raw when that call was made.
 pub async fn Tty::leave_raw_mode(self : Self, state : State) -> Unit {
-  let sidecar = self.sidecar_or_raise("Tty::leave_raw_mode")
+  let terminal = self.terminal_or_raise("Tty::leave_raw_mode")
   if !state.0 {
-    sidecar.set_raw(false)
+    terminal.set_raw(false)
   }
 }
 

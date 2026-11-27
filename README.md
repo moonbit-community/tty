@@ -13,17 +13,17 @@ pane system, or scrollback buffer.
 This module is early. Public APIs are still being shaped around small terminal
 programs and the examples in this repository.
 
-`Tty::open()` holds the terminal through a sidecar process: a small C
-program that owns the terminal and relays input, resize events and output
-over pipes (`sidecar/README.md`). The same mechanism serves native programs
-and wasm programs run with `moonrun`. The executable is embedded in the
-package per OS and architecture and written to a temporary directory when
-needed; the `TTY_SIDECAR` environment variable overrides it with an
-executable of your own. Only `Tty::open()` has terminal capabilities:
-`Tty::stdio()` and `Tty::new` are plain stream handles, and `window_size`,
-`enter_raw_mode` and `leave_raw_mode` on them raise `OSError(ENOTSUP)`.
-The raw mode operations and `close` are `async`.
-`isatty` raises on wasm.
+On native targets `Tty::open()` uses `moonbitlang/core/async/tty` directly to
+talk to the controlling terminal. On wasm targets (run with `moonrun`),
+`Tty::open()` holds the terminal through a sidecar process: a small C program
+that owns the terminal and relays input, resize events and output over pipes
+(`sidecar/README.md`). The sidecar executable is embedded in the package per OS
+and architecture and written to a temporary directory when needed; the
+`TTY_SIDECAR` environment variable overrides it with an executable of your own.
+Only `Tty::open()` has terminal capabilities: `Tty::stdio()` and `Tty::new` are
+plain stream handles, and `window_size`, `enter_raw_mode` and `leave_raw_mode`
+on them raise `OSError(ENOTSUP)`. The raw mode operations and `close` are
+`async`. `isatty` raises on wasm.
 
 ## Packages
 
@@ -146,10 +146,11 @@ async fn main {
 Examples live in a separate workspace member under `examples/`.
 
 All examples support `--target native` (the default) and `--target wasm`.
-The wasm programs run locally through `moonrun`, using the host's sidecar.
-For a source checkout with an empty embedded sidecar table, build the sidecar
-as described in `sidecar/README.md` and set `TTY_SIDECAR` to its absolute path
-before running an interactive example.
+Native programs use `moonbitlang/core/async/tty` directly. Wasm programs run
+locally through `moonrun`, using the host's sidecar; for a source checkout with
+an empty embedded sidecar table, build the sidecar as described in
+`sidecar/README.md` and set `TTY_SIDECAR` to its absolute path before running
+an interactive wasm example.
 
 ```sh
 moon run examples/raw

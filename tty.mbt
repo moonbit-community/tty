@@ -17,24 +17,29 @@ pub(all) enum Event {
 }
 
 ///|
+/// Raised out of a backend read when a window resize arrives instead of input.
+priv suberror Resized
+
+///|
 /// Coordinated terminal input/output handle.
 ///
 /// `Tty` is for terminal protocols that need to write a request and read the
 /// response from the same terminal input stream. It does not model a screen.
 ///
-/// A handle from `Tty::open` owns a sidecar process that holds the terminal
-/// (see `sidecar/README.md`); handles from `Tty::new` and `Tty::stdio` are
-/// plain streams and have no terminal state of their own.
+/// A handle from `Tty::open` owns the controlling terminal (via
+/// `moonbitlang/core/async/tty` on native and `internal/sidecar` on wasm);
+/// handles from `Tty::new` and `Tty::stdio` are plain streams and have no
+/// terminal state of their own.
 struct Tty {
   input : &Reader
   output : &Writer
-  // Decodes terminal input. The sidecar hands out VT bytes on every platform.
+  // Decodes terminal input as VT bytes on every platform.
   reader : @input.EventReader
   pending_input : Array[@public_input.InputEvent]
   // Serializes output writes so a single `write`/`write_string` call lands on
   // the terminal atomically with respect to other concurrent writers.
   write_lock : @lock.Lock
-  sidecar : @sidecar.Sidecar?
+  terminal : Terminal?
   // A resize noticed while a request/response query owned the reader; it is
   // reported by the next `read_event`.
   mut resize_pending : Bool
@@ -50,7 +55,7 @@ pub fn[I : Reader, O : Writer] Tty::new(input : I, output : O) -> Tty {
     reader: @input.EventReader::new(input as &@async/io.Reader),
     pending_input: [],
     write_lock: @lock.Lock::new(),
-    sidecar: None,
+    terminal: None,
     resize_pending: false,
   }
 }
@@ -64,18 +69,18 @@ pub fn Tty::stdio() -> Tty {
 ///|
 /// Open the controlling terminal as one coordinated terminal handle.
 ///
-/// The terminal is held by a sidecar process, the executable named by
-/// `TTY_SIDECAR` or the one embedded for this platform (see
-/// `sidecar/README.md`). Input, resize events and output all go through it.
+/// On native this uses `moonbitlang/core/async/tty`; on wasm the terminal is
+/// held by a sidecar process named by `TTY_SIDECAR` or embedded for the host
+/// (see `sidecar/README.md`). Input, resize events and output all go through it.
 pub async fn Tty::open() -> Tty {
-  let sidecar = @sidecar.open()
+  let terminal = Terminal::open()
   {
-    input: sidecar,
-    output: sidecar,
-    reader: @input.EventReader::new(sidecar as &@async/io.Reader),
+    input: terminal,
+    output: terminal,
+    reader: @input.EventReader::new(terminal as &@async/io.Reader),
     pending_input: [],
     write_lock: @lock.Lock::new(),
-    sidecar: Some(sidecar),
+    terminal: Some(terminal),
     resize_pending: false,
   }
 }
@@ -84,12 +89,12 @@ pub async fn Tty::open() -> Tty {
 /// Close the underlying input and output handles.
 ///
 /// Closing stdio-backed handles is a no-op. For a handle from `Tty::open`
-/// this ends the sidecar, which restores the terminal, and reaps it.
+/// this restores raw mode if active and, on wasm, ends and reaps the sidecar.
 pub async fn Tty::close(self : Self) -> Unit nocancel {
   self.input.close()
   self.output.close()
-  if self.sidecar is Some(sidecar) {
-    sidecar.wait()
+  if self.terminal is Some(terminal) {
+    terminal.wait()
   }
 }
 
@@ -111,7 +116,7 @@ pub async fn Tty::read_event(
       return Resize(self.window_size())
     }
     try read_decoded_input_event(self.reader, esc_timeout_ms) catch {
-      @sidecar.Resized => self.resize_pending = true
+      Resized => self.resize_pending = true
       error => raise error
     } noraise {
       event => return event
@@ -144,7 +149,7 @@ async fn Tty::read_internal_event(
 ) -> @input.Event {
   for ;; {
     try self.reader.read_event(esc_timeout_ms~) catch {
-      @sidecar.Resized => self.resize_pending = true
+      Resized => self.resize_pending = true
       error => raise error
     } noraise {
       event => return event

@@ -11,9 +11,19 @@ import {
   "moonbit-community/tty/color",
   "moonbit-community/tty/input" @public_input,
   "moonbit-community/tty/internal/lock",
-  "moonbit-community/tty/internal/sidecar",
   "moonbit-community/tty/internal/input",
   "moonbit-community/tty/internal/vt",
+}
+
+#cfg(target="native")
+import {
+  "moonbitlang/core/async/tty" @core_tty,
+  "moonbitlang/core/async/os_error" @core_os_error,
+}
+
+#cfg(target="wasm")
+import {
+  "moonbit-community/tty/internal/sidecar",
 }
 
 import {
@@ -33,4 +43,8 @@ supported_targets = "-all+native+wasm"
 
 options(
   "native-stub": [ "isatty.c" ],
+  targets: {
+    "terminal_native.mbt": [ "native" ],
+    "terminal_wasm.mbt": [ "wasm" ],
+  },
 )
